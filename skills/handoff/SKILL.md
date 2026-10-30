@@ -45,6 +45,12 @@ Project = the folder under the shared `Projects/` tree this session is working i
 whichever of Madoka / Ji-su is not this machine (check device info). Ask only if genuinely
 ambiguous.
 
+**Same Mac, other account.** If the user is moving the work to another Claude account on this
+same Mac (usually because this account hit its usage limit), the target is `<Mac>@<profile>`,
+e.g. `Madoka@b`: each account profile is its own side of a handoff. The document matters just as
+much — the other account starts with no memory of this chat. Its receive command is
+`mirror --profile <profile> receive "PROJECT"`.
+
 ## Step 2 — Write the document
 
 Write `HANDOFF_TOPIC.md` into the project folder — a new file per topic, named for the topic, not

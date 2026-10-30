@@ -39,6 +39,7 @@
 - [Setup](#setup) — [per machine](#1-once-per-machine) · [the skill](#2-once-for-the-skill) · [per project](#3-once-per-project)
 - [The daily loop](#the-daily-loop)
 - [Locking a machine out (`--hold`)](#locking-a-machine-out---hold)
+- [Two accounts on one Mac (profiles)](#two-accounts-on-one-mac-profiles)
 - [Commands](#commands)
 - [Layout](#layout)
 - [Expectations](#expectations)
@@ -306,6 +307,74 @@ Both are `spaces.json` writes, so Claude must be quit — one quit covers both. 
 **What it does not cover:** anything outside Cowork — Finder, Excel, Quicken. Nothing in iCloud offers a lock, and locking the files themselves would block the sync daemon from writing the other Mac's changes back, which is worse than the problem.
 
 ---
+
+## Two accounts on one Mac (profiles)
+
+Two Claude subscriptions on one Mac should both be usable at once, and a project should be able
+to move to the second account when the first hits its limit. `bin/claude-profile` runs the real
+Claude apps once per account, and `mirror --profile` treats each account as its own side of a
+handoff, named `<Mac>@<profile>`.
+
+```bash
+./bin/claude-profile create b        # ~/.claude-b + Application Support/Claude-b; shares skills/settings
+./bin/claude-profile desktop b       # a second Claude desktop, signed in separately, beside the first
+./bin/claude-profile app b           # optional: "Claude (b)" launcher in ~/Applications for the Dock
+claude @b                            # Claude Code as account b (zsh wrapper; or: claude-profile code b)
+```
+
+Moving a Cowork project to the other account works the same way as moving it to the other Mac:
+
+```bash
+/handoff                                                    # in the account-a Cowork session
+./bin/mirror send "Quicken Reconciliation" --to Madoka@b    # files are already here; ships memory + doc
+./bin/mirror --profile b receive "Quicken Reconciliation"   # defines it in b, installs memory, ⌘V
+```
+
+For Claude Code sessions, `claude-profile sync` copies `projects/` and `plans/` between profiles
+(newest wins), so `claude @b --resume` picks up a session started on account a.
+
+How it is isolated, and why:
+
+| | Default | Profile `b` |
+|---|---|---|
+| Desktop data (`spaces.json`, Cowork memory, login) | `Application Support/Claude` | `Application Support/Claude-b`, via `--user-data-dir` |
+| Claude Code config + Keychain login | `~/.claude` | `~/.claude-b`, via `CLAUDE_CONFIG_DIR` |
+| Skills, settings, `CLAUDE.md`, plugins, agents, commands | — | symlinked to `~/.claude` |
+| Handoff identity | `Madoka` | `Madoka@b` |
+
+- **`--user-data-dir`, not `CLAUDE_USER_DATA_DIR`.** Signed builds of the desktop app ignore the
+  environment variable (the app logs *"signed builds ignore it"*) but honor the Chromium switch,
+  and the single-instance lock is per data folder — so the two apps run side by side.
+- **One data folder can hold several accounts.** Signing a different account into the same app
+  adds another `local-agent-mode-sessions/<account>/<org>/`. mirror picks the signed-in one from
+  `config.json`'s `lastKnownAccountUuid`; before profiles it took the first folder it found.
+- **"Is Claude running" means *this profile's* Claude.** Quitting account a is not needed to edit
+  account b's `spaces.json`.
+- **Sign in from a private browser window.** claude.ai otherwise signs the new profile into
+  whichever account the browser already has.
+- **The `/handoff` skill installs per account.** Skills sync by account, not by Mac, so add it in
+  account b's Settings too.
+- The folder layout matches Claude Switch's, so profiles made by either tool work in both.
+
+**Icons.** `claude-profile app <p>` builds the launcher's icon from whatever Claude.app currently
+ships, plus a coloured badge with the profile's initial (`--color '#hex'` to choose; it is
+remembered). The icon is full-bleed so macOS 26+ masks it rather than putting it on a grey plate.
+Once a profile is *running*, its Dock and ⌘-Tab icon is Claude's own: every profile runs the same
+signed Claude.app, and changing that bundle would break its signature and its updates.
+
+**Upgrades.** There is one Claude.app and every profile runs it, so there is nothing to upgrade
+per profile — but:
+
+- Each profile's app checks for and installs updates **on its own** (the updater's
+  running-instance record lives in each data folder). When one installs, the others keep running
+  the old code from a bundle replaced underneath them. `claude-profile list` flags them
+  (`QUIT+REOPEN`); quit and reopen every open profile after an update.
+- Each profile migrates its own data the first time it opens on the new version.
+- Profiles rest on behaviour read out of Claude's bundle, not a documented interface. `claude-profile
+  desktop` re-checks it (`claude-profile doctor`) whenever the installed version changes, and
+  refuses to open a profile if `--user-data-dir`, the account record or the Cowork store moved.
+- After an update that changes Claude's icon, `claude-profile app --all` rebuilds the launchers.
+- Claude Code (`claude @<p>`) is unaffected: `CLAUDE_CONFIG_DIR` is a documented setting.
 
 ## Commands
 

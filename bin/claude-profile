@@ -1,0 +1,290 @@
+#!/bin/bash
+# claude-profile — run several Claude accounts on one Mac, side by side.
+#
+#   A profile is a name <p> and two folders, the same layout Claude Switch uses, so
+#   profiles made by either tool work in both:
+#     ~/.claude-<p>                              Claude Code config (CLAUDE_CONFIG_DIR)
+#     ~/Library/Application Support/Claude-<p>   Claude desktop data (--user-data-dir)
+#   "default" is the plain ~/.claude and Application Support/Claude.
+#
+#   claude-profile create <p>        make the folders; share skills, settings, CLAUDE.md,
+#                                    plugins, agents and commands with ~/.claude
+#   claude-profile desktop <p>       open Claude desktop as <p>, beside any other profile
+#   claude-profile app <p> [--color #hex] | --all
+#                                    a "Claude (<p>)" launcher in ~/Applications: Claude's
+#                                    icon with a coloured badge; --all rebuilds every one
+#   claude-profile code <p> [args]   run Claude Code as <p>  (in zsh: claude @<p> [args])
+#   claude-profile list              each profile's account, plan and whether it is open
+#   claude-profile sync [--dry-run]  copy Claude Code sessions (projects/, plans/) between
+#                                    profiles, newest wins, so /resume works on any account
+#   claude-profile doctor            after a Claude upgrade: re-check what profiles rely on,
+#                                    and flag profiles still running the pre-update app
+#
+#   Cowork projects move between profiles with mirror, which treats each profile as
+#   its own side of a handoff:  mirror send <Project> --to "<Mac>@<p>"
+#                               mirror --profile <p> receive <Project>
+
+set -uo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APPSUPPORT="$HOME/Library/Application Support"
+CLAUDE_APP="/Applications/Claude.app"
+SHARED="skills CLAUDE.md settings.json plugins agents commands"
+
+die(){ echo "error: $*" >&2; exit 1; }
+ok(){ echo "  ✓ $*"; }
+usage(){ awk 'NR>1 && /^#/{sub(/^# ?/,""); print; next} NR>1{exit}' "${BASH_SOURCE[0]}"; }
+
+check_name(){
+  [ -n "${1:-}" ] || die "name a profile"
+  case "$1" in *[!A-Za-z0-9_-]*) die "profile names are letters, digits, - and _";; esac
+  # Claude itself uses Application Support/Claude-3p (third-party provider mode).
+  case "$1" in 3p|3P) die "'$1' is taken: Claude uses Application Support/Claude-3p itself";; esac
+}
+config_dir(){ [ "$1" = default ] && echo "$HOME/.claude" || echo "$HOME/.claude-$1"; }
+data_dir(){ [ "$1" = default ] && echo "$APPSUPPORT/Claude" || echo "$APPSUPPORT/Claude-$1"; }
+
+profiles(){
+  echo default
+  local d
+  for d in "$HOME"/.claude-*/; do
+    [ -d "$d" ] && basename "$d" | sed 's/^\.claude-//'
+  done
+}
+
+# Same test as mirror's claude_running: the main process is argv[0] .../MacOS/Claude,
+# and only non-default profiles carry --user-data-dir. Prints the pid.
+desktop_pid(){
+  local want=""; [ "$1" = default ] || want="--user-data-dir=$(data_dir "$1")"
+  ps -axo pid=,args= | awk -v want="$want" '
+    $2 ~ /\/Claude\.app\/Contents\/MacOS\/Claude$/ {
+      has = index($0, "--user-data-dir=") > 0
+      if (!pid && ((want == "" && !has) || (want != "" && index($0, want) > 0))) pid=$1   # no early exit: under pipefail it would SIGPIPE ps
+    }
+    END { if (pid) print pid; exit !pid }'
+}
+desktop_running(){ desktop_pid "$1" >/dev/null; }
+
+# Each profile's app updates itself (the updater's running-instance sentinel lives in
+# that profile's own config.json), but they all run the ONE /Applications/Claude.app.
+# When any of them installs an update, the others keep running the old code from a
+# bundle that has been replaced underneath them. True when that has happened.
+desktop_stale(){
+  local pid started installed
+  pid="$(desktop_pid "$1")" || return 1
+  started="$(date -j -f '%a %b %d %T %Y' "$(ps -o lstart= -p "$pid" | sed 's/  */ /g;s/^ //')" +%s 2>/dev/null)" || return 1
+  installed="$(stat -f %m "$CLAUDE_APP/Contents/Info.plist")"
+  [ "$started" -lt "$installed" ]
+}
+
+cmd_create(){
+  local p="${1:-}"; check_name "$p"
+  [ "$p" = default ] && die "'default' is ~/.claude and already exists"
+  local cfg data item; cfg="$(config_dir "$p")"; data="$(data_dir "$p")"
+  mkdir -p "$cfg" && chmod 700 "$cfg"
+  mkdir -p "$data" && chmod 700 "$data"
+  ok "config: $cfg"
+  ok "desktop data: $data"
+  # Shared by symlink so a skill or setting changed in one account is changed in all.
+  # Credentials, sessions, history and usage stay per profile.
+  for item in $SHARED; do
+    [ -e "$HOME/.claude/$item" ] || continue
+    if [ -L "$cfg/$item" ] || [ ! -e "$cfg/$item" ]; then
+      ln -sfn "$HOME/.claude/$item" "$cfg/$item"; ok "shared $item"
+    else
+      echo "  - kept $item (a real file is already there; remove it to share)"
+    fi
+  done
+  echo
+  echo "Sign in once per surface — in a private browser window, or claude.ai signs you"
+  echo "into whichever account it already has:"
+  echo "    claude @$p                    # zsh; or: claude-profile code $p"
+  echo "    claude-profile desktop $p"
+}
+
+cmd_desktop(){
+  local p="${1:-default}"; check_name "$p"
+  [ -d "$CLAUDE_APP" ] || die "Claude desktop is not installed at $CLAUDE_APP"
+  if [ "$p" = default ]; then open -a "$CLAUDE_APP"; return; fi
+  local data; data="$(data_dir "$p")"
+  [ -d "$data" ] || die "no profile '$p' — run: claude-profile create $p"
+  if [ "$(cat "$STAMP" 2>/dev/null)" != "$(app_version)" ]; then
+    cmd_doctor >/dev/null || die "Claude.app $(app_version) changed something profiles rely on — run: claude-profile doctor"
+  fi
+  # Signed builds ignore CLAUDE_USER_DATA_DIR (the app logs "signed builds ignore it")
+  # but honor Chromium's --user-data-dir, and the single-instance lock is per data
+  # folder, so this is a second, independent app. CLAUDE_CONFIG_DIR makes its Code tab
+  # use the same login as `claude @<p>` in a terminal.
+  open -n -a "$CLAUDE_APP" --env "CLAUDE_CONFIG_DIR=$(config_dir "$p")" --args "--user-data-dir=$data"
+  ok "opened Claude as '$p'"
+}
+
+# Claude's own icon with a coloured badge carrying the profile's initial, rebuilt from
+# whatever Claude.app currently ships, so `app --all` after an upgrade picks up a new
+# icon. The colour is remembered per profile in its config folder.
+make_icon(){
+  local p="$1" color="$2" out="$3" src
+  src="$CLAUDE_APP/Contents/Resources/$(defaults read "$CLAUDE_APP/Contents/Info.plist" CFBundleIconFile 2>/dev/null)"
+  [ -f "$src" ] || src="${src}.icns"
+  python3 - "$src" "$p" "$color" "$out" <<'PY' || return 1
+import sys
+from PIL import Image, ImageDraw, ImageFont
+src, name, color, out = sys.argv[1:]
+im = Image.open(src).convert("RGBA").resize((1024, 1024), Image.LANCZOS)   # icns opens at its largest
+# macOS 26+ puts an .icns whose art is not full-bleed on a grey plate. Claude's .icns
+# is a rounded tile inside transparent margins, so crop to the tile and fill its
+# corners with its own edge colour; the system then applies its own mask.
+alpha = im.getchannel("A").point(lambda v: 255 if v > 250 else 0)
+tile = im.crop(alpha.getbbox() or (0, 0, 1024, 1024)).resize((1024, 1024), Image.LANCZOS)
+im = Image.new("RGBA", (1024, 1024), tile.getpixel((512, 6)))
+im.alpha_composite(tile)
+d = ImageDraw.Draw(im)
+# badge in the bottom-right, inside the mask
+cx, cy, r = 740, 740, 200
+d.ellipse((cx-r-16, cy-r-16, cx+r+16, cy+r+16), fill=(255, 255, 255, 255))
+d.ellipse((cx-r, cy-r, cx+r, cy+r), fill=color)
+label = name[:2].upper() if len(name) <= 2 else name[0].upper()
+try: font = ImageFont.truetype("/System/Library/Fonts/SFNSRounded.ttf", 260 if len(label) == 1 else 200)
+except OSError: font = ImageFont.load_default()
+try: font.set_variation_by_name("Bold")   # SF Rounded is a variable font; regular is thin at Dock size
+except Exception: pass
+d.text((cx, cy + 6), label, font=font, fill="white", anchor="mm")
+im.save(out, sizes=[(16,16),(32,32),(64,64),(128,128),(256,256),(512,512),(1024,1024)])
+PY
+}
+
+# Distinct, readable on both light and dark Docks; chosen by name so it is stable.
+default_color(){
+  local palette=('#2F6FEB' '#1F9D55' '#8E44AD' '#D9480F' '#0E9AA7' '#C2255C' '#5C7CFA' '#B7791F')
+  local sum; sum="$(printf '%s' "$1" | cksum | cut -d' ' -f1)"
+  echo "${palette[$((sum % ${#palette[@]}))]}"
+}
+
+cmd_app(){
+  local p="" color="" all=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --color) color="${2:-}"; shift 2;;
+      --all)   all=1; shift;;
+      *) p="$1"; shift;;
+    esac
+  done
+  if [ "$all" = 1 ]; then
+    local q; for q in $(profiles); do [ "$q" = default ] || cmd_app "$q"; done; return
+  fi
+  check_name "$p"
+  [ "$p" = default ] && die "the default profile is Claude.app itself"
+  local cfg; cfg="$(config_dir "$p")"
+  [ -d "$(data_dir "$p")" ] || die "no profile '$p' — run: claude-profile create $p"
+  case "$color" in ""|\#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]) ;;
+    *) die "--color takes a hex colour like '#2F6FEB'";; esac
+  [ -n "$color" ] && echo "$color" > "$cfg/.profile-color"
+  [ -z "$color" ] && [ -f "$cfg/.profile-color" ] && color="$(cat "$cfg/.profile-color")"
+  [ -z "$color" ] && color="$(default_color "$p")"
+
+  local app="$HOME/Applications/Claude ($p).app"
+  mkdir -p "$HOME/Applications"
+  rm -rf "$app"   # osacompile will not replace an existing bundle's icon cleanly
+  osacompile -o "$app" -e "do shell script quoted form of \"$HERE/claude-profile\" & \" desktop $p >/dev/null 2>&1 &\"" \
+    || die "osacompile failed"
+  if make_icon "$p" "$color" "$app/Contents/Resources/applet.icns"; then
+    # Current osacompile applets also ship Assets.car and name an icon in it with
+    # CFBundleIconName, which wins over applet.icns. Drop both, then re-sign: the
+    # edit invalidates osacompile's ad-hoc signature.
+    rm -f "$app/Contents/Resources/Assets.car"
+    /usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$app/Contents/Info.plist" 2>/dev/null
+    codesign --force --sign - "$app" 2>/dev/null || echo "  - could not re-sign the launcher; macOS may refuse to open it"
+    ok "icon: Claude + $color badge"
+  else
+    echo "  - icon: could not draw a badge (needs python3 with Pillow); using the applet icon"
+  fi
+  # Finder and the Dock cache icons by bundle; touching the bundle makes them re-read it.
+  touch "$app" "$app/Contents" "$app/Contents/Info.plist"
+  ok "launcher: $app (drag it to the Dock)"
+}
+
+cmd_code(){
+  local p="${1:-}"; check_name "$p"; shift
+  [ "$p" = default ] && exec claude "$@"
+  local cfg; cfg="$(config_dir "$p")"
+  [ -d "$cfg" ] || die "no profile '$p' — run: claude-profile create $p"
+  exec env CLAUDE_CONFIG_DIR="$cfg" claude "$@"
+}
+
+cmd_list(){
+  local p cfg data code desk run
+  printf '%-10s %-34s %-34s %s\n' PROFILE "CODE (terminal)" "DESKTOP" OPEN
+  for p in $(profiles); do
+    cfg="$(config_dir "$p")"; data="$(data_dir "$p")"
+    # default must run with CLAUDE_CONFIG_DIR unset: setting it, even to ~/.claude,
+    # makes Claude Code look for a differently named Keychain item.
+    code="$(if [ "$p" = default ]; then command claude auth status; else CLAUDE_CONFIG_DIR="$cfg" command claude auth status; fi 2>/dev/null | python3 -c '
+import json,sys
+try: d=json.load(sys.stdin)
+except Exception: print("?"); sys.exit()
+print("%s (%s)" % (d.get("email"), d.get("subscriptionType")) if d.get("loggedIn") else "not signed in")')"
+    desk="$(python3 -c '
+import json,sys
+try: a=json.load(open(sys.argv[1])).get("lastKnownAccountUuid")
+except Exception: a=None
+print(f"account {a[:8]}" if a else "not signed in")' "$data/config.json")"
+    if desktop_stale "$p"; then run="yes — QUIT+REOPEN (app updated since)"
+    elif desktop_running "$p"; then run=yes; else run=-; fi
+    printf '%-10s %-34s %-34s %s\n' "$p" "$code" "$desk" "$run"
+  done
+}
+
+# Claude Code keeps sessions as files under projects/ and plans/, so copying them lets
+# another account /resume a session after the first one hits its limit. Never resume
+# the same session in two profiles at once: the copies diverge and newest wins.
+cmd_sync(){
+  local dry=() a b d
+  [ "${1:-}" = "--dry-run" ] && dry=(--dry-run -v)
+  local ps=(); while read -r a; do ps+=("$a"); done < <(profiles)
+  [ ${#ps[@]} -ge 2 ] || die "only one profile — nothing to sync"
+  for a in "${ps[@]}"; do for b in "${ps[@]}"; do
+    [ "$a" = "$b" ] && continue
+    for d in projects plans; do
+      [ -d "$(config_dir "$a")/$d" ] || continue
+      mkdir -p "$(config_dir "$b")/$d"
+      rsync -a --update ${dry[@]+"${dry[@]}"} "$(config_dir "$a")/$d/" "$(config_dir "$b")/$d/" \
+        || die "rsync failed: $a -> $b ($d)"
+    done
+  done; done
+  ok "synced projects/ and plans/ across: ${ps[*]}"
+}
+
+# What profiles rely on is Claude.app behaviour found by reading its bundle, not a
+# documented interface, so an upgrade can change it. Re-check those facts; desktop
+# runs this quietly whenever the installed version differs from the last one checked.
+STAMP="$HOME/.config/claude-profile/checked-version"
+app_version(){ defaults read "$CLAUDE_APP/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null; }
+cmd_doctor(){
+  local asar="$CLAUDE_APP/Contents/Resources/app.asar" bad=0 v; v="$(app_version)"
+  echo "Claude.app $v"
+  has(){ LC_ALL=C grep -a -q -F "$1" "$asar"; }
+  if has 'hasSwitch("user-data-dir")'; then ok "honors --user-data-dir (profiles run side by side)"
+  else echo "  ✗ no longer checks --user-data-dir — second desktop profiles may open the DEFAULT data"; bad=1; fi
+  if has 'lastKnownAccountUuid'; then ok "records lastKnownAccountUuid (mirror finds the signed-in account)"
+  else echo "  ✗ lastKnownAccountUuid gone — mirror falls back to the newest spaces.json"; bad=1; fi
+  if has 'local-agent-mode-sessions'; then ok "Cowork store is still local-agent-mode-sessions/"
+  else echo "  ✗ Cowork store moved — mirror cannot find spaces.json or memory"; bad=1; fi
+  if has 'CLAUDE_CONFIG_DIR'; then ok "Code tab honors CLAUDE_CONFIG_DIR (same login as claude @<p>)"
+  else echo "  ✗ Code tab ignores CLAUDE_CONFIG_DIR — it will use ~/.claude's login"; bad=1; fi
+  local p; for p in $(profiles); do
+    desktop_stale "$p" && { echo "  ⚠ '$p' is running code from before the update — quit and reopen it"; }
+  done
+  if [ "$bad" = 0 ]; then mkdir -p "$(dirname "$STAMP")"; echo "$v" > "$STAMP"; fi
+  return "$bad"
+}
+
+case "${1:-help}" in
+  create)  shift; cmd_create "$@";;
+  desktop) shift; cmd_desktop "$@";;
+  app)     shift; cmd_app "$@";;
+  code)    shift; cmd_code "$@";;
+  list)    shift; cmd_list "$@";;
+  sync)    shift; cmd_sync "$@";;
+  doctor)  shift; cmd_doctor "$@";;
+  help|-h|--help) usage;;
+  *) die "unknown command '$1' — see: claude-profile help";;
+esac

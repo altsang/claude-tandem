@@ -47,6 +47,13 @@
 #   mirror log <Project>
 #   mirror conflicts
 #   mirror materialize [path]
+#
+#   PROFILES — several Claude accounts on one Mac (see bin/claude-profile):
+#   mirror --profile <p> <verb> ...  act as profile <p>: its own data folder, its own
+#                                    spaces.json and memory, and its own side of a
+#                                    handoff, named <Mac>@<p>. MIRROR_PROFILE does the same.
+#   mirror send <Project> --to Madoka@b
+#                                    hand a project to another account on this same Mac
 
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -68,6 +75,21 @@ PROJECTS="$ROOT/Projects"
 HANDOFF="$ROOT/_handoff"
 EVENTS="$HANDOFF/events"
 ME="$(scutil --get ComputerName 2>/dev/null || hostname)"
+
+# A profile is the real Claude app launched with its own --user-data-dir (signed builds
+# ignore CLAUDE_USER_DATA_DIR; see bin/claude-profile). Each one has its own spaces.json,
+# memory and held-project stash, so it is a separate side of a handoff: <Mac>@<profile>.
+PROFILE="${MIRROR_PROFILE:-}"
+case "${1:-}" in
+  --profile)   PROFILE="${2:-}"; shift 2 || { echo "error: --profile needs a name" >&2; exit 1; };;
+  --profile=*) PROFILE="${1#--profile=}"; shift;;
+esac
+[ "$PROFILE" = "default" ] && PROFILE=""
+case "$PROFILE" in *[!A-Za-z0-9_-]*) echo "error: profile names are letters, digits, - and _" >&2; exit 1;; esac
+USERDATA="$HOME/Library/Application Support/Claude${PROFILE:+-$PROFILE}"
+ME="$ME${PROFILE:+@$PROFILE}"
+HOLDDIR="$HOLDDIR${PROFILE:+-$PROFILE}"
+export MIRROR_ME="$ME"   # the engine (v8+) names this side the same way
 
 die(){ echo "error: $*" >&2; exit 1; }
 ok(){ echo "  ✓ $*"; }
@@ -130,6 +152,8 @@ cmd_deploy(){
 
 cmd_check(){
   echo "machine: $ME"
+  echo "claude data: $USERDATA"
+  local sf; sf="$(spaces_file)" && echo "  spaces.json: ${sf#$USERDATA/}" || echo "  (no spaces.json for the signed-in account yet)"
   echo "shared root: $ROOT"
   [ -f "$CONF" ] && echo "  (from $CONF)" || echo "  (default — no config set)"
   case "$ROOT" in
@@ -142,10 +166,10 @@ cmd_check(){
   echo "  shared projects:"
   for d in "$PROJECTS"/*/; do [ -d "$d" ] && echo "      $(basename "$d")"; done
   echo "  granted folders that will fail in Cowork:"
-  python3 - <<'PY'
-import json,glob,os
-fs=[x for x in glob.glob(os.path.expanduser(
-    "~/Library/Application Support/Claude/local-agent-mode-sessions/*/*/spaces.json"))
+  python3 - "$USERDATA" <<'PY'
+import json,glob,os,sys
+fs=[x for x in glob.glob(os.path.join(sys.argv[1],
+    "local-agent-mode-sessions/*/*/spaces.json"))
     if "skills-plugin" not in x]
 bad=0
 for f in fs:
@@ -241,7 +265,7 @@ cmd_migrate(){
   # old path. Repair it here rather than leaving the user with a project that silently
   # cannot read its own files. Writing spaces.json IS the grant -- verified 2026-08-20,
   # a project linked this way and never touched in the picker reads fine.
-  if pgrep -f "Claude.app/Contents/MacOS/Claude" >/dev/null 2>&1; then
+  if claude_running; then
     echo
     echo "  ⚠ Claude is running, so the folder grant could not be updated automatically."
     echo "    '$name' still points at the path that was just moved, and will fail to read"
@@ -292,7 +316,7 @@ cmd_rename(){
   # The rename broke this Mac's folder link -- it still names the old path. Repair it
   # here rather than sending the user to the file picker; writing spaces.json IS the
   # grant. Only the app being open stops us.
-  if pgrep -f "Claude.app/Contents/MacOS/Claude" >/dev/null 2>&1; then
+  if claude_running; then
     echo "  ⚠ Claude is running, so the folder link could not be updated. Quit it, then:"
     echo "        mirror project-repath \"$new\" \"$PROJECTS/$new\""
   else
@@ -545,13 +569,35 @@ PY
 # All of these refuse to run while Claude is open, because a live app rewrites
 # spaces.json from memory and would discard the edit.
 
+# One data folder holds a directory per account (<account>/<org>/) for every account
+# ever signed in there, so "the first spaces.json" can belong to an account that is
+# not the one signed in. config.json's lastKnownAccountUuid names the current one;
+# within it, prefer the org that already has a spaces.json, newest first.
 spaces_file(){
-  local f
-  for f in "$HOME/Library/Application Support/Claude/local-agent-mode-sessions"/*/*/spaces.json; do
-    case "$f" in *skills-plugin*) continue;; esac
-    [ -f "$f" ] && { echo "$f"; return 0; }
-  done
-  return 1
+  python3 - "$USERDATA" <<'PY'
+import json,os,sys,glob
+ud=sys.argv[1]; base=os.path.join(ud,"local-agent-mode-sessions")
+try: acct=json.load(open(os.path.join(ud,"config.json"))).get("lastKnownAccountUuid")
+except Exception: acct=None
+def newest(pat):
+    fs=[f for f in glob.glob(pat) if "skills-plugin" not in f]
+    return max(fs,key=os.path.getmtime) if fs else None
+f=newest(os.path.join(base,acct,"*","spaces.json")) if acct else newest(os.path.join(base,"*","*","spaces.json"))
+if not f: sys.exit(1)
+print(f)
+PY
+}
+
+# Is THIS profile's Claude running? Other profiles' windows do not rewrite our
+# spaces.json, so they must not block us. The main process is the one whose argv[0]
+# is .../Contents/MacOS/Claude; helpers live under Frameworks/.
+claude_running(){
+  ps -axo args= | awk -v want="${PROFILE:+--user-data-dir=$USERDATA}" '
+    $1 ~ /\/Claude\.app\/Contents\/MacOS\/Claude$/ {
+      has = index($0, "--user-data-dir=") > 0
+      if ((want == "" && !has) || (want != "" && index($0, want) > 0)) found=1   # no early exit: under pipefail it would SIGPIPE ps
+    }
+    END { exit !found }'
 }
 
 # A manifest of the project's files, so the receiving Mac can show real progress and
@@ -634,7 +680,7 @@ find_definition(){
 }
 
 require_claude_quit(){
-  if pgrep -f "Claude.app/Contents/MacOS/Claude" >/dev/null 2>&1; then
+  if claude_running; then
     die "Claude is running. Quit it first — a live app rewrites spaces.json from memory
      and will silently discard this change."
   fi
@@ -1035,7 +1081,7 @@ PY
 
   if [ "$hold" = 1 ]; then
     echo
-    if pgrep -f "Claude.app/Contents/MacOS/Claude" >/dev/null 2>&1; then
+    if claude_running; then
       echo "  ⚠ Claude is running, so this Mac was NOT locked out of '$name'."
       echo "    Quit Claude, then:  mirror hold \"$name\" --to $to"
     else
@@ -1171,7 +1217,7 @@ cmd_receive(){
   ls "$PROJECTS/$name/.handoff" "$PROJECTS/$name/.handoff/memory" >/dev/null 2>&1
   ls "$PROJECTS/$name/.handoff/memory/"*/ >/dev/null 2>&1
   if have_project "$name" && ls "$PROJECTS/$name/.handoff/memory/"*/snapshot.json >/dev/null 2>&1; then
-    if pgrep -f "Claude.app/Contents/MacOS/Claude" >/dev/null 2>&1; then
+    if claude_running; then
       echo
       echo "  ⚠ a memory snapshot came with this project, but Claude is running."
       echo "    Quit Claude, then:  mirror memory-install \"$name\""
@@ -1182,7 +1228,7 @@ cmd_receive(){
 
   # 5. if this Mac locked itself out when it sent the project away, undo that now
   if [ -f "$HOLDDIR/$name.json" ]; then
-    if pgrep -f "Claude.app/Contents/MacOS/Claude" >/dev/null 2>&1; then
+    if claude_running; then
       echo
       echo "  ⚠ '$name' is still locked on this Mac and Claude is running."
       echo "    Quit Claude, then:  mirror release \"$name\""
