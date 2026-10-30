@@ -338,6 +338,25 @@ Moving a Cowork project to the other account works the same way as moving it to 
 For Claude Code sessions, `claude-profile sync` copies `projects/` and `plans/` between profiles
 (newest wins), so `claude @b --resume` picks up a session started on account a.
 
+**In the menu bar.** `./bin/claude-profile menubar` builds and opens *Claude Profiles*, a small
+native app (no Dock icon) that shows every profile with its badge, account and plan, and which
+ones are open, since the Dock and ⌘-Tab can't tell two running profiles apart. Each profile's submenu:
+
+| Item | Does |
+|---|---|
+| Open / Show Claude | opens that profile's app, or brings its window forward |
+| Open Claude Code in Terminal | `claude @<profile>` |
+| Quit Claude · Quit and Reopen | quits *that* profile's app the way ⌘Q does (`claude-profile quit`); offered as Quit and Reopen after Claude updates itself |
+| Hand Off a Project ▸ *project* ▸ *target* | `mirror send … --to <target> --wait` in Terminal; targets are your other profiles here and the other Mac, learned from the ownership events |
+| Receive a Project ▸ *project* | `mirror --profile <p> receive …` in Terminal, offering to quit that profile's app first |
+| Rename… · Change Badge… · Badge Colour | `claude-profile rename` / `app --badge` / `app --color` |
+
+Plus New Profile…, Sync Claude Code Sessions, Run Doctor and Open at Login. Every item calls
+`claude-profile` or `mirror`, so the app holds no logic of its own. It is built with `swiftc` from
+the Command Line Tools from `macos/ClaudeProfiles/main.swift`, and rebuilt automatically when that or
+`claude-profile` changes. It records the PATH it was built from, because an app started at login gets only
+`/usr/bin:/bin`, which has no `claude` and no `python3` with Pillow.
+
 How it is isolated, and why:
 
 | | Default | Profile `b` |

@@ -20,7 +20,11 @@
 #                                    mirror --profile <new>. Its folders keep their id —
 #                                    see "Names and ids" below
 #   claude-profile code <p> [args]   run Claude Code as <p>  (in zsh: claude @<p> [args])
-#   claude-profile list              each profile's account, plan and whether it is open
+#   claude-profile quit <p>          quit <p>'s Claude desktop the way ⌘Q does
+#   claude-profile list [--json]     each profile's account, plan and whether it is open
+#   claude-profile menubar [--rebuild]
+#                                    build and open "Claude Profiles", a menu-bar app:
+#                                    open, rename, re-badge, hand off and receive projects
 #   claude-profile sync [--dry-run]  copy Claude Code sessions (projects/, plans/) between
 #                                    profiles, newest wins, so /resume works on any account
 #   claude-profile doctor            after a Claude upgrade: re-check what profiles rely on,
@@ -237,7 +241,9 @@ cmd_app(){
     local q; for q in $(profiles); do [ "$q" = default ] || cmd_app "$q"; done; return
   fi
   check_name "$p"; p="$(need "$p")" || exit 1
-  [ "$p" = default ] && die "the default profile is Claude.app itself"
+  if [ "$p" = default ] && [ -z "$badge$bimage$color" ] && [ "$breset" = 0 ]; then
+    die "the default profile is Claude.app itself — it has no launcher (a badge or colour for it shows in the menu bar)"
+  fi
   local cfg; cfg="$(config_dir "$p")"
   [ -d "$(data_dir "$p")" ] || die "no profile '$p' — run: claude-profile create $p"
   # Badge: one or two letters or digits (any script), or one emoji; or an image.
@@ -264,6 +270,7 @@ sys.exit(0 if ok else 1)' "$badge" || die "--badge takes one or two letters or d
   [ -n "$color" ] && echo "$color" > "$cfg/.profile-color"
   [ -z "$color" ] && [ -f "$cfg/.profile-color" ] && color="$(cat "$cfg/.profile-color")"
   [ -z "$color" ] && color="$(default_color "$p")"
+  if [ "$p" = default ]; then ok "saved — default is Claude.app itself, so this shows in the menu bar only"; return 0; fi
 
   local app="$HOME/Applications/Claude ($(label "$p")).app"
   local btext="" bimg=""
@@ -290,6 +297,21 @@ sys.exit(0 if ok else 1)' "$badge" || die "--badge takes one or two letters or d
   ok "launcher: $app (drag it to the Dock)"
 }
 
+# Quit one profile's desktop app. All profiles are the same bundle id, so quitting "Claude"
+# by name would hit whichever one AppleScript picks; this sends the quit event to one
+# pid, which is ⌘Q for that window's app — it saves state, unlike a signal.
+cmd_quit(){
+  local p="${1:-}"; check_name "$p"; p="$(need "$p")" || exit 1
+  local pid i; pid="$(desktop_pid "$p")" || { ok "'$(label "$p")' is not open"; return 0; }
+  osascript -l JavaScript -e "ObjC.import('AppKit'); \$.NSRunningApplication.runningApplicationWithProcessIdentifier($pid).terminate" >/dev/null 2>&1 \
+    || die "could not ask '$(label "$p")' to quit"
+  for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    desktop_running "$p" || { ok "quit Claude ('$(label "$p")')"; return 0; }
+    sleep 1
+  done
+  die "'$(label "$p")' is still open after 15s — it may be asking something in its window"
+}
+
 # Rename = a new display name. The id (folder names) stays: see "Names and ids" above.
 cmd_rename(){
   local from="${1:-}" to="${2:-}" id old other
@@ -312,6 +334,43 @@ cmd_rename(){
   echo "    use it as:  claude @$to   ·   claude-profile desktop $to   ·   mirror --profile $to …"
 }
 
+# "Claude Profiles": a menu-bar app (no Dock icon) built from macos/ClaudeProfiles/main.swift
+# with the Command Line Tools' swiftc — no Xcode project. It runs this script for
+# everything, so it records where the script is and the PATH it should run with: an
+# app started at login gets only /usr/bin:/bin, which has no claude and no python3
+# with Pillow for drawing badges.
+cmd_menubar(){
+  local src="$HERE/../macos/ClaudeProfiles/main.swift" app="$HOME/Applications/Claude Profiles.app"
+  local bin="$app/Contents/MacOS/ClaudeProfiles" force=0
+  [ "${1:-}" = --rebuild ] && force=1
+  [ -f "$src" ] || die "missing $src"
+  command -v swiftc >/dev/null || die "swiftc not found — install the Command Line Tools: xcode-select --install"
+  if [ "$force" = 1 ] || [ ! -x "$bin" ] || [ "$src" -nt "$bin" ] || [ "${BASH_SOURCE[0]}" -nt "$bin" ]; then
+    pkill -x ClaudeProfiles 2>/dev/null; sleep 0.5
+    rm -rf "$app"   # exact path: our own generated bundle
+    mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+    swiftc -O -swift-version 5 -o "$bin" "$src" -framework AppKit -framework ServiceManagement 2>&1 \
+      | grep -v '^$' ; [ -x "$bin" ] || die "swiftc failed"
+    local plist="$app/Contents/Info.plist" pb=/usr/libexec/PlistBuddy
+    $pb -c "Add :CFBundleName string 'Claude Profiles'" \
+        -c "Add :CFBundleDisplayName string 'Claude Profiles'" \
+        -c "Add :CFBundleIdentifier string local.claude-macos-mirror.profiles" \
+        -c "Add :CFBundleExecutable string ClaudeProfiles" \
+        -c "Add :CFBundlePackageType string APPL" \
+        -c "Add :CFBundleShortVersionString string 1.0" \
+        -c "Add :LSMinimumSystemVersion string 13.0" \
+        -c "Add :LSUIElement bool true" \
+        -c "Add :ClaudeProfileScript string $HERE/claude-profile" \
+        -c "Add :MirrorScript string $HERE/mirror" \
+        -c "Add :RepoDir string $(cd "$HERE/.." && pwd)" \
+        -c "Add :UserPATH string $PATH" "$plist" >/dev/null
+    codesign --force --sign - "$app" 2>/dev/null || echo "  - could not sign the app; macOS may refuse to open it"
+    ok "built $app"
+  fi
+  pgrep -x ClaudeProfiles >/dev/null || open "$app"
+  ok "Claude Profiles is in the menu bar (two circles). Turn on Open at Login from its menu."
+}
+
 cmd_code(){
   local p="${1:-}"; check_name "$p"; shift; p="$(need "$p")" || exit 1
   [ "$p" = default ] && exec claude "$@"
@@ -320,7 +379,50 @@ cmd_code(){
   exec env CLAUDE_CONFIG_DIR="$cfg" claude "$@"
 }
 
+# For the menu-bar app. No `claude auth status`: it starts Node once per profile, and
+# an app launched at login has no PATH to find claude. The account Claude Code last
+# signed in with is recorded in its .claude.json — ~/.claude.json for default, which
+# lives beside ~/.claude rather than in it.
+list_json(){
+  local p cfg open stale color launcher cj pid
+  for p in $(profiles); do
+    cfg="$(config_dir "$p")"; open=0; stale=0; launcher=""
+    if [ "$p" = default ]; then cj="$HOME/.claude.json"; else cj="$cfg/.claude.json"; fi
+    pid="$(desktop_pid "$p")" && open=1
+    [ "$open" = 1 ] && desktop_stale "$p" && stale=1
+    color="$(cat "$cfg/.profile-color" 2>/dev/null)"
+    [ -n "$color" ] || { if [ "$p" = default ]; then color='#3A3A40'; else color="$(default_color "$p")"; fi; }
+    [ "$p" != default ] && [ -d "$HOME/Applications/Claude ($(label "$p")).app" ] \
+      && launcher="$HOME/Applications/Claude ($(label "$p")).app"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$p" "$(label "$p")" "$cj" \
+      "$(data_dir "$p")/config.json" "$open" "$stale" "$color" "$cfg" "$launcher" "$pid"
+  done | python3 -c '
+import sys, json, os
+def load(f):
+    try: return json.load(open(f))
+    except Exception: return {}
+out = []
+for line in sys.stdin:
+    pid, name, cj, dc, op, st, color, cfg, launcher, proc = line.rstrip("\n").split("\t")
+    acct = load(cj).get("oauthAccount") or {}
+    da = load(dc).get("lastKnownAccountUuid")
+    try: badge = open(os.path.join(cfg, ".profile-badge")).read().strip()
+    except OSError: badge = ""
+    img = os.path.join(cfg, ".profile-badge.png")
+    out.append({"id": pid, "name": name, "default": pid == "default",
+        "email": acct.get("emailAddress"),
+        "plan": (acct.get("organizationType") or "").replace("claude_", "") or None,
+        "desktop_account": da[:8] if da else None,
+        "open": op == "1", "pid": int(proc) if proc.isdigit() else None,
+        "stale": st == "1", "color": color,
+        "badge": badge or (name[:2].upper() if len(name) <= 2 else name[0].upper()),
+        "badge_image": img if os.path.exists(img) else None,
+        "launcher": launcher or None})
+print(json.dumps(out))'
+}
+
 cmd_list(){
+  [ "${1:-}" = --json ] && { list_json; return; }
   local p cfg data code desk run
   printf '%-16s %-34s %-34s %s\n' PROFILE "CODE (terminal)" "DESKTOP" OPEN
   for p in $(profiles); do
@@ -394,6 +496,8 @@ case "${1:-help}" in
   app)     shift; cmd_app "$@";;
   code)    shift; cmd_code "$@";;
   rename)  shift; cmd_rename "$@";;
+  quit)    shift; cmd_quit "$@";;
+  menubar) shift; cmd_menubar "$@";;
   list)    shift; cmd_list "$@";;
   sync)    shift; cmd_sync "$@";;
   doctor)  shift; cmd_doctor "$@";;
