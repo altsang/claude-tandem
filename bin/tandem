@@ -62,11 +62,9 @@
 
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# Formerly Claude MacOS Mirror, configured in ~/.config/claude-macos-mirror. Move that
-# folder once and leave a link at the old path: engines v5–v7 on the shared drive read
-# it, and a shipped engine is never edited (bin/VERSIONING.md). The folder holds the
-# held-project stash, so losing it would strand a held project.
-# Merge-safe, because `tandem profile` may have created the new folder first.
+# Formerly Claude MacOS Mirror, configured in ~/.config/claude-macos-mirror. Fold that
+# folder in once — it holds the held-project stash, so losing it would strand a held
+# project — merge-safe, because `tandem profile` may have created the new one first.
 CONFDIR="$HOME/.config/claude-tandem"
 OLDCONF="$HOME/.config/claude-macos-mirror"
 if [ -d "$OLDCONF" ] && [ ! -L "$OLDCONF" ]; then
@@ -75,8 +73,8 @@ if [ -d "$OLDCONF" ] && [ ! -L "$OLDCONF" ]; then
     [ -e "$f" ] || continue
     [ -e "$CONFDIR/${f##*/}" ] || mv "$f" "$CONFDIR/"
   done
-  if rmdir "$OLDCONF" 2>/dev/null; then ln -s "$CONFDIR" "$OLDCONF"
-  else echo "warning: $OLDCONF still has files that also exist in $CONFDIR — left in place" >&2; fi
+  rmdir "$OLDCONF" 2>/dev/null \
+    || echo "warning: $OLDCONF still has files that also exist in $CONFDIR — left in place" >&2
 fi
 CONF="$CONFDIR/root"
 # Original folder paths, stashed while a project is held. Deliberately LOCAL and never
@@ -92,6 +90,10 @@ resolve_root(){
   else default_root; fi
 }
 ROOT="$(resolve_root)"
+# Engines v5–v7 on the shared drive look for a custom root in ~/.config/claude-macos-mirror,
+# a path that no longer exists, but take MIRROR_ROOT first — so hand it to every engine
+# rather than keep the old folder around. (A shipped engine is never edited.)
+export TANDEM_ROOT="$ROOT" MIRROR_ROOT="$ROOT"
 PROJECTS="$ROOT/Projects"
 HANDOFF="$ROOT/_handoff"
 EVENTS="$HANDOFF/events"

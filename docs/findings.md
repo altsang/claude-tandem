@@ -1,6 +1,6 @@
 # Claude Tandem — measured findings
 
-> **Renamed 2026-10-30:** Claude MacOS Mirror is now **Claude Tandem**. The `mirror` command is `tandem`, `claude-profile` is `tandem profile`, and config moved from `~/.config/claude-macos-mirror` to `~/.config/claude-tandem`, with a link left at the old path. Commands below use the new names. The findings themselves are unchanged.
+> **Renamed 2026-10-30:** Claude MacOS Mirror is now **Claude Tandem**. The `mirror` command is `tandem`, `claude-profile` is `tandem profile`, and config moved from `~/.config/claude-macos-mirror` to `~/.config/claude-tandem`. Commands below use the new names. The findings themselves are unchanged.
 
 Everything here was verified on macOS 26.6.2 (Ji-su) and Darwin 25.5 (Madoka) on 2026-08-18.
 These are not style preferences — each one cost real debugging time, and several look like

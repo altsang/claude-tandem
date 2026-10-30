@@ -478,23 +478,22 @@ cmd_sync(){
 # runs this quietly whenever the installed version differs from the last one checked.
 # Config lives in ~/.config/claude-tandem, shared with bin/tandem. Before the rename it
 # was split between claude-macos-mirror (tandem's — it holds the held-project stash) and
-# claude-profile (this script's). Fold both in, never overwriting; the old mirror path
-# becomes a link because engines v5–v7 on the shared drive still read it.
+# claude-profile (this script's). Fold both in, never overwriting. (bin/tandem passes the
+# shared root to engines as MIRROR_ROOT, so nothing needs the old paths afterwards.)
 CONFDIR="$HOME/.config/claude-tandem"
 migrate_conf(){
-  local old="$1" link="$2" f
+  local old="$1" f
   [ -d "$old" ] && [ ! -L "$old" ] || return 0
   mkdir -p "$CONFDIR"
   for f in "$old"/* "$old"/.[!.]*; do
     [ -e "$f" ] || continue
     [ -e "$CONFDIR/${f##*/}" ] || mv "$f" "$CONFDIR/"
   done
-  rmdir "$old" 2>/dev/null || { echo "  ! $old still has files that also exist in $CONFDIR — left in place" >&2; return 0; }
-  [ "$link" = link ] && ln -s "$CONFDIR" "$old"
+  rmdir "$old" 2>/dev/null || echo "  ! $old still has files that also exist in $CONFDIR — left in place" >&2
   return 0
 }
-migrate_conf "$HOME/.config/claude-macos-mirror" link
-migrate_conf "$HOME/.config/claude-profile" nolink
+migrate_conf "$HOME/.config/claude-macos-mirror"
+migrate_conf "$HOME/.config/claude-profile"
 STAMP="$CONFDIR/checked-version"
 app_version(){ defaults read "$CLAUDE_APP/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null; }
 cmd_doctor(){
