@@ -320,6 +320,11 @@ handoff, named `<Mac>@<profile>`.
 ./bin/claude-profile desktop b       # a second Claude desktop, signed in separately, beside the first
 ./bin/claude-profile app b           # optional: "Claude (b)" launcher in ~/Applications for the Dock
 claude @b                            # Claude Code as account b (zsh wrapper; or: claude-profile code b)
+
+./bin/claude-profile rename b work   # call it "work" everywhere: launcher, list, claude @work, mirror --profile work
+./bin/claude-profile app work --badge W              # the badge: one or two letters, any script (--badge 지) …
+./bin/claude-profile app work --badge 💼             # … or one emoji …
+./bin/claude-profile app work --badge-image logo.png # … or an image, clipped to the circle (--badge auto: back to the initial)
 ```
 
 Moving a Cowork project to the other account works the same way as moving it to the other Mac:
@@ -354,6 +359,13 @@ How it is isolated, and why:
   whichever account the browser already has.
 - **The `/handoff` skill installs per account.** Skills sync by account, not by Mac, so add it in
   account b's Settings too.
+- **Renaming changes the name, not the folders.** A profile's id is the suffix of `~/.claude-<id>` and
+  `Claude-<id>`, and it never changes; `rename` stores a display name that every command accepts, and
+  the id keeps working too. Moving the folders would sign the profile out of Claude Code — its Keychain
+  login is `Claude Code-credentials-<hash of the config path>` — break the absolute paths its Cowork
+  sessions recorded, and orphan mirror's ownership events, which name the side `Madoka@<id>`. So
+  `mirror --profile work` acts as `Madoka@b`, and `--to Madoka@work` is recorded as `Madoka@b`.
+  Names are resolved on this Mac only: to address a profile on the *other* Mac, use its id.
 - The folder layout matches Claude Switch's, so profiles made by either tool work in both.
 
 **Icons.** `claude-profile app <p>` builds the launcher's icon from whatever Claude.app currently
