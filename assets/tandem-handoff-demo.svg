@@ -69,7 +69,7 @@ text[style*="animation-name"]{opacity:0;animation-duration:32.0s;animation-itera
 <text x="450.0" y="27.5" text-anchor="middle" class="t" fill="#768390" font-size="11.5">Madoka — desktop</text>
 <text x="18.5" y="60.5" class="t" fill="#57ab5a" style="animation-name:a1">$</text>
 <clipPath id="clip1"><rect x="33.555" y="38.0" height="23.0" width="0" style="animation:type2 32.0s steps(92,end) infinite"/></clipPath>
-<text x="33.555" y="60.5" class="t" fill="#e6edf3" clip-path="url(#clip1)" style="animation-name:a1">./bin/mirror send &quot;Quicken Reconciliation&quot; --to Ji-su --note &quot;Amex feed short 2 txns&quot; --wait</text>
+<text x="33.555" y="60.5" class="t" fill="#e6edf3" clip-path="url(#clip1)" style="animation-name:a1">./bin/tandem send &quot;Quicken Reconciliation&quot; --to Ji-su --note &quot;Amex feed short 2 txns&quot; --wait</text>
 <rect x="33.6" y="50.5" width="7.5" height="12.5" fill="#e6edf3" opacity="0" style="animation:cm3 32.0s steps(92,end) infinite,co3 32.0s linear infinite"/>
 <text x="18.5" y="77.5" class="t" fill="#e6edf3" style="animation-name:a4">sending &#x27;Quicken Reconciliation&#x27;: Madoka -&gt; Ji-su</text>
 <text x="18.5" y="94.5" class="t" fill="#768390" style="animation-name:a5">  document: HANDOFF_quicken_aug.md</text>
@@ -87,7 +87,7 @@ text[style*="animation-name"]{opacity:0;animation-duration:32.0s;animation-itera
 <text x="18.5" y="264.5" class="t" fill="#6cb6ff" style="animation-name:a17">  [████████████████████] 100%  6/6 files uploaded   25s</text>
 <text x="18.5" y="281.5" class="t" fill="#57ab5a" style="animation-name:a18">  ✓ all 6 files uploaded to the drive in 25s</text>
 <text x="18.5" y="315.5" class="t" fill="#e6edf3" style="animation-name:a19">  UPLOADED. &#x27;Ji-su&#x27; can pull it now:</text>
-<text x="18.5" y="332.5" class="t" fill="#e6edf3" style="animation-name:a20">      mirror receive &quot;Quicken Reconciliation&quot;</text>
+<text x="18.5" y="332.5" class="t" fill="#e6edf3" style="animation-name:a20">      tandem receive &quot;Quicken Reconciliation&quot;</text>
 <text x="18.5" y="349.5" class="t" fill="#daaa3f" style="animation-name:a21">  Do not edit &#x27;Quicken Reconciliation&#x27; on Madoka until it comes back.</text>
 <text x="18.5" y="383.5" class="t" fill="#e6edf3" style="animation-name:a22">waiting for Ji-su to claim it (Ctrl-C to stop)...</text>
 <text x="18.5" y="400.5" class="t" fill="#768390" style="animation-name:a23">  20s</text>
@@ -104,7 +104,7 @@ text[style*="animation-name"]{opacity:0;animation-duration:32.0s;animation-itera
 <text x="450.0" y="483.5" text-anchor="middle" class="t" fill="#768390" font-size="11.5">Ji-su — laptop</text>
 <text x="18.5" y="516.5" class="t" fill="#57ab5a" style="animation-name:a29">$</text>
 <clipPath id="clip29"><rect x="33.555" y="494.0" height="23.0" width="0" style="animation:type30 32.0s steps(45,end) infinite"/></clipPath>
-<text x="33.555" y="516.5" class="t" fill="#e6edf3" clip-path="url(#clip29)" style="animation-name:a29">./bin/mirror receive &quot;Quicken Reconciliation&quot;</text>
+<text x="33.555" y="516.5" class="t" fill="#e6edf3" clip-path="url(#clip29)" style="animation-name:a29">./bin/tandem receive &quot;Quicken Reconciliation&quot;</text>
 <rect x="33.6" y="506.5" width="7.5" height="12.5" fill="#e6edf3" opacity="0" style="animation:cm31 32.0s steps(45,end) infinite,co31 32.0s linear infinite"/>
 <text x="18.5" y="533.5" class="t" fill="#e6edf3" style="animation-name:a32">receiving &#x27;Quicken Reconciliation&#x27; on Ji-su</text>
 <text x="18.5" y="550.5" class="t" fill="#e6edf3" style="animation-name:a33">waiting for a handoff addressed to Ji-su...</text>

@@ -1,13 +1,15 @@
 # HANDOFF — multi-account Claude profiles + same-Mac handoffs (branch `profiles`)
 
+> **Since renamed:** the project is now Claude Tandem. `mirror` → `tandem`, `claude-profile` → `tandem profile`, and the repo is `~/workspace/claude-tandem` (`altsang/claude-tandem`). Commands below are updated; the old ones still work as shims.
+
 Paste this whole document as your first message in a Claude Code session opened in
-`~/workspace/claude-macos-mirror`. It is self-contained. Written 2026-10-29 on Madoka.
+`~/workspace/claude-tandem`. It is self-contained. Written 2026-10-29 on Madoka.
 
 ## Your task
 
 Al has two Claude subscriptions and one of them sits idle because only one account can be signed
 in at a time. The goal: run both accounts side by side on one Mac (like the paid "Claude Switch"
-app at claudeswitch.dev), and let `mirror` hand a Cowork project from one account to the other
+app at claudeswitch.dev), and let `tandem` hand a Cowork project from one account to the other
 when the first hits its usage limit.
 
 The code is written and partly tested (see Status). What remains:
@@ -17,18 +19,18 @@ The code is written and partly tested (see Status). What remains:
 2. Do the first real run with a second account (steps in "Remaining" below).
 3. Answer the two open questions about the desktop app (deep-link sign-in with two instances, and
    update behaviour), ideally with a full `rea` analysis.
-4. `mirror deploy` to publish engine v8 to the iCloud shared tree — **ask first**; it writes to the
+4. `tandem deploy` to publish engine v8 to the iCloud shared tree — **ask first**; it writes to the
    shared tree and reaches Ji-su.
 
 ## Before you start — check you actually have access
 
-- `git -C ~/workspace/claude-macos-mirror branch --show-current` prints `profiles`, and
-  `git status -s` shows: `M README.md`, `M bin/mirror`, `M skills/handoff/SKILL.md`,
-  `?? bin/claude-profile`, `?? bin/coworkctl-v8.sh` (plus this file). If the branch or files are
+- `git -C ~/workspace/claude-tandem branch --show-current` prints `profiles`, and
+  `git status -s` shows: `M README.md`, `M bin/tandem`, `M skills/handoff/SKILL.md`,
+  `?? bin/tandem-profile`, `?? bin/coworkctl-v8.sh` (plus this file). If the branch or files are
   missing, the work did not travel — stop; it exists only on Madoka, uncommitted.
 - `git -C ~/.dotfiles status -s` shows `M claude/.claude/claude-session.zsh` (the `claude @<p>`
   hook). Same rule.
-- `/Applications/Claude.app` exists. `./bin/claude-profile doctor` exits 0. If it reports ✗, the
+- `/Applications/Claude.app` exists. `./bin/tandem profile doctor` exits 0. If it reports ✗, the
   desktop app changed underneath the design — stop and read "Background" before changing code.
 - Python 3 with Pillow (icons only). Node ≥ 24.22.1 for `npx rea-agents` (Madoka has 24.1.0; rea
   printed engine warnings but `--help` ran).
@@ -68,7 +70,7 @@ matching Claude Switch's layout so profiles interoperate. "default" = `~/.claude
 In mirror, a profile is its own side of a handoff named `<Mac>@<p>` (e.g. `Madoka@b`) — `@`, not
 `:`, because the engine puts the machine name in event filenames (`{ts}-{machine}-{verb}.json`)
 on iCloud. So same-Mac account handoff reuses send/receive unchanged:
-`mirror send X --to Madoka@b`, then `mirror --profile b receive X`.
+`tandem send X --to Madoka@b`, then `tandem --profile b receive X`.
 
 ## Status
 
@@ -76,12 +78,12 @@ on iCloud. So same-Mac account handoff reuses send/receive unchanged:
 
 | What | Evidence |
 |---|---|
-| `bin/claude-profile` (290 lines): create, desktop, app, code, list, sync, doctor | `bash -n` clean; throwaway profile `zztest` created → launcher built → listed → `sync --dry-run` → removed |
-| `mirror --profile` / `MIRROR_PROFILE`; `ME=<Mac>@<p>`; `HOLDDIR` per profile; account-aware `spaces_file`; per-profile `claude_running` (6 old `pgrep` sites replaced) | `mirror check` on default shows `c9390ef8…/890ac620…/spaces.json`; `--profile b check` shows `Madoka@b`, data `Claude-b`; `status`, `project-list` (12), `check` exit 0 unchanged |
-| Engine `coworkctl-v8.sh` = v7 + `ME="${MIRROR_ME:-$(scutil --get ComputerName)}"` | Throwaway `MIRROR_ROOT`: handoff `Madoka`→`Madoka@b`, pickup as `Madoka@b`, status `owner: Madoka@b` |
+| `bin/tandem-profile` (290 lines): create, desktop, app, code, list, sync, doctor | `bash -n` clean; throwaway profile `zztest` created → launcher built → listed → `sync --dry-run` → removed |
+| `tandem --profile` / `TANDEM_PROFILE`; `ME=<Mac>@<p>`; `HOLDDIR` per profile; account-aware `spaces_file`; per-profile `claude_running` (6 old `pgrep` sites replaced) | `tandem check` on default shows `c9390ef8…/890ac620…/spaces.json`; `--profile b check` shows `Madoka@b`, data `Claude-b`; `status`, `project-list` (12), `check` exit 0 unchanged |
+| Engine `coworkctl-v8.sh` = v7 + `ME="${TANDEM_ME:-$(scutil --get ComputerName)}"` | Throwaway `TANDEM_ROOT`: handoff `Madoka`→`Madoka@b`, pickup as `Madoka@b`, status `owner: Madoka@b` |
 | `claude @<p>` in `~/.dotfiles/claude/.claude/claude-session.zsh` (before the provider check, so `claude @b openrouter` composes) | `zsh -n` clean; not run against a real second login |
 | Icons: Claude's icon cropped full-bleed + coloured badge with initial; colour remembered in `~/.claude-p/.profile-color` | Rendered through `NSWorkspace.icon(forFile:)` — shows the badge, system-masked, no grey plate |
-| `doctor`: re-checks the 4 bundle facts; `desktop` auto-runs it when the version differs from `~/.config/claude-profile/checked-version` | Passes on 4.29.0 |
+| `doctor`: re-checks the 4 bundle facts; `desktop` auto-runs it when the version differs from `~/.config/claude-tandem/checked-version` | Passes on 4.29.0 |
 | `list` flags a running profile older than the installed bundle (`QUIT+REOPEN`) | Logic only — no update happened during testing |
 | README "Two accounts on one Mac (profiles)" section; handoff SKILL.md "Same Mac, other account" | — |
 
@@ -89,12 +91,12 @@ on iCloud. So same-Mac account handoff reuses send/receive unchanged:
 
 | # | Step | Notes |
 |---|---|---|
-| 1 | `./bin/claude-profile create b`, then `claude @b` and `./bin/claude-profile desktop b`; sign in **from a private browser window** | First real two-account run. Confirm `claude-profile list` shows two different emails |
+| 1 | `./bin/tandem profile create b`, then `claude @b` and `./bin/tandem profile desktop b`; sign in **from a private browser window** | First real two-account run. Confirm `tandem profile list` shows two different emails |
 | 2 | Verify Keychain isolation: `claude auth status` (default) still shows agilecto@gmail.com (max) after b signs in | Claude Switch claims per-config-dir Keychain items; not observed here yet |
 | 3 | Desktop sign-in with two instances running: does the `claude://` callback reach the right one? | **Open question.** If it lands in default, sign b in while default is quit |
 | 4 | Cowork in profile b: open once (creates its spaces.json), check disk use of a second VM | Unknown size |
-| 5 | Real same-Mac handoff of a small project: `/handoff`, `mirror send P --to Madoka@b --wait`, quit b, `mirror --profile b receive P` | Install the `/handoff` skill in account b first (skills sync per account) |
-| 6 | `mirror deploy` (ask Al) — publishes v8; Ji-su picks it up; without `MIRROR_ME` it behaves exactly like v7 | |
+| 5 | Real same-Mac handoff of a small project: `/handoff`, `tandem send P --to Madoka@b --wait`, quit b, `tandem --profile b receive P` | Install the `/handoff` skill in account b first (skills sync per account) |
+| 6 | `tandem deploy` (ask Al) — publishes v8; Ji-su picks it up; without `TANDEM_ME` it behaves exactly like v7 | |
 | 7 | Commit both repos (ask Al) | |
 | 8 | Optional: full rea run for questions 3 and update behaviour | See Gotchas for how it failed |
 
@@ -105,7 +107,7 @@ Silent ones first.
 - **`set -o pipefail` + an awk that `exit`s early = false negative.** `ps | awk '{...; exit}'`
   SIGPIPEs `ps`, the pipeline fails, and "Claude is running" reads as not running — which would
   let mirror edit spaces.json under a live app. Both `claude_running` (mirror) and `desktop_pid`
-  (claude-profile) deliberately read all of `ps`. Do not "optimise" the exit back in.
+  (tandem profile) deliberately read all of `ps`. Do not "optimise" the exit back in.
 - **Setting `CLAUDE_CONFIG_DIR=~/.claude` explicitly is NOT the same as unset** — Claude Code then
   looks for a differently named Keychain item and reports "not signed in". Default profile must
   run with it unset (`cmd_list`, `cmd_code` handle this).
@@ -127,5 +129,5 @@ Silent ones first.
   disproved `CLAUDE_USER_DATA_DIR` launch — the README here is authoritative.
 - **Engine versioning rule:** never edit a shipped `coworkctl-vN.sh`; v8 is a new file for that
   reason (iCloud pins cached copies of modified files).
-- **Raw engine `handoff` does not check ownership;** the owner check lives in `mirror send`. Not a
+- **Raw engine `handoff` does not check ownership;** the owner check lives in `tandem send`. Not a
   regression, but don't test ownership via the engine directly.

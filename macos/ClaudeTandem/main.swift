@@ -1,15 +1,15 @@
-// Claude Profiles — a menu-bar front end for bin/claude-profile and bin/mirror.
+// Claude Tandem — a menu-bar front end for bin/tandem (and its `tandem profile` half).
 //
-// Every action is a call to one of those two scripts, so the CLI stays the single
+// Every action is a call to `tandem`, so the CLI stays the single
 // implementation and this file only draws the menu and asks questions. Steps that take
 // a while or talk back (handoffs, receive, doctor, sync, Claude Code) open in Terminal
 // so their output is visible; quick ones (rename, badge, colour, quit) run here and
 // report failures in an alert.
 //
-// Built by `claude-profile menubar`, which writes the script paths and the user's PATH
+// Built by `tandem menubar`, which writes the script path and the user's PATH
 // into Info.plist: an app started at login gets only /usr/bin:/bin.
 //
-// `ClaudeProfiles --dump-menu <dir>` builds the menu without showing it, prints its
+// `ClaudeTandem --dump-menu <dir>` builds the menu without showing it, prints its
 // tree and writes the icons it would draw into <dir>; the build checks itself with it.
 import AppKit
 import ServiceManagement
@@ -32,7 +32,7 @@ struct Profile: Decodable {
     }
 }
 
-// claude-profile's default_color palette, offered as the colour choices
+// tandem profile's default_color palette, offered as the colour choices
 let palette: [(String, String)] = [("Blue", "#2F6FEB"), ("Green", "#1F9D55"), ("Purple", "#8E44AD"),
     ("Orange", "#D9480F"), ("Teal", "#0E9AA7"), ("Raspberry", "#C2255C"), ("Periwinkle", "#5C7CFA"),
     ("Ochre", "#B7791F"), ("Graphite", "#3A3A40")]
@@ -75,8 +75,7 @@ final class Action: NSObject {
 
 final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let info = Bundle.main.infoDictionary ?? [:]
-    lazy var script = info["ClaudeProfileScript"] as? String ?? "claude-profile"
-    lazy var mirror = info["MirrorScript"] as? String ?? "mirror"
+    lazy var tandem = info["TandemScript"] as? String ?? "tandem"
     lazy var repo = info["RepoDir"] as? String ?? NSHomeDirectory()
     lazy var path = info["UserPATH"] as? String ?? "/usr/bin:/bin:/usr/sbin:/sbin"
     lazy var mac = runProcess("/usr/sbin/scutil", ["--get", "ComputerName"], path: path).out
@@ -87,7 +86,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ n: Notification) {
         let s = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         s.button?.image = Self.statusIcon()
-        s.button?.toolTip = "Claude profiles"
+        s.button?.toolTip = "Claude Tandem"
         let menu = NSMenu()
         menu.delegate = self
         menu.autoenablesItems = false
@@ -106,18 +105,18 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for p in profiles { menu.addItem(profileItem(p)) }
         menu.addItem(.separator())
         add(menu, "New Profile…") { [unowned self] in self.newProfile() }
-        add(menu, "Sync Claude Code Sessions") { [unowned self] in self.terminal("\(q(self.script)) sync", title: "Sync sessions") }
-        add(menu, "Run Doctor") { [unowned self] in self.terminal("\(q(self.script)) doctor", title: "Doctor") }
+        add(menu, "Sync Claude Code Sessions") { [unowned self] in self.terminal("\(q(self.tandem)) profile sync", title: "Sync sessions") }
+        add(menu, "Run Doctor") { [unowned self] in self.terminal("\(q(self.tandem)) profile doctor", title: "Doctor") }
         menu.addItem(.separator())
         let login = add(menu, "Open at Login") { [unowned self] in self.toggleLogin() }
         login.state = SMAppService.mainApp.status == .enabled ? .on : .off
-        add(menu, "Quit Claude Profiles", key: "q") { NSApp.terminate(nil) }
+        add(menu, "Quit Claude Tandem", key: "q") { NSApp.terminate(nil) }
     }
 
     // MARK: profiles
 
     func loadProfiles() -> [Profile] {
-        let r = runProcess("/bin/bash", [script, "list", "--json"], path: path)
+        let r = runProcess("/bin/bash", [tandem, "profile", "list", "--json"], path: path)
         guard r.code == 0, let data = r.out.data(using: .utf8) else { return [] }
         return (try? JSONDecoder().decode([Profile].self, from: data)) ?? []
     }
@@ -168,10 +167,10 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return m
     }
 
-    // MARK: handoffs (mirror)
+    // MARK: handoffs
 
     func sharedRoot() -> String {
-        let conf = NSHomeDirectory() + "/.config/claude-macos-mirror/root"
+        let conf = NSHomeDirectory() + "/.config/claude-tandem/root"
         if let s = try? String(contentsOfFile: conf, encoding: .utf8),
            let line = s.split(separator: "\n").first?.trimmingCharacters(in: .whitespaces), !line.isEmpty {
             return line.hasPrefix("~") ? NSHomeDirectory() + line.dropFirst() : line
@@ -222,7 +221,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
             for t in targets {
                 add(sub, t.label) { [unowned self] in
                     let who = p.isDefault ? "" : " --profile \(q(p.id))"
-                    self.terminal("\(q(self.mirror))\(who) send \(q(proj)) --to \(q(t.side)) --wait",
+                    self.terminal("\(q(self.tandem))\(who) send \(q(proj)) --to \(q(t.side)) --wait",
                                   title: "Hand off \(proj) → \(t.side)")
                 }
             }
@@ -242,11 +241,11 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if p.open {
                     // receive adds a project to this profile's spaces.json, which a running
                     // Claude rewrites from memory — so it must be quit for a project new to it
-                    cmd += "if read -q \(q("?Quit Claude (\(p.name)) first, so mirror can add the project if it is new here? [y/N] ")); "
-                    cmd += "then echo; \(q(self.script)) quit \(q(p.id)); else echo; fi\n"
+                    cmd += "if read -q \(q("?Quit Claude (\(p.name)) first, so tandem can add the project if it is new here? [y/N] ")); "
+                    cmd += "then echo; \(q(self.tandem)) profile quit \(q(p.id)); else echo; fi\n"
                 }
                 let who = p.isDefault ? "" : " --profile \(q(p.id))"
-                cmd += "\(q(self.mirror))\(who) receive \(q(proj))"
+                cmd += "\(q(self.tandem))\(who) receive \(q(proj))"
                 self.terminal(cmd, title: "Receive \(proj) as \(p.name)")
             }
         }
@@ -265,7 +264,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func rename(_ p: Profile) {
         guard let new = prompt("Rename “\(p.name)”",
-            "The new name works everywhere: the launcher, claude @name, mirror --profile name. Its folders keep the id “\(p.id)”, so its logins and handoffs are untouched.",
+            "The new name works everywhere: the launcher, claude @name, tandem --profile name. Its folders keep the id “\(p.id)”, so its logins and handoffs are untouched.",
             initial: p.name, ok: "Rename"), !new.isEmpty, new != p.name else { return }
         cli(["rename", p.id, new])
     }
@@ -339,21 +338,21 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if svc.status == .enabled { try svc.unregister() } else { try svc.register() }
         } catch {
             alert("Couldn’t change Open at Login",
-                  "\(error.localizedDescription)\n\nAdd it by hand: System Settings › General › Login Items › + and choose Claude Profiles in ~/Applications.")
+                  "\(error.localizedDescription)\n\nAdd it by hand: System Settings › General › Login Items › + and choose Claude Tandem in ~/Applications.")
         }
         if svc.status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
     }
 
     // MARK: plumbing
 
-    /// claude-profile, off the main thread; an alert if it fails, `then` if it succeeds.
+    /// `tandem profile …`, off the main thread; an alert if it fails, `then` if it succeeds.
     func cli(_ args: [String], then: (() -> Void)? = nil) {
-        let script = self.script, path = self.path
+        let tandem = self.tandem, path = self.path
         DispatchQueue.global(qos: .userInitiated).async {
-            let r = runProcess("/bin/bash", [script] + args, path: path)
+            let r = runProcess("/bin/bash", [tandem, "profile"] + args, path: path)
             DispatchQueue.main.async {
                 if r.code == 0 { then?() } else {
-                    self.alert("claude-profile \(args.first ?? "") didn’t work",
+                    self.alert("tandem profile \(args.first ?? "") didn’t work",
                                (r.err + r.out).trimmingCharacters(in: .whitespacesAndNewlines))
                 }
             }
@@ -366,7 +365,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var body = "#!/bin/zsh -il\ncd \(q(repo))\nprint -n \"\\e]0;\(title.replacingOccurrences(of: "\"", with: ""))\\a\"\n\(command)\n"
         if wait { body += "echo\nread -k1 '?Done — press any key to close. '\n" }
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("claude-profiles-\(UUID().uuidString.prefix(8)).command")
+            .appendingPathComponent("claude-tandem-\(UUID().uuidString.prefix(8)).command")
         do {
             try body.write(to: url, atomically: true, encoding: .utf8)
             try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)

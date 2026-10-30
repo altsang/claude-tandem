@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Write the handoff document that lets the user's other Mac (Madoka / Ji-su) continue this work. Use when the user says to hand off, move, send, or continue work on their other machine or laptop, or invokes /handoff by name. Captures everything the receiving machine needs into a self-contained document, then hands the transfer itself to the mirror CLI. Use this instead of improvising a summary, because a host-loop Cowork session cannot sync its chat and the other machine starts with no memory of this conversation.
+description: Write the handoff document that lets the user's other Mac (Madoka / Ji-su) continue this work. Use when the user says to hand off, move, send, or continue work on their other machine or laptop, or invokes /handoff by name. Captures everything the receiving machine needs into a self-contained document, then hands the transfer itself to the tandem CLI. Use this instead of improvising a summary, because a host-loop Cowork session cannot sync its chat and the other machine starts with no memory of this conversation.
 ---
 
 # Hand off a workload to the other Mac
@@ -14,7 +14,7 @@ path identical on both:
 
 **Your job is the document, and only the document.** The transfer — materializing files, writing
 the manifest, recording ownership, and proving the bytes actually reached iCloud — belongs to
-`mirror send`, which runs in a terminal. This session cannot do those things: it is sandboxed to
+`tandem send`, which runs in a terminal. This session cannot do those things: it is sandboxed to
 the project folder and cannot see `fileproviderctl`, the shared `_handoff/` tree, or any CLI. Do
 not try, and do not write ownership events yourself; one implementation of the mechanics is the
 point.
@@ -33,7 +33,7 @@ If you are unsure which you are, write the document. It is never wrong, only som
 
 Project memory is a separate thing and it does exist — a local project keeps one under
 `spaces/<id>/memory/` — but it is **per-machine**, so the receiving Mac still starts blank unless
-`mirror send` carried a snapshot. Do not tell the user there is no memory; tell them it does not
+`tandem send` carried a snapshot. Do not tell the user there is no memory; tell them it does not
 travel by itself.
 
 Everything you know that isn't written down, and isn't in one of those two channels, is lost at the
@@ -49,12 +49,12 @@ ambiguous.
 same Mac (usually because this account hit its usage limit), the target is `<Mac>@<profile>`,
 e.g. `Madoka@b`: each account profile is its own side of a handoff. The document matters just as
 much — the other account starts with no memory of this chat. Its receive command is
-`mirror --profile <profile> receive "PROJECT"`.
+`tandem --profile <profile> receive "PROJECT"`.
 
 ## Step 2 — Write the document
 
 Write `HANDOFF_TOPIC.md` into the project folder — a new file per topic, named for the topic, not
-a generic name. `mirror send` picks the **newest** `HANDOFF*.md`, so an old one left in the folder
+a generic name. `tandem send` picks the **newest** `HANDOFF*.md`, so an old one left in the folder
 is harmless, but a vague name makes it hard to tell them apart later.
 
 Assume a competent agent with zero context who will act on it literally.
@@ -105,7 +105,7 @@ retry, say so in the document rather than papering over it.
 Tell the user the exact command, with the real project name and target substituted:
 
 ```
-mirror send "PROJECT" --to MACHINE --note "one line summary" --wait
+tandem send "PROJECT" --to MACHINE --note "one line summary" --wait
 ```
 
 Explain what it will do, because it is the half you cannot do: it materializes the folder, writes
@@ -116,4 +116,4 @@ Then tell them not to edit the project here until it comes back. Two Macs editin
 is what produces iCloud conflict copies, and the ownership record is what prevents it.
 
 Report honestly: at the moment you finish, the work is **written, not delivered**. Nothing has
-left this Mac until `mirror send` says so.
+left this Mac until `tandem send` says so.

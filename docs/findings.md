@@ -1,4 +1,6 @@
-# Claude MacOS Mirror — measured findings
+# Claude Tandem — measured findings
+
+> **Renamed 2026-10-30:** Claude MacOS Mirror is now **Claude Tandem**. The `mirror` command is `tandem`, `claude-profile` is `tandem profile`, and config moved from `~/.config/claude-macos-mirror` to `~/.config/claude-tandem`, with a link left at the old path. Commands below use the new names. The findings themselves are unchanged.
 
 Everything here was verified on macOS 26.6.2 (Ji-su) and Darwin 25.5 (Madoka) on 2026-08-18.
 These are not style preferences — each one cost real debugging time, and several look like
@@ -116,8 +118,8 @@ local to Ji-su. The local counts match each machine's `spaces.json` exactly. The
 name beside the badge only when an entry has exactly one folder — entries with several show a bare
 `Local` badge, which is a handy way to sanity-check the UI against the file.
 
-**A local project therefore CAN be copied** — it is a JSON object. `mirror project-export` writes
-it into the shared tree, `mirror project-import` splices it into the other Mac's `spaces.json` with
+**A local project therefore CAN be copied** — it is a JSON object. `tandem project-export` writes
+it into the shared tree, `tandem project-import` splices it into the other Mac's `spaces.json` with
 the folder path rewritten. What does **not** travel is the conversation history inside the project;
 that is what the handoff document is for.
 
@@ -161,13 +163,13 @@ Confirmed with a random token in a canary file that could not be inferred from c
 
 Consequences, all now built in:
 
-- `mirror migrate` no longer leaves a symlink behind; it repoints the project at the shared copy.
-- `mirror link` is deprecated, creates nothing, and explains this.
-- `mirror path <Project>` prints the exact path for the rare hand grant, and copies it **only when
-  stdout is a terminal** — inside `cd "$(mirror path X)"` it must not clobber the handoff document
-  that `mirror receive` just put on the clipboard.
-- `mirror check` flags any project whose folder is a symlink and prints the repath command.
-- `mirror project-repath <Project> <path>` fixes an existing one.
+- `tandem migrate` no longer leaves a symlink behind; it repoints the project at the shared copy.
+- `tandem link` is deprecated, creates nothing, and explains this.
+- `tandem path <Project>` prints the exact path for the rare hand grant, and copies it **only when
+  stdout is a terminal** — inside `cd "$(tandem path X)"` it must not clobber the handoff document
+  that `tandem receive` just put on the clipboard.
+- `tandem check` flags any project whose folder is a symlink and prints the repath command.
+- `tandem project-repath <Project> <path>` fixes an existing one.
 
 If you ever do open the picker, Finder will not browse to `~/Library/Mobile Documents` — it is
 hidden, and Finder relabels `com~apple~CloudDocs` as "iCloud Drive". Press **⌘⇧G** and paste.
@@ -176,7 +178,7 @@ hidden, and Finder relabels `com~apple~CloudDocs` as "iCloud Drive". Press **⌘
 
 Attaching a folder in the app writes exactly one thing: `folders[].path` on the project's entry in
 `spaces.json`. There is no bookmark blob, permission token or consent record anywhere else in
-`~/Library/Application Support/Claude` — a UI-attached project and one written by `mirror` have
+`~/Library/Application Support/Claude` — a UI-attached project and one written by `tandem` have
 identical key sets (`createdAt, folders, id, instructions, links, name, projects, updatedAt`).
 `.project-cache/` holds cloud-project content only; the `grantedAt` keys in session files are
 computer-use app permissions, unrelated to folders.
@@ -188,11 +190,11 @@ scope is that string, and a resolved real path falls outside it (finding 8).
 
 Two observations pinned it down:
 
-- 2026-08-19 20:46 `mirror` wrote the shared path for `Adobe Stock Plan` while Claude was quit;
+- 2026-08-19 20:46 `tandem` wrote the shared path for `Adobe Stock Plan` while Claude was quit;
   the app launched at 20:46:10 and **rewrote `spaces.json` from memory at 20:52 keeping that
   path** — it adopted a link it had never shown a picker for.
 - 2026-08-20 `Adobe Stock Plan` was imported onto the second Mac with
-  `mirror project-import --wait`, which writes the folder link itself. The picker was never
+  `tandem project-import --wait`, which writes the folder link itself. The picker was never
   opened on that machine and Cowork read the project's files.
 
 So the whole per-machine grant step is `migrate` / `project-import` / `project-repath`, with Claude
@@ -218,7 +220,7 @@ Verified 2026-08-20 on Darwin 25.5:
 A 25 MB file written into the shared tree read `isUploaded = 0` at creation and flipped to 1 after
 ~110s. So poll `isUploaded`, never `isUploading`.
 
-Two consequences now built into `mirror send`:
+Two consequences now built into `tandem send`:
 
 - It polls every file **including `.handoff/`** — the ownership event is precisely the part that
   tells the other Mac it owns the project, and it uploads like any other file.
@@ -275,12 +277,12 @@ surface a hidden subdirectory that has never been materialized there. The data w
 whole time.
 
 The session therefore cannot distinguish **not sent**, **not yet delivered**, and **delivered but
-not enumerated** — three states with three different responses, and it sees one. `mirror receive`
+not enumerated** — three states with three different responses, and it sees one. `tandem receive`
 resolves it by listing the whole chain (`_handoff/`, `Projects/`, the project, `.handoff/`,
 `.handoff/events/`) every six seconds until the event appears, then verifying by md5.
 
 Practical consequence: **when a skill says something is missing from a shared folder, do not believe
-it until a terminal has looked.** Run `mirror receive`, or at minimum `ls` the parent chain.
+it until a terminal has looked.** Run `tandem receive`, or at minimum `ls` the parent chain.
 
 ## 12b. A project's instructions reach the session prompt — which makes them a lock
 
@@ -292,7 +294,7 @@ Two properties make it useful as a checkout lock: it is **per-machine** (`spaces
 synced), and it is read **before the user types**. So the sending Mac can carry a notice its own
 sessions obey while the receiving Mac sees nothing.
 
-`mirror send --hold` writes two things, both reversed by `receive`:
+`tandem send --hold` writes two things, both reversed by `receive`:
 
 - the notice, wrapped in `<!-- mirror:hold -->` markers
 - `folders[]` emptied, so a session that ignores the notice cannot read the folder at all
@@ -301,7 +303,7 @@ The markers exist because `project-export` copies `instructions` wholesale. With
 "CHECKED OUT TO Ji-su" would be exported *to* Ji-su and live in its system prompt permanently.
 Export and import both strip marked blocks.
 
-The original folder paths are stashed in `~/.config/claude-macos-mirror/held/<Project>.json`, not
+The original folder paths are stashed in `~/.config/claude-tandem/held/<Project>.json`, not
 in `spaces.json`, because the app rewrites that file from memory and may drop keys it does not
 recognise — which would strand the project with no folder and no record of what it used to be.
 
@@ -356,7 +358,7 @@ Two consequences:
 Implemented 2026-08-20, conservatively. `send` snapshots the holder's store into
 `PROJECT/.handoff/memory/<ts>-<machine>/` with an md5 manifest (`snapshot.json`), upload-verified
 with everything else; `receive` installs the newest snapshot **only when this Mac's store is
-empty**. A non-empty store is refused with instructions — `mirror memory-install <P> --force`
+empty**. A non-empty store is refused with instructions — `tandem memory-install <P> --force`
 replaces it after copying it to `memory.bak-<ts>` — and a Mac never installs a snapshot it took
 itself. Corrupt or undelivered snapshot files abort the install with nothing written. Merging two
 divergent stores remains unimplemented, deliberately: memory follows ownership, so under the
@@ -405,14 +407,14 @@ no view of the other project. Two implementations of the mechanics, neither able
 
 Revised 2026-08-20, each side now does only what the other cannot:
 
-| | Cowork session | terminal (`mirror`) |
+| | Cowork session | terminal (`tandem`) |
 |---|---|---|
 | write the handoff document | **only it can** — the context is the conversation | no |
 | materialize, manifest, ownership event | no | **yes** |
 | verify upload / verify arrival by md5 | impossible from the sandbox | **yes** |
 | define the project, link its folder | no — `spaces.json` is outside | **yes** |
 
-So `/handoff` writes the document and stops; `mirror send` carries it. `mirror receive` verifies
+So `/handoff` writes the document and stops; `tandem send` carries it. `tandem receive` verifies
 and claims; `/pickup` reads the result. One implementation of the mechanics, and the session is
 still never asked to do something it cannot check.
 
@@ -438,7 +440,7 @@ finds nothing:
 local-agent-mode-sessions/skills-plugin/<org>/<account>/skills/<name>/SKILL.md
 ```
 
-**Acted on 2026-09-26.** `mirror deploy` used to zip `handoff.skill` and `pickup.skill` into the
+**Acted on 2026-09-26.** `tandem deploy` used to zip `handoff.skill` and `pickup.skill` into the
 shared tree. That duplicated a mechanism that already works, and the copies went stale: the Aug 20
 bundles outlived a correction to the skill's own premises (finding 17) and would have handed
 someone superseded instructions months later. `deploy` now deletes them instead of writing them,
@@ -447,7 +449,7 @@ by exact path.
 
 ## 16. `receive` could never materialize the one file it reads first
 
-Found 2026-09-06, after a `mirror receive` on Ji-su burned its full 900s timeout and reported
+Found 2026-09-06, after a `tandem receive` on Ji-su burned its full 900s timeout and reported
 `Newest event: none` — while the event sat in the folder, delivered, at its correct size.
 
 ```
@@ -487,7 +489,7 @@ ran `send`, check `scutil --get ComputerName` — sends you to the **other** Mac
 place the problem was not. Everything on the sender verified clean: `isUploaded = 1` on all six
 files, matching iCloud account, matching root, correct `to:` field.
 
-Fixed in `bin/mirror`: `newest_event` now materializes a dataless event with the same read
+Fixed in `bin/tandem`: `newest_event` now materializes a dataless event with the same read
 `present()` uses, and exits **2** for present-but-unreadable versus **1** for absent. `receive`
 carries the code through its poll loop and says which one it hit, with the two commands that show
 it. The general rule this is an instance of: **on a synced drive, listing a file proves nothing —
@@ -525,7 +527,7 @@ session.** No tooling, no copying, nothing to build. Host-loop sessions are the 
 travelled. This retires the idea of mirroring the session store (3.3 GB on Madoka, 1.1 GB of it hot
 append-only `audit.jsonl`), which was being seriously considered the same day.
 
-`mirror` still earns its place — remote sessions do no file transfer, no md5 verification and no
+`tandem` still earns its place — remote sessions do no file transfer, no md5 verification and no
 ownership record. But its *rationale* is narrower than the docs claimed.
 
 **How this was got wrong, three times in one day.** Each time, one store was checked, nothing was

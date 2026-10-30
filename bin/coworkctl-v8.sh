@@ -2,8 +2,8 @@
 # coworkctl v8 — move a Cowork workload between two Macs.
 #
 # SHARED ROOT is configurable. Resolution order:
-#   1. $MIRROR_ROOT
-#   2. ~/.config/claude-macos-mirror/root   (a file containing the path)
+#   1. $TANDEM_ROOT
+#   2. ~/.config/claude-tandem/root   (a file containing the path)
 #   3. iCloud Drive default
 # It does NOT have to be the same path on both Macs. The stable path is the
 # symlink at ~/Documents/Claude/Projects/<Name>, and the Cowork folder grant is
@@ -33,15 +33,17 @@
 # second topic silently attached the wrong document and pickup printed it with
 # nothing to indicate the mismatch.
 #
-# v8: ME honors MIRROR_ME, so each Claude profile on one Mac is its own side of a
+# v8: ME honors TANDEM_ME, so each Claude profile on one Mac is its own side of a
 # handoff (<Mac>@<profile>). Unset, it is the ComputerName exactly as before.
 
 set -uo pipefail
 
 default_root(){ echo "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Claude"; }
-if [ -n "${MIRROR_ROOT:-}" ]; then ROOT="$MIRROR_ROOT"
-elif [ -f "$HOME/.config/claude-macos-mirror/root" ]; then
-  ROOT="$(sed -e 's/[[:space:]]*$//' -e '/^$/d' "$HOME/.config/claude-macos-mirror/root" | head -1)"
+if [ -n "${TANDEM_ROOT:-${MIRROR_ROOT:-}}" ]; then ROOT="${TANDEM_ROOT:-$MIRROR_ROOT}"
+elif [ -f "$HOME/.config/claude-tandem/root" ] || [ -f "$HOME/.config/claude-macos-mirror/root" ]; then
+  CONFROOT="$HOME/.config/claude-tandem/root"   # the old path: before the rename to Claude Tandem
+  [ -f "$CONFROOT" ] || CONFROOT="$HOME/.config/claude-macos-mirror/root"
+  ROOT="$(sed -e 's/[[:space:]]*$//' -e '/^$/d' "$CONFROOT" | head -1)"
   ROOT="${ROOT/#\~/$HOME}"
 else ROOT="$(default_root)"; fi
 PROJECTS="$ROOT/Projects"
@@ -52,9 +54,9 @@ HANDOFF="$ROOT/_handoff"
 # reach it. This is what lets the /handoff skill record ownership with a plain file
 # write instead of shelling out to this CLI.
 events_dir(){ echo "$PROJECTS/$1/.handoff/events"; }
-# MIRROR_ME is set by `mirror --profile`: one Mac running several Claude accounts is
+# TANDEM_ME is set by `tandem --profile`: one Mac running several Claude accounts is
 # several sides of a handoff, named <Mac>@<profile>.
-ME="${MIRROR_ME:-$(scutil --get ComputerName)}"
+ME="${TANDEM_ME:-${MIRROR_ME:-$(scutil --get ComputerName)}}"
 
 die(){ echo "error: $*" >&2; exit 1; }
 

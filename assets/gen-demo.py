@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render the two-Mac handoff as an animated SVG terminal recording.
 
-Every printed line below is verbatim from bin/mirror + bin/coworkctl-v7.sh —
+Every printed line below is verbatim from bin/tandem + bin/coworkctl-v7.sh —
 only the project name, timestamps and byte counts are filled in.
 """
 import html
@@ -26,8 +26,8 @@ C = dict(
 # (row, t_on, t_off|None, text, color)  — same row + t_off = a line that
 # rewrites itself in place, the way the real progress bars do.
 
-MADOKA_CMD = './bin/mirror send "Quicken Reconciliation" --to Ji-su --note "Amex feed short 2 txns" --wait'
-JISU_CMD   = './bin/mirror receive "Quicken Reconciliation"'
+MADOKA_CMD = './bin/tandem send "Quicken Reconciliation" --to Ji-su --note "Amex feed short 2 txns" --wait'
+JISU_CMD   = './bin/tandem receive "Quicken Reconciliation"'
 
 madoka = [
     (1,  2.6, None, "sending 'Quicken Reconciliation': Madoka -> Ji-su", "head"),
@@ -46,7 +46,7 @@ madoka = [
     (12, 8.4, None, "  [████████████████████] 100%  6/6 files uploaded   25s", "bar"),
     (13, 8.8, None, "  ✓ all 6 files uploaded to the drive in 25s", "ok"),
     (15, 9.3, None, "  UPLOADED. 'Ji-su' can pull it now:", "head"),
-    (16, 9.6, None, '      mirror receive "Quicken Reconciliation"', "cmd"),
+    (16, 9.6, None, '      tandem receive "Quicken Reconciliation"', "cmd"),
     (17, 9.9, None, "  Do not edit 'Quicken Reconciliation' on Madoka until it comes back.", "warn"),
     (19, 10.4, None, "waiting for Ji-su to claim it (Ctrl-C to stop)...", "head"),
     (20, 10.8, 12.4, "  20s", "dim"),
@@ -171,7 +171,8 @@ text[style*="animation-name"]{{opacity:0;animation-duration:{TOTAL}s;animation-i
 </svg>
 '''
 import os
-out = "/Users/altsang/workspace/claude-macos-mirror/assets/mirror-handoff-demo.svg"
+import os
+out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tandem-handoff-demo.svg")
 os.makedirs(os.path.dirname(out), exist_ok=True)
 open(out, "w").write(svg)
 print(f"wrote {out}  {len(svg)/1000:.1f} KB  {W:.0f}x{H:.0f}")

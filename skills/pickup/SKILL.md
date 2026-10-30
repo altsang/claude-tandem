@@ -5,7 +5,7 @@ description: Resume a workload handed over from the user's other Mac (Madoka / J
 
 # Pick up a workload from the other Mac
 
-> **Not installed by default.** `mirror receive` claims the project and hands you the document, so
+> **Not installed by default.** `tandem receive` claims the project and hands you the document, so
 > this skill has nothing mechanical left to do. It is kept for anyone who wants the prerequisite
 > ritual inside the session — but note that a Cowork session cannot force iCloud to deliver, so it
 > can report a folder as missing when the data is merely un-enumerated. See `docs/findings.md` 12.
@@ -17,7 +17,7 @@ Counterpart to `/handoff`. Shared projects live at one path identical on both Ma
 ```
 
 The transfer itself — waiting for the drive, md5-verifying every file against the manifest,
-defining the project on this Mac, and claiming ownership — is done by `mirror receive` in a
+defining the project on this Mac, and claiming ownership — is done by `tandem receive` in a
 terminal, before you are invoked. This session is sandboxed to the project folder and cannot
 verify a transfer or reach any CLI, so do not attempt those steps or write ownership events.
 
@@ -26,9 +26,9 @@ verify a transfer or reach any CLI, so do not attempt those steps or write owner
 Read `PROJECT_FOLDER/.handoff/events/*.json`. Sort by filename; the newest event is the current
 state — owner is `to` if its verb is `handoff`, `machine` if it is `claim`.
 
-- **Newest is a `claim` by this machine** → good, `mirror receive` ran. Continue.
+- **Newest is a `claim` by this machine** → good, `tandem receive` ran. Continue.
 - **Newest is a `handoff` to this machine** → the files are here but nothing verified them. Stop
-  and ask the user to run `mirror receive "PROJECT"` in a terminal first. It confirms every file
+  and ask the user to run `tandem receive "PROJECT"` in a terminal first. It confirms every file
   arrived complete, which you cannot check from in here: a file that never uploaded is simply
   **absent** from this Mac's listing, not empty, so nothing about the folder looks wrong.
 - **Newest names the other Mac** → this project was not handed over. Say so and stop. Editing it
@@ -63,8 +63,8 @@ to Cowork on this device"*. Cause: the project points at a **symlink**. It has t
 the real shared path, which needs a terminal and a quit app — ask the user to run:
 
 ```
-mirror check                                       # names the project and prints the fix
-mirror project-repath "PROJECT" "$(mirror path "PROJECT")"
+tandem check                                       # names the project and prints the fix
+tandem project-repath "PROJECT" "$(tandem path "PROJECT")"
 ```
 
 Then relaunch Claude. No folder picker is involved.
@@ -75,4 +75,4 @@ all. Use the `Local`-badged project for file work.
 ## Ownership
 
 From the claim onward this machine is the only one that should edit the project. When the work is
-done or stalls, `/handoff` writes the return document and `mirror send` carries it back.
+done or stalls, `/handoff` writes the return document and `tandem send` carries it back.

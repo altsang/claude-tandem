@@ -1,8 +1,8 @@
 <div align="center">
 
-# Claude MacOS Mirror
+# Claude Tandem
 
-### Move a Claude **Cowork** workload between two Macs — the files, the project, and the context — with one command per side.
+### Run two Claude accounts side by side on one Mac, and hand a **Cowork** workload — the files, the project and the context — between accounts and between Macs, with one command per side.
 
 <p>
   <img src="https://img.shields.io/badge/platform-macOS-000000?style=for-the-badge&logo=apple&logoColor=white" />
@@ -22,9 +22,10 @@
 | **A project with a local folder** (`Local` badge) | ⚠️ the definition is copyable; nothing is automatic |
 | **Conversations in a local project** | ❌ never — this is why the handoff document exists |
 | **A local project's accumulated memory** | ❌ natively — but `send`/`receive` carry it |
-| Folder links (which folder a project reads) | ❌ per-machine — but `mirror` writes them on both Macs |
+| Folder links (which folder a project reads) | ❌ per-machine — but `tandem` writes them on both Macs |
+| **A second Claude account on the same Mac** | ❌ one sign-in at a time — `tandem profile` runs both at once, and `tandem menubar` shows which is which |
 
-<sub>Two commands move the rest: `mirror send` on one Mac, `mirror receive` on the other, each blocking until the transfer is <b>provable</b>. One Cowork skill, `/handoff`, writes the document that carries the context — the half no CLI can produce, because it lives in the conversation.</sub>
+<sub>Two commands move the rest: `tandem send` on one Mac, `tandem receive` on the other, each blocking until the transfer is <b>provable</b>. One Cowork skill, `/handoff`, writes the document that carries the context — the half no CLI can produce, because it lives in the conversation.</sub>
 
 </div>
 
@@ -50,17 +51,17 @@
 ## Quick start
 
 ```bash
-git clone git@github.com:altsang/claude-macos-mirror.git ~/workspace/claude-macos-mirror
-cd ~/workspace/claude-macos-mirror && ./bin/mirror deploy    # on both Macs
-./bin/mirror migrate "Quicken Reconciliation"                # once, on the Mac that has it
+git clone git@github.com:altsang/claude-tandem.git ~/workspace/claude-tandem
+cd ~/workspace/claude-tandem && ./bin/tandem deploy    # on both Macs
+./bin/tandem migrate "Quicken Reconciliation"                # once, on the Mac that has it
 ```
 
 Then, forever after — leaving a machine and arriving at the other:
 
 ```bash
 /handoff                                                     # in the Cowork session
-./bin/mirror send "Quicken Reconciliation" --to Ji-su --wait  # on Madoka
-./bin/mirror receive "Quicken Reconciliation"                 # on Ji-su, ⌘V into Cowork
+./bin/tandem send "Quicken Reconciliation" --to Ji-su --wait  # on Madoka
+./bin/tandem receive "Quicken Reconciliation"                 # on Ji-su, ⌘V into Cowork
 ```
 
 Names throughout are the two Macs this was built and measured on: `Madoka` (desktop) and `Ji-su` (laptop).
@@ -93,13 +94,13 @@ So three separate things have to travel, and only the first has a native path:
 
 ## What this does — and doesn't
 
-**Claude MacOS Mirror does not sync your files.** iCloud (or Google Drive, or Dropbox) does that. What it adds:
+**Claude Tandem does not sync your files.** iCloud (or Google Drive, or Dropbox) does that. What it adds:
 
 - **Migration** — moves a project into the shared tree and md5-verifies every file before touching the original.
 - **An ownership log** — both Macs know which one holds a project, which is what prevents the conflict copies two machines editing one synced folder produce.
 - **Materialization** — forces the drive to deliver file *contents*, not just names.
 - **A handoff document** — the mechanism that carries context when the chat can't travel. That is the case for **host-loop** sessions, which are machine-bound; a *remote* session's chat already appears on both Macs ([finding 17](docs/findings.md)). `send` refuses to ship a project without one.
-- **Folder linking without the file picker** — `mirror` writes the project's folder path itself, on both Macs.
+- **Folder linking without the file picker** — `tandem` writes the project's folder path itself, on both Macs.
 - **Upload verification** — proof the bytes actually left this Mac, which "staged" never gave you.
 - **One verb per side** — `send` and `receive`, each blocking until the transfer is provable, instead of a sequence of commands none of which could confirm the others' work.
 - **Diagnostics** for the failure modes that are silent and confusing, chiefly symlinked folder links.
@@ -128,7 +129,7 @@ sequenceDiagram
 ```
 
 <p align="center">
-  <img src="assets/mirror-handoff-demo.svg" alt="Two terminals: mirror send on Madoka materializes, exports, snapshots memory and blocks until all 6 files report isUploaded; mirror receive on Ji-su md5-verifies every file, claims the project, installs the memory snapshot and copies the handoff document to the clipboard — and the sender's DELIVERED line only lands once the receiver has claimed it" width="880"/>
+  <img src="assets/tandem-handoff-demo.svg" alt="Two terminals: tandem send on Madoka materializes, exports, snapshots memory and blocks until all 6 files report isUploaded; tandem receive on Ji-su md5-verifies every file, claims the project, installs the memory snapshot and copies the handoff document to the clipboard — and the sender's DELIVERED line only lands once the receiver has claimed it" width="880"/>
   <br/><sub>The same handoff, both sides. Neither command returns until its half is provable — rendered from the tool's own output, with the measured timings; playback compressed.</sub>
 </p>
 
@@ -141,10 +142,10 @@ sequenceDiagram
 ### 1. Once per machine
 
 ```bash
-git clone git@github.com:altsang/claude-macos-mirror.git ~/workspace/claude-macos-mirror
-cd ~/workspace/claude-macos-mirror
-./bin/mirror deploy
-./bin/mirror check          # ✓ shared tree present  ← if ✗, the drive hasn't synced yet. Fix that first.
+git clone git@github.com:altsang/claude-tandem.git ~/workspace/claude-tandem
+cd ~/workspace/claude-tandem
+./bin/tandem deploy
+./bin/tandem check          # ✓ shared tree present  ← if ✗, the drive hasn't synced yet. Fix that first.
 ```
 
 On the second machine `deploy` is optional — the engine lives *inside* the shared tree, so the drive delivers it. The skill needs no delivery at all: skills sync at the account level ([finding 15](docs/findings.md)).
@@ -184,10 +185,10 @@ Dropbox was installed and looked like a fine choice, but it isn't signed in on t
 
 ```bash
 ls -d ~/Library/CloudStorage/GoogleDrive-*
-./bin/mirror use-root "~/Library/CloudStorage/GoogleDrive-you@gmail.com/My Drive/Claude"
+./bin/tandem use-root "~/Library/CloudStorage/GoogleDrive-you@gmail.com/My Drive/Claude"
 ```
 
-Two cautions: with more than one Google account signed in, make sure both Macs use the *same* one — the email is in the path, so two accounts are two different roots. And check Drive is **mirroring, not streaming** (Settings → "My Drive syncing options"). Streaming behaves like iCloud's dataless files; `mirror receive` handles it, but mirroring avoids the problem.
+Two cautions: with more than one Google account signed in, make sure both Macs use the *same* one — the email is in the path, so two accounts are two different roots. And check Drive is **mirroring, not streaming** (Settings → "My Drive syncing options"). Streaming behaves like iCloud's dataless files; `tandem receive` handles it, but mirroring avoids the problem.
 
 Roots do **not** have to match across machines — the folder link is per-machine. Matching paths are simply convenient: one copy-pasteable string works on both.
 
@@ -202,7 +203,7 @@ Claude app → **Settings → Skills → Add**, and upload `skills/handoff/SKILL
 <details>
 <summary><b>Why <code>skills/pickup/SKILL.md</code> is in the repo but deliberately not installed</b></summary>
 
-`mirror receive` already claims the project and puts the document on your clipboard, leaving the skill nothing mechanical to do — and a Cowork session cannot force iCloud to deliver, so it can report a folder as missing when the data is merely un-enumerated ([finding 12](docs/findings.md)). Pasting the document after `receive` is the same brief with one fewer failure mode. Upload it only if you want the prerequisite ritual.
+`tandem receive` already claims the project and puts the document on your clipboard, leaving the skill nothing mechanical to do — and a Cowork session cannot force iCloud to deliver, so it can report a folder as missing when the data is merely un-enumerated ([finding 12](docs/findings.md)). Pasting the document after `receive` is the same brief with one fewer failure mode. Upload it only if you want the prerequisite ritual.
 
 </details>
 
@@ -212,8 +213,8 @@ On the Mac that already has the project:
 
 ```bash
 ls ~/Documents/Claude/Projects/          # find the folder name — often NOT the project name
-./bin/mirror rename "Finances" "Quicken Reconciliation"   # if they differ, fix it now
-./bin/mirror migrate "Quicken Reconciliation"
+./bin/tandem rename "Finances" "Quicken Reconciliation"   # if they differ, fix it now
+./bin/tandem migrate "Quicken Reconciliation"
 ```
 
 `migrate` copies into the shared tree, verifies every file by md5, then moves the original aside as `.PROJECT.pre-icloud-TIMESTAMP`. Nothing moves if verification fails, and the original is never deleted. **No symlink is created** — see below.
@@ -221,29 +222,29 @@ ls ~/Documents/Claude/Projects/          # find the folder name — often NOT th
 Then put it on the second Mac. There is no separate export/import step:
 
 ```bash
-./bin/mirror send "Quicken Reconciliation" --to Ji-su --no-doc   # on Madoka
-./bin/mirror receive "Quicken Reconciliation"                    # on Ji-su, with Claude QUIT
+./bin/tandem send "Quicken Reconciliation" --to Ji-su --no-doc   # on Madoka
+./bin/tandem receive "Quicken Reconciliation"                    # on Ji-su, with Claude QUIT
 ```
 
 `--no-doc` because a first move usually has no handoff document yet; drop it once there is one. `receive` writes Ji-su's project definition **and its folder link**, so there is no picker step on the second Mac. Relaunch Claude and the project is ready to read.
 
 ```bash
-./bin/mirror check      # granted folders that will fail in Cowork:  none ✓
+./bin/tandem check      # granted folders that will fail in Cowork:  none ✓
 ```
 
 > ### ⚠️ Link the shared path — never a symlink
-> Do not point a project at `~/Documents/Claude/Projects/PROJECT` even if it exists and resolves to the right place. Cowork registers a symlinked folder as connected — `get_device_info` reports it, the UI shows it attached — and then fails **every** read inside it with *"is not inside a folder connected to Cowork on this device."* Because it looks fine, the error points nowhere near the cause. `./bin/mirror check` flags any project in this state and prints the repair command.
+> Do not point a project at `~/Documents/Claude/Projects/PROJECT` even if it exists and resolves to the right place. Cowork registers a symlinked folder as connected — `get_device_info` reports it, the UI shows it attached — and then fails **every** read inside it with *"is not inside a folder connected to Cowork on this device."* Because it looks fine, the error points nowhere near the cause. `./bin/tandem check` flags any project in this state and prints the repair command.
 
 <details>
 <summary><b>What the folder link actually is — and why Claude must be quit</b></summary>
 
-One field: `folders[].path` on the project's entry in `spaces.json`. There is no token, bookmark or consent record anywhere else — a UI-attached project and a `mirror`-written one have byte-identical structure. The app seeds each new session's connected scope from that field, which is why writing it is a complete grant and not half of one.
+One field: `folders[].path` on the project's entry in `spaces.json`. There is no token, bookmark or consent record anywhere else — a UI-attached project and a `tandem`-written one have byte-identical structure. The app seeds each new session's connected scope from that field, which is why writing it is a complete grant and not half of one.
 
-Verified 2026-08-20: `Adobe Stock Plan` was linked on both Macs by `mirror` alone, the folder picker never opened, and Cowork read its files on the receiving Mac.
+Verified 2026-08-20: `Adobe Stock Plan` was linked on both Macs by `tandem` alone, the folder picker never opened, and Cowork read its files on the receiving Mac.
 
 **Claude must be quit while it is written.** A running app rewrites `spaces.json` from memory on exit and silently discards the change. `project-import` and `project-repath` refuse to run otherwise; `migrate` degrades to printing the command for you.
 
-**If you ever do need the picker** — for a project `mirror` doesn't manage, or to attach a second folder by hand — `./bin/mirror path "PROJECT"` prints the exact path *and copies it to the clipboard*; in the app open the project → **Add folder** → **⌘⇧G** → paste → Return → Open. ⌘⇧G is unavoidable because you cannot browse there: Finder hides `~/Library` and relabels `Mobile Documents/com~apple~CloudDocs` as **"iCloud Drive"**, so the folder named "Mobile Documents" is not there to click.
+**If you ever do need the picker** — for a project `tandem` doesn't manage, or to attach a second folder by hand — `./bin/tandem path "PROJECT"` prints the exact path *and copies it to the clipboard*; in the app open the project → **Add folder** → **⌘⇧G** → paste → Return → Open. ⌘⇧G is unavoidable because you cannot browse there: Finder hides `~/Library` and relabels `Mobile Documents/com~apple~CloudDocs` as **"iCloud Drive"**, so the folder named "Mobile Documents" is not there to click.
 
 Use the **`Local`**-badged project for file work. Cloud projects run their sessions in a bridged VM that can't reach these paths.
 
@@ -256,27 +257,27 @@ Use the **`Local`**-badged project for file work. Cloud projects run their sessi
 | Where | Step | What it guarantees |
 |---|---|---|
 | Cowork, on the Mac you're leaving | `/handoff` | Writes `HANDOFF_TOPIC.md` into the project folder and stops. For a **host-loop** session that document is the whole payload — the chat is machine-bound, so anything you knew and didn't write down is lost here. From a *remote* session it's a convenience; the conversation already crosses |
-| Terminal, same Mac | `mirror send "P" --to Ji-su --note "…" --wait` | Materializes the folder, exports the project definition, writes an md5 manifest, snapshots memory, records the ownership event naming your document — then blocks until every file reports `isUploaded`, and with `--wait` until the other Mac claims it |
-| Terminal, other Mac | `mirror receive "P"` | Waits for the event addressed to *this* Mac, pulls and **md5-verifies every file**, defines the project here if this Mac has never seen it (the one step that needs Claude quit), claims it, prints the handoff document and copies it to the clipboard |
+| Terminal, same Mac | `tandem send "P" --to Ji-su --note "…" --wait` | Materializes the folder, exports the project definition, writes an md5 manifest, snapshots memory, records the ownership event naming your document — then blocks until every file reports `isUploaded`, and with `--wait` until the other Mac claims it |
+| Terminal, other Mac | `tandem receive "P"` | Waits for the event addressed to *this* Mac, pulls and **md5-verifies every file**, defines the project here if this Mac has never seen it (the one step that needs Claude quit), claims it, prints the handoff document and copies it to the clipboard |
 | Cowork, other Mac | **⌘V** | The brief, in front of the session that has to act on it |
 
 `send` refuses to ship a project with no `HANDOFF*.md` — `--no-doc` overrides. Shipping files without the reasoning behind them is the failure this repo exists to prevent. `receive` refuses to claim a project that was not handed to this machine.
 
-**Memory travels too.** `send` snapshots the holder's per-project memory store into `.handoff/memory/`, md5-manifested and upload-verified with everything else; `receive` installs it — but **only into an empty store**. A store this Mac has built is never overwritten silently (`mirror memory-install "P" --force` replaces it, backing yours up first), and a Mac never installs its own snapshot coming home. So the receiving session starts with everything the sending one learned, and the document goes back to being the baton: status and next actions, not background.
+**Memory travels too.** `send` snapshots the holder's per-project memory store into `.handoff/memory/`, md5-manifested and upload-verified with everything else; `receive` installs it — but **only into an empty store**. A store this Mac has built is never overwritten silently (`tandem memory-install "P" --force` replaces it, backing yours up first), and a Mac never installs its own snapshot coming home. So the receiving session starts with everything the sending one learned, and the document goes back to being the baton: status and next actions, not background.
 
 <details>
-<summary><b>Proving the mirror is real, not merely present</b></summary>
+<summary><b>Proving the copy is real, not merely present</b></summary>
 
 ```bash
-./bin/mirror check        # shared root, engine, broken or symlinked folder links
-./bin/mirror status       # who owns what
-./bin/mirror conflicts    # must report nothing
+./bin/tandem check        # shared root, engine, broken or symlinked folder links
+./bin/tandem status       # who owns what
+./bin/tandem conflicts    # must report nothing
 ```
 
 Same digest on both Macs:
 
 ```bash
-cd "$(./bin/mirror path 'Quicken Reconciliation')" \
+cd "$(./bin/tandem path 'Quicken Reconciliation')" \
   && find . -type f ! -name '.DS_Store' ! -path './.handoff/*' -exec md5 -q {} \; -print \
   | paste - - | sort | md5
 ```
@@ -290,10 +291,10 @@ cd "$(./bin/mirror path 'Quicken Reconciliation')" \
 The ownership log records who holds a project; it cannot stop you editing the copy that stays on this Mac. `--hold` can:
 
 ```bash
-./bin/mirror send "Quicken Reconciliation" --to Ji-su --note "…" --hold
+./bin/tandem send "Quicken Reconciliation" --to Ji-su --note "…" --hold
 ```
 
-Two `spaces.json` writes, both per-machine, both reversed by `mirror receive` when the project comes home:
+Two `spaces.json` writes, both per-machine, both reversed by `tandem receive` when the project comes home:
 
 | Write | Effect |
 |---|---|
@@ -302,7 +303,7 @@ Two `spaces.json` writes, both per-machine, both reversed by `mirror receive` wh
 
 The banner is wrapped in `<!-- mirror:hold -->` markers that `project-export` and `project-import` always strip, so "checked out to Ji-su" can never travel *to* Ji-su.
 
-Both are `spaces.json` writes, so Claude must be quit — one quit covers both. If it's running, `send` completes the transfer and prints `mirror hold "PROJECT" --to Ji-su` to run afterwards. `mirror release "PROJECT"` undoes it by hand; `receive` does it for you.
+Both are `spaces.json` writes, so Claude must be quit — one quit covers both. If it's running, `send` completes the transfer and prints `tandem hold "PROJECT" --to Ji-su` to run afterwards. `tandem release "PROJECT"` undoes it by hand; `receive` does it for you.
 
 **What it does not cover:** anything outside Cowork — Finder, Excel, Quicken. Nothing in iCloud offers a lock, and locking the files themselves would block the sync daemon from writing the other Mac's changes back, which is worse than the problem.
 
@@ -311,34 +312,34 @@ Both are `spaces.json` writes, so Claude must be quit — one quit covers both. 
 ## Two accounts on one Mac (profiles)
 
 Two Claude subscriptions on one Mac should both be usable at once, and a project should be able
-to move to the second account when the first hits its limit. `bin/claude-profile` runs the real
-Claude apps once per account, and `mirror --profile` treats each account as its own side of a
+to move to the second account when the first hits its limit. `bin/tandem-profile` runs the real
+Claude apps once per account, and `tandem --profile` treats each account as its own side of a
 handoff, named `<Mac>@<profile>`.
 
 ```bash
-./bin/claude-profile create b        # ~/.claude-b + Application Support/Claude-b; shares skills/settings
-./bin/claude-profile desktop b       # a second Claude desktop, signed in separately, beside the first
-./bin/claude-profile app b           # optional: "Claude (b)" launcher in ~/Applications for the Dock
-claude @b                            # Claude Code as account b (zsh wrapper; or: claude-profile code b)
+./bin/tandem profile create b        # ~/.claude-b + Application Support/Claude-b; shares skills/settings
+./bin/tandem profile desktop b       # a second Claude desktop, signed in separately, beside the first
+./bin/tandem profile app b           # optional: "Claude (b)" launcher in ~/Applications for the Dock
+claude @b                            # Claude Code as account b (zsh wrapper; or: tandem profile code b)
 
-./bin/claude-profile rename b work   # call it "work" everywhere: launcher, list, claude @work, mirror --profile work
-./bin/claude-profile app work --badge W              # the badge: one or two letters, any script (--badge 지) …
-./bin/claude-profile app work --badge 💼             # … or one emoji …
-./bin/claude-profile app work --badge-image logo.png # … or an image, clipped to the circle (--badge auto: back to the initial)
+./bin/tandem profile rename b work   # call it "work" everywhere: launcher, list, claude @work, tandem --profile work
+./bin/tandem profile app work --badge W              # the badge: one or two letters, any script (--badge 지) …
+./bin/tandem profile app work --badge 💼             # … or one emoji …
+./bin/tandem profile app work --badge-image logo.png # … or an image, clipped to the circle (--badge auto: back to the initial)
 ```
 
 Moving a Cowork project to the other account works the same way as moving it to the other Mac:
 
 ```bash
 /handoff                                                    # in the account-a Cowork session
-./bin/mirror send "Quicken Reconciliation" --to Madoka@b    # files are already here; ships memory + doc
-./bin/mirror --profile b receive "Quicken Reconciliation"   # defines it in b, installs memory, ⌘V
+./bin/tandem send "Quicken Reconciliation" --to Madoka@b    # files are already here; ships memory + doc
+./bin/tandem --profile b receive "Quicken Reconciliation"   # defines it in b, installs memory, ⌘V
 ```
 
-For Claude Code sessions, `claude-profile sync` copies `projects/` and `plans/` between profiles
+For Claude Code sessions, `tandem profile sync` copies `projects/` and `plans/` between profiles
 (newest wins), so `claude @b --resume` picks up a session started on account a.
 
-**In the menu bar.** `./bin/claude-profile menubar` builds and opens *Claude Profiles*, a small
+**In the menu bar.** `./bin/tandem menubar` builds and opens *Claude Tandem*, a small
 native app (no Dock icon) that shows every profile with its badge, account and plan, and which
 ones are open, since the Dock and ⌘-Tab can't tell two running profiles apart. Each profile's submenu:
 
@@ -346,15 +347,15 @@ ones are open, since the Dock and ⌘-Tab can't tell two running profiles apart.
 |---|---|
 | Open / Show Claude | opens that profile's app, or brings its window forward |
 | Open Claude Code in Terminal | `claude @<profile>` |
-| Quit Claude · Quit and Reopen | quits *that* profile's app the way ⌘Q does (`claude-profile quit`); offered as Quit and Reopen after Claude updates itself |
-| Hand Off a Project ▸ *project* ▸ *target* | `mirror send … --to <target> --wait` in Terminal; targets are your other profiles here and the other Mac, learned from the ownership events |
-| Receive a Project ▸ *project* | `mirror --profile <p> receive …` in Terminal, offering to quit that profile's app first |
-| Rename… · Change Badge… · Badge Colour | `claude-profile rename` / `app --badge` / `app --color` |
+| Quit Claude · Quit and Reopen | quits *that* profile's app the way ⌘Q does (`tandem profile quit`); offered as Quit and Reopen after Claude updates itself |
+| Hand Off a Project ▸ *project* ▸ *target* | `tandem send … --to <target> --wait` in Terminal; targets are your other profiles here and the other Mac, learned from the ownership events |
+| Receive a Project ▸ *project* | `tandem --profile <p> receive …` in Terminal, offering to quit that profile's app first |
+| Rename… · Change Badge… · Badge Colour | `tandem profile rename` / `app --badge` / `app --color` |
 
 Plus New Profile…, Sync Claude Code Sessions, Run Doctor and Open at Login. Every item calls
-`claude-profile` or `mirror`, so the app holds no logic of its own. It is built with `swiftc` from
-the Command Line Tools from `macos/ClaudeProfiles/main.swift`, and rebuilt automatically when that or
-`claude-profile` changes. It records the PATH it was built from, because an app started at login gets only
+`tandem profile` or `tandem`, so the app holds no logic of its own. It is built with `swiftc` from
+the Command Line Tools from `macos/ClaudeTandem/main.swift`, and rebuilt automatically when that or
+`tandem profile` changes. It records the PATH it was built from, because an app started at login gets only
 `/usr/bin:/bin`, which has no `claude` and no `python3` with Pillow.
 
 How it is isolated, and why:
@@ -370,7 +371,7 @@ How it is isolated, and why:
   environment variable (the app logs *"signed builds ignore it"*) but honor the Chromium switch,
   and the single-instance lock is per data folder — so the two apps run side by side.
 - **One data folder can hold several accounts.** Signing a different account into the same app
-  adds another `local-agent-mode-sessions/<account>/<org>/`. mirror picks the signed-in one from
+  adds another `local-agent-mode-sessions/<account>/<org>/`. tandem picks the signed-in one from
   `config.json`'s `lastKnownAccountUuid`; before profiles it took the first folder it found.
 - **"Is Claude running" means *this profile's* Claude.** Quitting account a is not needed to edit
   account b's `spaces.json`.
@@ -382,12 +383,12 @@ How it is isolated, and why:
   `Claude-<id>`, and it never changes; `rename` stores a display name that every command accepts, and
   the id keeps working too. Moving the folders would sign the profile out of Claude Code — its Keychain
   login is `Claude Code-credentials-<hash of the config path>` — break the absolute paths its Cowork
-  sessions recorded, and orphan mirror's ownership events, which name the side `Madoka@<id>`. So
-  `mirror --profile work` acts as `Madoka@b`, and `--to Madoka@work` is recorded as `Madoka@b`.
+  sessions recorded, and orphan tandem's ownership events, which name the side `Madoka@<id>`. So
+  `tandem --profile work` acts as `Madoka@b`, and `--to Madoka@work` is recorded as `Madoka@b`.
   Names are resolved on this Mac only: to address a profile on the *other* Mac, use its id.
 - The folder layout matches Claude Switch's, so profiles made by either tool work in both.
 
-**Icons.** `claude-profile app <p>` builds the launcher's icon from whatever Claude.app currently
+**Icons.** `tandem profile app <p>` builds the launcher's icon from whatever Claude.app currently
 ships, plus a coloured badge with the profile's initial (`--color '#hex'` to choose; it is
 remembered). The icon is full-bleed so macOS 26+ masks it rather than putting it on a grey plate.
 Once a profile is *running*, its Dock and ⌘-Tab icon is Claude's own: every profile runs the same
@@ -398,48 +399,48 @@ per profile — but:
 
 - Each profile's app checks for and installs updates **on its own** (the updater's
   running-instance record lives in each data folder). When one installs, the others keep running
-  the old code from a bundle replaced underneath them. `claude-profile list` flags them
+  the old code from a bundle replaced underneath them. `tandem profile list` flags them
   (`QUIT+REOPEN`); quit and reopen every open profile after an update.
 - Each profile migrates its own data the first time it opens on the new version.
-- Profiles rest on behaviour read out of Claude's bundle, not a documented interface. `claude-profile
-  desktop` re-checks it (`claude-profile doctor`) whenever the installed version changes, and
+- Profiles rest on behaviour read out of Claude's bundle, not a documented interface. `tandem profile
+  desktop` re-checks it (`tandem profile doctor`) whenever the installed version changes, and
   refuses to open a profile if `--user-data-dir`, the account record or the Cowork store moved.
-- After an update that changes Claude's icon, `claude-profile app --all` rebuilds the launchers.
+- After an update that changes Claude's icon, `tandem profile app --all` rebuilds the launchers.
 - Claude Code (`claude @<p>`) is unaffected: `CLAUDE_CONFIG_DIR` is a documented setting.
 
 ## Commands
 
 ```bash
-./bin/mirror send "PROJECT" --to Ji-su --note "…" --wait   # hand the project over, verified
-./bin/mirror receive "PROJECT"                             # claim it here, verified
+./bin/tandem send "PROJECT" --to Ji-su --note "…" --wait   # hand the project over, verified
+./bin/tandem receive "PROJECT"                             # claim it here, verified
 
-./bin/mirror deploy                                        # install the engine into the shared tree
-./bin/mirror use-root "<path>"                             # use a drive other than iCloud
-./bin/mirror migrate "PROJECT"                             # move a project into the shared tree
-./bin/mirror rename "Old" "New"                            # rename folder + project together
+./bin/tandem deploy                                        # install the engine into the shared tree
+./bin/tandem use-root "<path>"                             # use a drive other than iCloud
+./bin/tandem migrate "PROJECT"                             # move a project into the shared tree
+./bin/tandem rename "Old" "New"                            # rename folder + project together
 
-./bin/mirror status                                        # every project, who owns it
-./bin/mirror log "PROJECT"                                 # the ownership log
-./bin/mirror check                                         # broken or symlinked folder links
-./bin/mirror conflicts                                     # iCloud conflict copies (reports only)
-./bin/mirror path "PROJECT"                                # print the path, copy it to the clipboard
-./bin/mirror materialize "$(./bin/mirror path 'PROJECT')"  # force the drive to deliver contents
+./bin/tandem status                                        # every project, who owns it
+./bin/tandem log "PROJECT"                                 # the ownership log
+./bin/tandem check                                         # broken or symlinked folder links
+./bin/tandem conflicts                                     # iCloud conflict copies (reports only)
+./bin/tandem path "PROJECT"                                # print the path, copy it to the clipboard
+./bin/tandem materialize "$(./bin/tandem path 'PROJECT')"  # force the drive to deliver contents
 
-./bin/mirror hold "PROJECT" --to Ji-su                     # lock this Mac out
-./bin/mirror release "PROJECT"                             # undo it
-./bin/mirror memory-install "PROJECT" --force              # take their memory, backing up yours
+./bin/tandem hold "PROJECT" --to Ji-su                     # lock this Mac out
+./bin/tandem release "PROJECT"                             # undo it
+./bin/tandem memory-install "PROJECT" --force              # take their memory, backing up yours
 ```
 
 The flags worth knowing on the daily pair:
 
 | Flag | On | Effect |
 |---|---|---|
-| `--note "…"` | `send` | one line recorded in the ownership log; what `mirror status` shows |
+| `--note "…"` | `send` | one line recorded in the ownership log; what `tandem status` shows |
 | `--wait` | `send` | after the upload, block until the other Mac claims it |
 | `--doc FILE` | `send` | name the document explicitly instead of taking the newest `HANDOFF*.md` |
 | `--no-doc` | `send` | ship files with no context — for a first move, or a folder that isn't a project |
 | `--hold` | `send` | lock this Mac out of the project until it comes back |
-| `--force` | `send` | send a project the log says this Mac doesn't hold. Check `mirror log` first |
+| `--force` | `send` | send a project the log says this Mac doesn't hold. Check `tandem log` first |
 | `--timeout N` | both | seconds for the whole wait (default 900) |
 
 <details>
@@ -448,8 +449,8 @@ The flags worth knowing on the daily pair:
 `handoff`, `pickup`, `project-export`, `project-import` and `wait` still exist and still work as separate verbs — `send` and `receive` are those, composed, with the verification that was missing.
 
 ```bash
-./bin/mirror project-export "PROJECT"           # on the holder
-./bin/mirror project-import "PROJECT" --wait    # on the receiver, with Claude QUIT
+./bin/tandem project-export "PROJECT"           # on the holder
+./bin/tandem project-import "PROJECT" --wait    # on the receiver, with Claude QUIT
 ```
 
 `--wait` blocks until both halves have crossed: the definition (a few hundred bytes, arrives first) and then the files, md5-verified against the manifest. That second half matters because iCloud delivers files *dataless* — listed at full size with no content — and only a read materializes them. Import without waiting and Cowork opens a project whose files read empty, with nothing on screen to say why. Nothing is written to `spaces.json` unless every file verifies.
@@ -502,15 +503,15 @@ Upload scales with size and you can watch it. Delivery to an idle peer runs ~2�
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| *"is not inside a folder connected to Cowork"*, folder looks attached | the link points at a **symlink** | `mirror check`, then `mirror project-repath PROJECT "$(mirror path PROJECT)"` with Claude quit |
-| A file reads empty, no error | evicted/dataless — contents still in the cloud | read it again; `mirror materialize`. `du` and `.icloud` checks cannot see this |
+| *"is not inside a folder connected to Cowork"*, folder looks attached | the link points at a **symlink** | `tandem check`, then `tandem project-repath PROJECT "$(tandem path PROJECT)"` with Claude quit |
+| A file reads empty, no error | evicted/dataless — contents still in the cloud | read it again; `tandem materialize`. `du` and `.icloud` checks cannot see this |
 | Nothing arrives on the other Mac | it's asleep, or you didn't enumerate | `ssh peer 'uptime; pmset -g ps'`; list the whole parent chain, not just the leaf |
-| `(name) 2.ext` files appearing | two writers to one synced path | `mirror conflicts` (reports only), remove by exact path — **never** by glob |
-| A Cowork session says the project has no `.handoff` directory | uploaded, but never enumerated on this Mac — and a sandboxed session cannot force the drive to deliver | `mirror receive "P"` — its wait loop lists the whole parent chain, which is what makes iCloud hand it over |
+| `(name) 2.ext` files appearing | two writers to one synced path | `tandem conflicts` (reports only), remove by exact path — **never** by glob |
+| A Cowork session says the project has no `.handoff` directory | uploaded, but never enumerated on this Mac — and a sandboxed session cannot force the drive to deliver | `tandem receive "P"` — its wait loop lists the whole parent chain, which is what makes iCloud hand it over |
 | `/handoff` tries to do the transfer itself | old skill version registered | re-upload `skills/handoff/SKILL.md`; the current one writes the document and stops |
 | Skill upload rejected, "cannot have XML tags" | angle-bracket placeholders in `SKILL.md` | use bare words, not `<Project>` |
-| Project missing on the other Mac | local projects don't sync | `mirror send "P" --to MACHINE --no-doc`, then `mirror receive "P"` |
-| Not sure the files actually reached iCloud | `handoff` only staged them; nothing verified the upload | `mirror send` — it polls `isUploaded` until every file is up |
-| `receive` says memory "NOT overwriting" | this Mac already built its own store — the guardrail, not an error | keep yours (do nothing), or `mirror memory-install "P" --force` to take theirs; yours is backed up first |
+| Project missing on the other Mac | local projects don't sync | `tandem send "P" --to MACHINE --no-doc`, then `tandem receive "P"` |
+| Not sure the files actually reached iCloud | `handoff` only staged them; nothing verified the upload | `tandem send` — it polls `isUploaded` until every file is up |
+| `receive` says memory "NOT overwriting" | this Mac already built its own store — the guardrail, not an error | keep yours (do nothing), or `tandem memory-install "P" --force` to take theirs; yours is backed up first |
 
 [**docs/findings.md**](docs/findings.md) has the measurements behind each of these, and the two commands that destroyed data during development.
