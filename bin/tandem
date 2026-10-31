@@ -36,7 +36,8 @@
 #   tandem memory-snapshot <Name>    copy this Mac's project memory into the shared tree
 #                                    (send does this automatically)
 #   tandem memory-install <Name>     install the newest snapshot into THIS Mac's store
-#                                    (receive does it; --force replaces, with a backup)
+#                                    (receive does it): --merge adds what this Mac lacks
+#                                    and flags clashes; --force replaces. Both back up first
 #
 #   tandem project-list              local projects defined on THIS Mac
 #   tandem project-export <Name>     write a project definition into the shared tree
@@ -139,6 +140,45 @@ local_target(){
   p="$(profile_id "$p")"
   echo "$mac${p:+@$p}"
 }
+# This Mac's iCloud Drive sync state. A receive that waits on an event the sender has
+# already uploaded is usually waiting on THIS Mac: on 2026-10-30 Ji-su's iCloud Drive had
+# not synced down for 10 hours after a reboot (`brctl status`: client:needs-sync), and
+# opening Finder › iCloud Drive restarted it within a minute. Prints "<state>\t<last
+# sync>\t<minutes ago>", nothing off iCloud; exit 0 only when it looks stalled.
+drive_state(){
+  case "$ROOT" in *CloudDocs*) ;; *) return 2;; esac
+  local st client last epoch age=""
+  st="$(brctl status 2>/dev/null | sed $'s/\x1b\[[0-9;]*m//g')"
+  client="$(printf '%s' "$st" | grep -o 'client:[a-z-]*' | head -1 | cut -d: -f2)"
+  last="$(printf '%s' "$st" | grep -o 'last-sync:[0-9-]* [0-9:]*' | head -1 | cut -d: -f2-)"
+  [ -n "$client$last" ] || return 2
+  epoch="$(date -j -f '%Y-%m-%d %H:%M:%S' "$last" +%s 2>/dev/null)" && age=$(( ($(date +%s) - epoch) / 60 ))
+  printf '%s\t%s\t%s\n' "${client:-?}" "${last:-unknown}" "$age"
+  [ "$client" != idle ] && [ -n "$age" ] && [ "$age" -ge 10 ]
+}
+# Which Apple ID iCloud Drive syncs as — both Macs must match. Up to macOS 26 this was in
+# MobileMeAccounts; on macOS 27 that plist is empty ({}) and the account is only in the
+# Accounts database. Prints "unknown" rather than guess.
+icloud_account(){
+  local a
+  a="$(defaults read MobileMeAccounts Accounts 2>/dev/null | awk -F'"' '/AccountID/{print $2; exit}')"
+  [ -n "$a" ] || a="$(sqlite3 -readonly "$HOME/Library/Accounts/Accounts4.sqlite" \
+      "select ZUSERNAME from ZACCOUNT where ZACCOUNTDESCRIPTION='iCloud' limit 1;" 2>/dev/null)"
+  echo "${a:-unknown}"
+}
+drive_hint(){   # one or two lines for a person; silent when there is nothing to say
+  local line client last age stalled=1
+  line="$(drive_state)" && stalled=0
+  [ -n "$line" ] || return 1
+  IFS=$'\t' read -r client last age <<< "$line"
+  if [ "$stalled" = 0 ]; then
+    echo "  ⚠ this Mac's iCloud Drive looks STALLED: '$client', last synced down $last (${age} min ago)."
+    echo "    Open Finder › iCloud Drive to restart it — the handoff may already be waiting upstream."
+  else
+    echo "  this Mac's iCloud Drive: '$client', last synced down $last${age:+ (${age} min ago)}"
+  fi
+}
+
 # The receive command the target side should run.
 receive_cmd(){
   local p=""; case "$1" in *@*) p="${1#*@}";; esac
@@ -208,7 +248,8 @@ cmd_check(){
   echo "shared root: $ROOT"
   [ -f "$CONF" ] && echo "  (from $CONF)" || echo "  (default — no config set)"
   case "$ROOT" in
-    *CloudDocs*) echo "iCloud account: $(defaults read MobileMeAccounts Accounts 2>/dev/null | awk -F'"' '/AccountID/{print $2; exit}')";;
+    *CloudDocs*) echo "iCloud account: $(icloud_account)"
+                 drive_hint || true;;
   esac
   [ -d "$ROOT" ] && ok "shared tree present" || echo "  ✗ shared tree missing (drive not synced yet?)"
   local e; e="$(ls -1 "$HANDOFF"/bin/coworkctl-v*.sh 2>/dev/null | sort -V | tail -1)"
@@ -439,23 +480,24 @@ PY
 }
 
 cmd_memory_install(){
-  local name="" force=0
+  local name="" mode=none
   while [ $# -gt 0 ]; do
     case "$1" in
-      --force) force=1; shift;;
+      --force) mode=force; shift;;
+      --merge) mode=merge; shift;;
       *)       [ -n "$name" ] || name="$1"; shift;;
     esac
   done
-  [ -n "$name" ] || die "usage: tandem memory-install <Project> [--force]"
+  [ -n "$name" ] || die "usage: tandem memory-install <Project> [--merge|--force]"
   require_claude_quit
   local dst
   dst="$(memory_dir "$name")" || die "'$name' is not defined on this Mac — run 'tandem receive' first"
   # enumerating the chain is what makes the drive surface a snapshot that has not landed yet
   ls "$PROJECTS/$name/.handoff" "$PROJECTS/$name/.handoff/memory" >/dev/null 2>&1
   ls "$PROJECTS/$name/.handoff/memory/"*/ >/dev/null 2>&1
-  python3 - "$PROJECTS/$name/.handoff/memory" "$dst" "$force" "$ME" "$name" <<'PY'
-import os,sys,json,hashlib,shutil,glob,datetime,time
-root,dst,force,me,name=sys.argv[1],sys.argv[2],sys.argv[3]=="1",sys.argv[4],sys.argv[5]
+  python3 - "$PROJECTS/$name/.handoff/memory" "$dst" "$mode" "$ME" "$name" <<'PY'
+import os,sys,json,hashlib,shutil,glob,datetime,time,re
+root,dst,mode,me,name=sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5]
 snaps=[d for d in sorted(glob.glob(os.path.join(root,"*")))
        if os.path.isfile(os.path.join(d,"snapshot.json"))]
 if not snaps:
@@ -492,16 +534,61 @@ if bad:
 
 existing=[f for f in (os.listdir(dst) if os.path.isdir(dst) else [])
           if os.path.isfile(os.path.join(dst,f))]
-if existing and not force:
+if existing and mode=="none":
     print(f"  this Mac already has {len(existing)} memory file(s) for '{name}' — NOT overwriting.")
-    print(f"  The snapshot from {man['machine']} ({man['at']}) holds {man['count']} file(s).")
-    print("  To replace them (current store is backed up first):")
-    print(f"      tandem memory-install \"{name}\" --force"); sys.exit(3)
+    print(f"  The snapshot from {man['machine']} ({man['at']}) holds {man['count']} file(s). Either:")
+    print(f"      tandem memory-install \"{name}\" --merge    # keep both: add what is new, flag clashes")
+    print(f"      tandem memory-install \"{name}\" --force    # replace this Mac's with the snapshot")
+    print("  Both back up the current store first."); sys.exit(3)
 if existing:
     ts=datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     bak=dst.rstrip("/")+".bak-"+ts
+    n=2
+    while os.path.exists(bak):      # two runs in one second must not collide
+        bak=f"{dst.rstrip('/')}.bak-{ts}-{n}"; n+=1
     shutil.copytree(dst,bak)
     print(f"  existing store backed up to {os.path.basename(bak)}")
+
+# Merge: each Mac kept learning while it held the project, so neither store is a
+# superset (2026-10-30: Madoka's 11 memories had the method, Ji-su's 1 had the newest
+# status). Add what this Mac lacks, never overwrite; a file that differs keeps this
+# Mac's version and parks the other beside it, unindexed, for a person to reconcile.
+if existing and mode=="merge":
+    def md5(p): return hashlib.md5(open(p,"rb").read()).hexdigest()
+    def targets(text): return set(re.findall(r"\]\(([^)]+)\)", text))
+    idx_here=os.path.join(dst,"MEMORY.md")
+    here_text=open(idx_here,encoding="utf-8").read() if os.path.exists(idx_here) else ""
+    added,same,clash=[],[],[]
+    for f in man["files"]:
+        p=f["path"]
+        if p=="MEMORY.md": continue
+        src,out=os.path.join(snap,p),os.path.join(dst,p)
+        if not os.path.exists(out): shutil.copyfile(src,out); added.append(p)
+        elif md5(out)==f["md5"]: same.append(p)
+        else:
+            stem,ext=os.path.splitext(p)
+            aside=f"{stem}.from-{man['machine']}{ext}"
+            shutil.copyfile(src,os.path.join(dst,aside)); clash.append((p,aside))
+    # index: keep this Mac's lines; add the other's lines for memories just added
+    their_idx=os.path.join(snap,"MEMORY.md")
+    new_lines=[]
+    if os.path.exists(their_idx):
+        have=targets(here_text)
+        for line in open(their_idx,encoding="utf-8").read().splitlines():
+            t=targets(line)
+            if t and t<=set(added) and not (t & have): new_lines.append(line)
+    if new_lines:
+        with open(idx_here,"a",encoding="utf-8") as fh:
+            if here_text and not here_text.endswith("\n"): fh.write("\n")
+            fh.write("\n".join(new_lines)+"\n")
+    print(f"  merged memory from {man['machine']} ({man['at']}): {len(added)} added, {len(same)} already identical, {len(clash)} clash")
+    for p,aside in clash:
+        print(f"    clash: kept this Mac's {p}; {man['machine']}'s version is {aside} (not indexed) — compare and keep one")
+    kept=len([f for f in existing if f!="MEMORY.md"])
+    print(f"    this Mac's own {kept} memor{'y' if kept==1 else 'ies'} kept as they were")
+    sys.exit(0)
+
+if existing:
     for f in existing: os.remove(os.path.join(dst,f))
 os.makedirs(dst,exist_ok=True)
 for f in man["files"]:
@@ -1193,7 +1280,11 @@ cmd_receive(){
   else evrc=$?; fi
   if [ "$ready" = 0 ]; then
     echo "waiting for a handoff addressed to $ME..."
+    local hinted=0
     while [ $((SECONDS-start)) -lt "$timeout" ]; do
+      if [ "$hinted" = 0 ] && [ $((SECONDS-start)) -ge 60 ]; then
+        hinted=1; echo; drive_hint || true
+      fi
       ls "$HANDOFF" >/dev/null 2>&1; ls "$PROJECTS" >/dev/null 2>&1
       ls "$PROJECTS/$name" >/dev/null 2>&1; ls "$PROJECTS/$name/.handoff/events" >/dev/null 2>&1
       if ev="$(newest_event "$name")"; then
@@ -1218,6 +1309,13 @@ cmd_receive(){
      To see it for yourself:
          ls -l \"$PROJECTS/$name/.handoff/events\"    # the file is there
          cat \"$PROJECTS/$name/.handoff/events\"/*.json   # and reads empty"
+       fi
+       if drive_state >/dev/null; then
+         drive_hint
+         die "no handoff to $ME arrived for '$name' within ${timeout}s — and this Mac's iCloud
+     Drive is not syncing, so that is the likelier cause than the sender. Open Finder ›
+     iCloud Drive, wait for it to settle (brctl status shows client:idle), then re-run.
+     Newest event seen here: ${verb:-none} ${machine:+by $machine}${to:+ -> $to} ${at:-}"
        fi
        die "no handoff to $ME arrived for '$name' within ${timeout}s.
      Newest event: ${verb:-none} ${machine:+by $machine}${to:+ -> $to} ${at:-}
@@ -1272,9 +1370,10 @@ cmd_receive(){
     if claude_running; then
       echo
       echo "  ⚠ a memory snapshot came with this project, but Claude is running."
-      echo "    Quit Claude, then:  tandem memory-install \"$name\""
+      echo "    Quit Claude, then:  tandem memory-install \"$name\" --merge"
     else
-      cmd_memory_install "$name"
+      # merge, not replace: it only adds, so nothing either Mac learned is lost
+      cmd_memory_install "$name" --merge
     fi
   fi
 

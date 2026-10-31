@@ -360,9 +360,16 @@ Implemented 2026-08-20, conservatively. `send` snapshots the holder's store into
 with everything else; `receive` installs the newest snapshot **only when this Mac's store is
 empty**. A non-empty store is refused with instructions — `tandem memory-install <P> --force`
 replaces it after copying it to `memory.bak-<ts>` — and a Mac never installs a snapshot it took
-itself. Corrupt or undelivered snapshot files abort the install with nothing written. Merging two
-divergent stores remains unimplemented, deliberately: memory follows ownership, so under the
-send/hold/receive discipline only one Mac should have been writing it anyway.
+itself. Corrupt or undelivered snapshot files abort the install with nothing written.
+
+**Revised 2026-10-30: stores do diverge, so receive now merges.** This said merging was
+unnecessary because only the owner writes memory. True, but ownership moves: each Mac writes
+while it holds the project, so after a round trip *neither* store is a superset. Adobe Stock Plan,
+handed back to Ji-su: Madoka's 11 memories held the method (entry patterns, guardrails), Ji-su's 1
+held the newest status (*verified thru 7/15/2026*). Replacing would have dropped that line into a
+backup nobody reads. `memory-install --merge` — what `receive` now runs — backs up, adds what this
+Mac lacks, skips identical files, appends index lines only for memories it added, and on a clash
+keeps this Mac's file and parks the other as `name.from-<Mac>.md`, unindexed, for a person.
 
 ## 13. Cowork on a cloud project runs in a bridged VM with per-session folder access
 
@@ -543,6 +550,32 @@ Finding 7's lesson was "find the file that stores it before concluding it is imp
 sharper version: **find every file that stores it.** An absence is only evidence once you know you
 searched the whole space — and a tool that reports absence should say which store it looked in.
 
+
+
+## 18. A stalled iCloud Drive on the RECEIVING Mac looks exactly like a missing handoff
+
+2026-10-30. Madoka sent Adobe Stock Plan to Ji-su; `send` verified every file `isUploaded = 1`.
+Ji-su's `receive` waited 600 s and reported the newest event as Madoka's Aug 21 claim — so the
+event was not dataless (finding 16), it was absent. The cause was Ji-su itself:
+
+```
+brctl status   client:needs-sync   sync:needs-sync-down|in-sync-down   last-sync:2026-10-29 15:57
+```
+
+Ten hours without a sync-down, beginning around a reboot, and not one file newer than the previous
+day anywhere in the shared tree. Opening Finder › iCloud Drive restarted it within a minute
+(`client:idle`, `has-synced-down`), the event arrived, and `receive` claimed the project.
+
+The timeout's advice — check that the sender ran `send` — pointed at the one Mac that had done
+everything right, the same misdirection finding 16 fixed for a dataless event. `receive` now
+checks this Mac's drive after a minute of waiting and again at timeout: a client that is not
+`idle` and has not synced down for 10 minutes is reported as stalled, with the Finder fix, and the
+timeout names it as the likelier cause. `tandem check` shows the same line.
+
+Two macOS 27 changes found on the way: `MobileMeAccounts` is now an empty plist, so the iCloud
+account comes from `~/Library/Accounts/Accounts4.sqlite` instead; and `ji-su.local` intermittently
+resolved to `127.0.0.1`, so ssh reached Madoka itself and correctly refused it as a changed host
+key. Connecting by IP with `-o HostKeyAlias=ji-su.local` checks the right key either way.
 
 ---
 

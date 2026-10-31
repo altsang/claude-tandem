@@ -428,7 +428,8 @@ per profile — but:
 
 ./bin/tandem hold "PROJECT" --to Ji-su                     # lock this Mac out
 ./bin/tandem release "PROJECT"                             # undo it
-./bin/tandem memory-install "PROJECT" --force              # take their memory, backing up yours
+./bin/tandem memory-install "PROJECT" --merge              # add their memory to yours (receive does this)
+./bin/tandem memory-install "PROJECT" --force              # replace yours with theirs, backing yours up
 ```
 
 The flags worth knowing on the daily pair:
@@ -512,6 +513,7 @@ Upload scales with size and you can watch it. Delivery to an idle peer runs ~2�
 | Skill upload rejected, "cannot have XML tags" | angle-bracket placeholders in `SKILL.md` | use bare words, not `<Project>` |
 | Project missing on the other Mac | local projects don't sync | `tandem send "P" --to MACHINE --no-doc`, then `tandem receive "P"` |
 | Not sure the files actually reached iCloud | `handoff` only staged them; nothing verified the upload | `tandem send` — it polls `isUploaded` until every file is up |
-| `receive` says memory "NOT overwriting" | this Mac already built its own store — the guardrail, not an error | keep yours (do nothing), or `tandem memory-install "P" --force` to take theirs; yours is backed up first |
+| `receive` reports a memory **clash** | the same memory changed on both Macs while each held the project | compare `name.md` (this Mac's, kept) with `name.from-<Mac>.md` (theirs, not indexed); keep one, delete the other by exact path |
+| `receive` waits, then times out — and the sender's `send` said UPLOADED | **this** Mac's iCloud Drive stopped pulling (seen after a reboot: `brctl status` shows `client:needs-sync`) | open Finder › iCloud Drive; it restarts the download, then re-run `receive`. `receive` and `tandem check` now say when this Mac's drive looks stalled |
 
 [**docs/findings.md**](docs/findings.md) has the measurements behind each of these, and the two commands that destroyed data during development.
