@@ -2,6 +2,36 @@
 
 > **Renamed 2026-10-30:** Claude MacOS Mirror is now **Claude Tandem**. The `mirror` command is `tandem`, `claude-profile` is `tandem profile`, and config moved from `~/.config/claude-macos-mirror` to `~/.config/claude-tandem`. Commands below use the new names. The findings themselves are unchanged.
 
+**What this file is.** The lab notebook behind every claim in the README and guides: what was measured, on which Macs, and — as often — what turned out to be wrong, kept in place with its correction rather than quietly edited away. The [profiles](profiles.md) and [handoffs](handoffs.md) guides are the how-to; this is the why.
+
+<details>
+<summary><b>Index</b></summary>
+
+- [1. Evicted iCloud files are *dataless*, not .icloud stubs](#1-evicted-icloud-files-are-dataless-not-icloud-stubs)
+- [2. In-place modifications may never propagate](#2-in-place-modifications-may-never-propagate)
+- [3. Enumeration sets your latency](#3-enumeration-sets-your-latency)
+- [4. Two writers to one iCloud path produce conflict copies](#4-two-writers-to-one-icloud-path-produce-conflict-copies)
+- [5. macOS ships openrsync](#5-macos-ships-openrsync)
+- [6. A sleeping laptop is indistinguishable from broken sync](#6-a-sleeping-laptop-is-indistinguishable-from-broken-sync)
+- [7. Attaching a folder makes a project machine-bound](#7-attaching-a-folder-makes-a-project-machine-bound)
+- [8. A symlinked folder registers as connected, then fails every read](#8-a-symlinked-folder-registers-as-connected-then-fails-every-read)
+- [9. The folder "grant" is one JSON field — no picker required](#9-the-folder-grant-is-one-json-field--no-picker-required)
+- [10. isUploaded is the only way to know the bytes left this Mac](#10-isuploaded-is-the-only-way-to-know-the-bytes-left-this-mac)
+- [11. What a verified transfer actually costs, end to end](#11-what-a-verified-transfer-actually-costs-end-to-end)
+- [12. A sandboxed session cannot make iCloud deliver — so it cannot tell "missing" from "late"](#12-a-sandboxed-session-cannot-make-icloud-deliver--so-it-cannot-tell-missing-from-late)
+- [12b. A project's instructions reach the session prompt — which makes them a lock](#12b-a-projects-instructions-reach-the-session-prompt--which-makes-them-a-lock)
+- [12c. Local projects DO have memory — on one Mac, in Application Support](#12c-local-projects-do-have-memory--on-one-mac-in-application-support)
+- [13. Cowork on a cloud project runs in a bridged VM with per-session folder access](#13-cowork-on-a-cloud-project-runs-in-a-bridged-vm-with-per-session-folder-access)
+- [14. A Cowork session is sandboxed to its granted folder — put per-project state inside it](#14-a-cowork-session-is-sandboxed-to-its-granted-folder--put-per-project-state-inside-it)
+- [15. Custom Cowork skills already sync](#15-custom-cowork-skills-already-sync)
+- [16. receive could never materialize the one file it reads first](#16-receive-could-never-materialize-the-one-file-it-reads-first)
+- [17. There are TWO session stores — and only one of them syncs](#17-there-are-two-session-stores--and-only-one-of-them-syncs)
+- [18. A stalled iCloud Drive on the RECEIVING Mac looks exactly like a missing handoff](#18-a-stalled-icloud-drive-on-the-receiving-mac-looks-exactly-like-a-missing-handoff)
+- [19. A running profile can carry its own Dock icon — through a clone, not an edit](#19-a-running-profile-can-carry-its-own-dock-icon--through-a-clone-not-an-edit)
+- [Two commands that caused damage during development](#two-commands-that-caused-damage-during-development)
+
+</details>
+
 Findings 1–15 were verified on macOS 26.6.2 (Ji-su) and Darwin 25.5 (Madoka) from 2026-08-18; 16–18 on macOS 27 (both Macs) in September–October 2026. Where a later finding corrects an earlier one, the earlier one says so in place.
 These are not style preferences — each one cost real debugging time, and several look like
 "iCloud is broken" until you know the mechanism.

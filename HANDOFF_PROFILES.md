@@ -85,7 +85,7 @@ on iCloud. So same-Mac account handoff reuses send/receive unchanged:
 | Icons: Claude's icon cropped full-bleed + coloured badge with initial; colour remembered in `~/.claude-p/.profile-color` | Rendered through `NSWorkspace.icon(forFile:)` — shows the badge, system-masked, no grey plate |
 | `doctor`: re-checks the 4 bundle facts; `desktop` auto-runs it when the version differs from `~/.config/claude-tandem/checked-version` | Passes on 4.29.0 |
 | `list` flags a running profile older than the installed bundle (`QUIT+REOPEN`) | Logic only — no update happened during testing |
-| README "Two accounts on one Mac (profiles)" section; handoff SKILL.md "Same Mac, other account" | — |
+| `docs/profiles.md` (the profiles guide); handoff SKILL.md "Same Mac, other account" | — |
 
 **Remaining:**
 
@@ -126,7 +126,7 @@ Silent ones first.
   `--integrity-policy record-and-continue`), then ran >10 min and was killed with no output.
   Next time: background it, restrict with `--source-path`, and upgrade Node first.
   `~/workspace/rea/evidence/` is empty; `~/workspace/rea/PLAN.md` build steps still show the
-  disproved `CLAUDE_USER_DATA_DIR` launch — the README here is authoritative.
+  disproved `CLAUDE_USER_DATA_DIR` launch — `docs/profiles.md` here is authoritative.
 - **Engine versioning rule:** never edit a shipped `coworkctl-vN.sh`; v8 is a new file for that
   reason (iCloud pins cached copies of modified files).
 - **Raw engine `handoff` does not check ownership;** the owner check lives in `tandem send`. Not a
