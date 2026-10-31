@@ -27,9 +27,12 @@ struct Profile: Decodable {
     let badge: String
     let badgeImage: String?
     let dockIcon: Bool?
+    let desktopAccount: String?
+    let adoptable: Int?
     enum CodingKeys: String, CodingKey {
-        case id, name, email, plan, open, pid, stale, color, badge
+        case id, name, email, plan, open, pid, stale, color, badge, adoptable
         case isDefault = "default", badgeImage = "badge_image", dockIcon = "dock_icon"
+        case desktopAccount = "desktop_account"
     }
 }
 
@@ -83,6 +86,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         .trimmingCharacters(in: .whitespacesAndNewlines)
     var status: NSStatusItem?
     var profiles: [Profile] = []
+    var signInWatchers: [String: Timer] = [:]
 
     func applicationDidFinishLaunching(_ n: Notification) {
         let s = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -131,6 +135,10 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let title = NSMutableAttributedString(string: p.name, attributes: [.font: NSFont.boldSystemFont(ofSize: NSFont.systemFontSize)])
         let who = [p.email ?? "Claude Code not signed in", p.plan?.capitalized].compactMap { $0 }.joined(separator: " · ")
         title.append(NSAttributedString(string: "\n" + who, attributes: small))
+        if let n = p.adoptable, n > 0 {
+            title.append(NSAttributedString(string: "  ·  \(n) earlier session\(n == 1 ? "" : "s") to bring in",
+                attributes: [.font: NSFont.menuFont(ofSize: 11), .foregroundColor: NSColor.systemBlue]))
+        }
         if p.stale {
             title.append(NSAttributedString(string: "  ·  Reopen to update",
                 attributes: [.font: NSFont.menuFont(ofSize: 11), .foregroundColor: NSColor.systemOrange]))
@@ -162,6 +170,10 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         add(m, "Hand Off a Project", nil).submenu = handoffMenu(from: p)
         add(m, "Receive a Project", nil).submenu = receiveMenu(as: p)
         m.addItem(.separator())
+        if let n = p.adoptable, n > 0 {
+            add(m, "Bring In Earlier Sessions (\(n))…") { [unowned self] in self.adoptWizard(p.id) }
+            m.addItem(.separator())
+        }
         add(m, "Rename…") { [unowned self] in self.rename(p) }
         add(m, "Change Badge…") { [unowned self] in self.changeBadge(p) }
         add(m, "Badge Colour", nil).submenu = colourMenu(p)
@@ -337,7 +349,8 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 a.addButton(withTitle: "Open Claude Code")
                 a.addButton(withTitle: "Later")
                 switch a.runModal() {
-                case .alertFirstButtonReturn: self.cli(["desktop", name])
+                case .alertFirstButtonReturn:
+                    self.cli(["desktop", name]) { self.watchForSignIn(name) }
                 case .alertSecondButtonReturn: self.terminal("claude @\(name)", title: "Claude Code — \(name)", wait: false)
                 default: break
                 }
@@ -354,6 +367,53 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
                   "\(error.localizedDescription)\n\nAdd it by hand: System Settings › General › Login Items › + and choose Claude Tandem in ~/Applications.")
         }
         if svc.status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
+    }
+
+    // MARK: adopt — the setup wizard's last step
+
+    /// A new profile's account is only known once its desktop app is signed in, so after
+    /// New Profile → Open Claude, look every few seconds (for up to 20 minutes) for the
+    /// sign-in to land, then offer what that account left in the regular Claude.
+    func watchForSignIn(_ id: String) {
+        signInWatchers[id]?.invalidate()
+        let started = Date()
+        signInWatchers[id] = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [unowned self] t in
+            if Date().timeIntervalSince(started) > 1200 { t.invalidate(); self.signInWatchers[id] = nil; return }
+            guard let p = self.loadProfiles().first(where: { $0.id == id }), p.desktopAccount != nil else { return }
+            t.invalidate(); self.signInWatchers[id] = nil
+            if (p.adoptable ?? 0) > 0 { self.adoptWizard(id) }
+        }
+    }
+
+    func adoptWizard(_ id: String) {
+        let r = runProcess("/bin/bash", [tandem, "profile", "adopt", id, "--dry-run", "--json"], path: path)
+        guard let data = r.out.data(using: .utf8),
+              let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let sessions = j["sessions"] as? [[String: Any]], !sessions.isEmpty,
+              let p = loadProfiles().first(where: { $0.id == id }) else { return }
+        let titles = sessions.prefix(6).map { "  ·  " + (($0["title"] as? String) ?? "untitled") }
+        let more = sessions.count > 6 ? "\n  ·  …and \(sessions.count - 6) more" : ""
+        let cowork = (j["cowork_projects"] as? Int ?? 0) + (j["cowork_sessions"] as? Int ?? 0)
+        activate()
+        let a = NSAlert()
+        a.messageText = "Bring \(p.name)’s earlier work in?"
+        a.informativeText = "\(p.name) is signed in\(p.email.map { " as " + $0 } ?? ""). Before it had its own profile, this account was used in your regular Claude app, which still has \(sessions.count) Claude Code session\(sessions.count == 1 ? "" : "s") from it:\n\n"
+            + titles.joined(separator: "\n") + more
+            + "\n\nThey’ll be copied — your regular Claude keeps its own. "
+            + (p.open ? "\(p.name) will close for a moment and reopen." : "")
+            + (cowork > 0 ? "\n\nIt also left Cowork projects or sessions there; those aren’t moved yet." : "")
+        a.addButton(withTitle: "Copy Them")
+        a.addButton(withTitle: "Not Now")
+        a.addButton(withTitle: "Never for This Profile")
+        switch a.runModal() {
+        case .alertFirstButtonReturn:
+            cli(["adopt", id, "--restart"]) {
+                self.alert("Done", "\(sessions.count) session\(sessions.count == 1 ? " is" : "s are") now in \(p.name)’s Code tab.")
+            }
+        case .alertThirdButtonReturn:
+            cli(["adopt", id, "--never"])
+        default: break
+        }
     }
 
     // MARK: plumbing

@@ -23,6 +23,7 @@ Anywhere a profile is named you can use its id or its name. `default` is the Cla
 | `tandem profile code P [args]` | Claude Code as that profile, passing `args` through (`--resume`, a prompt, …) |
 | `tandem profile list [--json]` | each profile's Code account and plan, desktop account, whether it's open, and whether it needs reopening after an update |
 | `tandem profile quit P` | quit that profile's app the way ⌘Q does, and wait up to 15 s for it to close |
+| `tandem profile adopt P [--dry-run] [--restart] [--never]` | copy in Claude Code sessions this profile's account left in your regular Claude before it had a profile ([details](profiles.md#used-this-account-before-bring-its-history-in)) |
 | `tandem profile rename P NEW` | a new name everywhere; the id and folders stay ([why](profiles.md#names-and-ids)) |
 | `tandem profile app P [options]` | build its Dock launcher, `~/Applications/Claude (NAME).app` |
 | `tandem profile app --all` | rebuild every launcher, e.g. after Claude's icon changes |
@@ -144,7 +145,7 @@ _handoff/projects/P.TIME.manifest.json   sizes and md5s: what receive verifies a
 ~/.config/claude-tandem/checked-version  the Claude version doctor last passed
 ~/.config/claude-tandem/runtimes/ID/     a profile's Dock copy of Claude.app (--dock-icon)
 ~/.claude-ID/                            a profile's Claude Code config and sign-in
-   .profile-name · .profile-badge · .profile-badge.png · .profile-color · .profile-dock-icon
+   .profile-name · .profile-badge · .profile-badge.png · .profile-color · .profile-dock-icon · .profile-adopt-declined
 ~/Library/Application Support/Claude-ID/ a profile's desktop data
 ~/Applications/Claude (NAME).app         a profile's Dock launcher
 ~/Applications/Claude Tandem.app         the menu-bar app

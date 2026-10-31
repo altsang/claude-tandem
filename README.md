@@ -89,6 +89,8 @@ default          you@personal.com (max)             account c9390ef8            
 work             you@company.com (team)             account d37cdc9d                   yes
 ```
 
+Used an account in your regular Claude before giving it a profile? Its sessions aren't lost: the menu bar offers to bring them in when you sign in (`tandem profile adopt`).
+
 Day to day you mostly won't type these: open accounts from their Dock launchers or the menu bar, and run `claude @work` in a terminal (a small zsh hook; `tandem profile code work` does the same anywhere).
 
 **→ [The profiles guide](docs/profiles.md)** — creating and signing in, renaming, what happens when Claude updates, and how it works underneath.

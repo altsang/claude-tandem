@@ -13,6 +13,7 @@ Most of these fail *silently*: nothing errors, things just look fine and aren't.
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| A new profile's Code tab is empty, though you've used that account before | you used it in your **regular** Claude before it had a profile; the work is still there | menu bar › profile › **Bring In Earlier Sessions…**, or `tandem profile adopt P` |
 | A new profile signed in as an account you already use | claude.ai signed it into whichever account the browser already had | in that profile, sign out and sign in again, from a **private browser window** |
 | `claude @work`: *not signed in*, though you signed in | `CLAUDE_CONFIG_DIR` set for `default`: even pointing at `~/.claude`, Claude Code looks for a different Keychain item | run `default` with it unset. `tandem profile code` and the `claude @` hook do this |
 | Two open profiles look identical in the Dock and ⌘-Tab | they all run the one Claude.app | `tandem profile app P --dock-icon`, then reopen it; or tell them apart in the menu bar |

@@ -4,6 +4,7 @@ The Claude desktop app and Claude Code each hold one signed-in account at a time
 
 - [What a profile is](#what-a-profile-is)
 - [Create one and sign in](#create-one-and-sign-in)
+- [Used this account before? Bring its history in](#used-this-account-before-bring-its-history-in)
 - [Every day](#every-day)
 - [Names and ids](#names-and-ids)
 - [Badges, launchers and the Dock](#badges-launchers-and-the-dock)
@@ -55,6 +56,28 @@ work             you@company.com (team)             account d37cdc9d            
 ```
 
 Your default sign-in is untouched by any of this: each profile's Claude Code login is its own Keychain item, confirmed with two real accounts signed in at once.
+
+---
+
+## Used this account before? Bring its history in
+
+If you signed this account into your **regular** Claude before giving it a profile, its work is still there. The new profile is a fresh folder, so it starts empty, and it looks as if your sessions vanished. They haven't.
+
+**From the menu bar it's a setup step.** After *New Profile… → Open Claude* and you sign in, Claude Tandem checks whether your regular Claude holds anything from that account, and asks:
+
+> *Bring Junipera's earlier work in?* Junipera is signed in as you@company.com. Before it had its own profile, this account was used in your regular Claude app, which still has 4 Claude Code sessions from it: AI Video Editing Kit for Chloe, … · **Copy Them** · **Not Now** · **Never for This Profile**
+
+For a profile you already have, the menu marks it *"4 earlier sessions to bring in"* and offers **Bring In Earlier Sessions…** in its submenu. `tandem profile list` points it out too. From the terminal:
+
+```bash
+./bin/tandem profile adopt work --dry-run      # what it would bring in
+./bin/tandem profile adopt work --restart      # copy it, closing and reopening `work` if it's open
+./bin/tandem profile adopt work --never        # stop offering (adopt still works if you ask)
+```
+
+It **copies, never moves**: each Claude Code session's record and its full conversation, checked byte for byte, and only what the profile doesn't already have. Your regular Claude keeps its originals. The profile's app has to be closed while it copies, because a running app rewrites its own session list from memory.
+
+**Not yet:** Cowork projects and sessions the account left behind. `adopt` lists them but doesn't move them, because their files record absolute paths into the regular app's folder and moving them needs path rewriting that hasn't been proven yet.
 
 ---
 

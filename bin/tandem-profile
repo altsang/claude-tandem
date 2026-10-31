@@ -23,6 +23,9 @@
 #                                    see "Names and ids" below
 #   tandem profile code <p> [args]   run Claude Code as <p>  (in zsh: claude @<p> [args])
 #   tandem profile quit <p>          quit <p>'s Claude desktop the way ⌘Q does
+#   tandem profile adopt <p> [--dry-run] [--restart]
+#                                    bring in <p>'s account history left in the default
+#                                    Claude — from before the profile existed (see cmd_adopt)
 #   tandem profile list [--json]     each profile's account, plan and whether it is open
 #   tandem profile menubar [--rebuild]
 #                                    build and open "Claude Tandem", a menu-bar app:
@@ -376,6 +379,108 @@ cmd_quit(){
   die "'$(label "$p")' is still open after 15s — it may be asking something in its window"
 }
 
+# --- adopt: history an account left in the default Claude, before it had a profile -----
+# Signing a second account into the regular app stores its Claude Code sessions under
+# Application Support/Claude/claude-code-sessions/<account>/, with their transcripts in
+# ~/.claude/projects/. A profile made later for that account starts empty, so the work
+# looks lost. Found 2026-10-31: four Junipera-account sessions (AI Video Editing Kit for
+# Chloe, …) stranded this way, then copied by hand and confirmed in the profile's Code tab.
+# Copies, never moves — the regular app keeps its originals — and only what is missing.
+# Cowork data the account left is reported, not moved: its session files record absolute
+# paths into the regular app's folder, so moving them needs path rewriting not yet proven.
+adopt_py(){   # <mode: scan|copy> <profile config dir> <profile data dir>
+  python3 - "$1" "$APPSUPPORT/Claude" "$HOME/.claude" "$2" "$3" <<'PY'
+import json, os, sys, glob, shutil, hashlib
+mode, src_data, src_cfg, dst_cfg, dst_data = sys.argv[1:]
+def load(p):
+    try: return json.load(open(p))
+    except Exception: return {}
+acct = load(os.path.join(dst_data, "config.json")).get("lastKnownAccountUuid")
+out = {"account": acct, "sessions": [], "cowork_projects": 0, "cowork_sessions": 0, "copied": 0, "problems": []}
+if not acct:
+    print(json.dumps(out)); sys.exit(0)
+for rec in sorted(glob.glob(os.path.join(src_data, "claude-code-sessions", acct, "*", "local_*.json"))):
+    org = os.path.basename(os.path.dirname(rec))
+    dst_rec = os.path.join(dst_data, "claude-code-sessions", acct, org, os.path.basename(rec))
+    if os.path.exists(dst_rec): continue           # already here: adopted before, or never left
+    d = load(rec); cli = d.get("cliSessionId", "")
+    found = glob.glob(os.path.join(src_cfg, "projects", "*", cli + ".jsonl")) if cli else []
+    item = {"title": d.get("title") or "(untitled)", "cwd": d.get("cwd"), "record": rec,
+            "transcript": found[0] if found else None}
+    out["sessions"].append(item)
+    if mode != "copy": continue
+    os.makedirs(os.path.dirname(dst_rec), exist_ok=True)
+    shutil.copy2(rec, dst_rec)
+    ok = True
+    if item["transcript"]:
+        proj = os.path.basename(os.path.dirname(item["transcript"]))
+        to = os.path.join(dst_cfg, "projects", proj); os.makedirs(to, exist_ok=True)
+        t_dst = os.path.join(to, cli + ".jsonl")
+        if not os.path.exists(t_dst): shutil.copy2(item["transcript"], t_dst)
+        side = item["transcript"][:-len(".jsonl")]
+        if os.path.isdir(side) and not os.path.exists(os.path.join(to, cli)):
+            shutil.copytree(side, os.path.join(to, cli), symlinks=True)
+        md5 = lambda p: hashlib.md5(open(p, "rb").read()).hexdigest()
+        ok = md5(item["transcript"]) == md5(t_dst)
+    ok = ok and hashlib.md5(open(rec,"rb").read()).digest() == hashlib.md5(open(dst_rec,"rb").read()).digest()
+    if ok: out["copied"] += 1
+    else: out["problems"].append(item["title"])
+for org_dir in glob.glob(os.path.join(src_data, "local-agent-mode-sessions", acct, "*")):
+    out["cowork_projects"] += len(load(os.path.join(org_dir, "spaces.json")).get("spaces", []))
+    out["cowork_sessions"] += len(glob.glob(os.path.join(org_dir, "local_*.json")))
+print(json.dumps(out))
+PY
+}
+
+cmd_adopt(){
+  local p="" dry=0 restart=0 json=0 never=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --dry-run) dry=1; shift;; --restart) restart=1; shift;; --json) json=1; shift;;
+      --never) never=1; shift;;
+      *) p="$1"; shift;;
+    esac
+  done
+  check_name "$p"; p="$(need "$p")" || exit 1
+  [ "$p" = default ] && die "adopt brings history INTO a profile; default is where it comes from"
+  local cfg data r was_open=0; cfg="$(config_dir "$p")"; data="$(data_dir "$p")"
+  if [ "$never" = 1 ]; then
+    touch "$cfg/.profile-adopt-declined"
+    ok "won't offer '$(label "$p")' earlier history again (tandem profile adopt $(label "$p") still works)"; return 0
+  fi
+  [ "$dry" = 0 ] && rm -f "$cfg/.profile-adopt-declined"   # asked for it explicitly: the "never" is over
+  r="$(adopt_py scan "$cfg" "$data")"
+  if [ "$json" = 1 ] && [ "$dry" = 1 ]; then echo "$r"; return 0; fi
+  python3 -c '
+import json,sys
+r=json.loads(sys.argv[1]); name=sys.argv[2]
+if not r["account"]:
+    print(f"  {name} is not signed in yet — sign in to its desktop app first: tandem profile desktop {name}"); sys.exit(0)
+n=len(r["sessions"])
+print(f"  {name} is account {r["account"][:8]}. Left in your regular Claude from that account:")
+print(f"    {n} Claude Code session(s) not yet in {name}" + (":" if n else ""))
+for s in r["sessions"]: print(f"      · {s["title"]}  ({s["cwd"]})" + ("" if s["transcript"] else "  — transcript not found; the record alone"))
+if r["cowork_projects"] or r["cowork_sessions"]:
+    print(f"    {r["cowork_projects"]} Cowork project(s) and {r["cowork_sessions"]} Cowork session(s) — listed only, not moved (see adopt in docs/profiles.md)")' "$r" "$(label "$p")"
+  local n; n="$(python3 -c 'import json,sys; print(len(json.loads(sys.argv[1])["sessions"]))' "$r")"
+  [ "$n" = 0 ] && return 0
+  [ "$dry" = 1 ] && { echo "  (dry run — nothing copied)"; return 0; }
+  # the profile's app keeps its session list in memory and would write over the copies
+  if desktop_running "$p"; then
+    [ "$restart" = 1 ] || die "'$(label "$p")' is open — quit it first, or add --restart to have adopt close and reopen it"
+    was_open=1; cmd_quit "$p" >/dev/null || die "could not quit '$(label "$p")'"
+    local i; for i in 1 2 3 4 5 6 7 8 9 10; do pgrep -f "$data" >/dev/null || break; sleep 1; done
+  fi
+  r="$(adopt_py copy "$cfg" "$data")"
+  python3 -c '
+import json,sys
+r=json.loads(sys.argv[1])
+print(f"  ✓ copied {r["copied"]} session(s) into {sys.argv[2]}, each checked byte for byte; your regular Claude keeps its originals")
+for t in r["problems"]: print(f"  ✗ {t}: the copy did not match — left for you to check")' "$r" "$(label "$p")"
+  [ "$was_open" = 1 ] && cmd_desktop "$p" >/dev/null && ok "reopened '$(label "$p")'"
+  return 0
+}
+
 # Rename = a new display name. The id (folder names) stays: see "Names and ids" above.
 cmd_rename(){
   local from="${1:-}" to="${2:-}" id old other
@@ -465,9 +570,10 @@ list_json(){
     [ -n "$color" ] || { if [ "$p" = default ]; then color='#3A3A40'; else color="$(default_color "$p")"; fi; }
     [ "$p" != default ] && [ -d "$HOME/Applications/Claude ($(label "$p")).app" ] \
       && launcher="$HOME/Applications/Claude ($(label "$p")).app"
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$p" "$(label "$p")" "$cj" \
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$p" "$(label "$p")" "$cj" \
       "$(data_dir "$p")/config.json" "$open" "$stale" "$color" "$cfg" "$launcher" "$pid" \
-      "$(dock_icon_on "$p" && echo 1 || echo 0)"
+      "$(dock_icon_on "$p" && echo 1 || echo 0)" \
+      "$( { [ "$p" = default ] || [ -f "$cfg/.profile-adopt-declined" ]; } && echo 0 || adopt_py scan "$cfg" "$(data_dir "$p")" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["sessions"]))')"
   done | python3 -c '
 import sys, json, os
 def load(f):
@@ -475,7 +581,7 @@ def load(f):
     except Exception: return {}
 out = []
 for line in sys.stdin:
-    pid, name, cj, dc, op, st, color, cfg, launcher, proc, dock = line.rstrip("\n").split("\t")
+    pid, name, cj, dc, op, st, color, cfg, launcher, proc, dock, adopt = line.rstrip("\n").split("\t")
     acct = load(cj).get("oauthAccount") or {}
     da = load(dc).get("lastKnownAccountUuid")
     try: badge = open(os.path.join(cfg, ".profile-badge")).read().strip()
@@ -489,7 +595,8 @@ for line in sys.stdin:
         "stale": st == "1", "color": color,
         "badge": badge or (name[:2].upper() if len(name) <= 2 else name[0].upper()),
         "badge_image": img if os.path.exists(img) else None,
-        "launcher": launcher or None, "dock_icon": dock == "1"})
+        "launcher": launcher or None, "dock_icon": dock == "1",
+        "adoptable": int(adopt) if adopt.isdigit() else 0})
 print(json.dumps(out))'
 }
 
@@ -516,6 +623,14 @@ print(f"account {a[:8]}" if a else "not signed in")' "$data/config.json")"
     local shown; shown="$(label "$p")"; [ "$shown" = "$p" ] || shown="$shown ($p)"
     printf '%-16s %-34s %-34s %s\n' "$shown" "$code" "$desk" "$run"
   done
+  # history an account left in the default Claude before it had this profile
+  local n
+  for p in $(profiles); do
+    [ "$p" = default ] && continue; [ -f "$(config_dir "$p")/.profile-adopt-declined" ] && continue
+    n="$(adopt_py scan "$(config_dir "$p")" "$(data_dir "$p")" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["sessions"]))')"
+    [ "${n:-0}" -gt 0 ] && echo "  ↳ $(label "$p"): $n earlier Claude Code session(s) from this account are in your regular Claude — tandem profile adopt $(label "$p")"
+  done
+  return 0
 }
 
 # Claude Code keeps sessions as files under projects/ and plans/, so copying them lets
@@ -599,6 +714,7 @@ case "${1:-help}" in
   code)    shift; cmd_code "$@";;
   rename)  shift; cmd_rename "$@";;
   quit)    shift; cmd_quit "$@";;
+  adopt)   shift; cmd_adopt "$@";;
   menubar) shift; cmd_menubar "$@";;
   list)    shift; cmd_list "$@";;
   sync)    shift; cmd_sync "$@";;
