@@ -26,9 +26,10 @@ struct Profile: Decodable {
     let color: String
     let badge: String
     let badgeImage: String?
+    let dockIcon: Bool?
     enum CodingKeys: String, CodingKey {
         case id, name, email, plan, open, pid, stale, color, badge
-        case isDefault = "default", badgeImage = "badge_image"
+        case isDefault = "default", badgeImage = "badge_image", dockIcon = "dock_icon"
     }
 }
 
@@ -164,6 +165,18 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         add(m, "Rename…") { [unowned self] in self.rename(p) }
         add(m, "Change Badge…") { [unowned self] in self.changeBadge(p) }
         add(m, "Badge Colour", nil).submenu = colourMenu(p)
+        if !p.isDefault {
+            // runs this profile as its own badged copy of Claude, so the Dock can tell them apart
+            let on = p.dockIcon ?? false
+            let d = add(m, "Show Badge in the Dock") { [unowned self] in
+                self.cli(["app", p.id, on ? "--no-dock-icon" : "--dock-icon"]) {
+                    if !on && p.open {
+                        self.alert("Badge in the Dock: on", "It shows the next time \(p.name) opens — quit and reopen it.")
+                    }
+                }
+            }
+            d.state = on ? .on : .off
+        }
         return m
     }
 

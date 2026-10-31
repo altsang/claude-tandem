@@ -577,6 +577,34 @@ account comes from `~/Library/Accounts/Accounts4.sqlite` instead; and `ji-su.loc
 resolved to `127.0.0.1`, so ssh reached Madoka itself and correctly refused it as a changed host
 key. Connecting by IP with `-o HostKeyAlias=ji-su.local` checks the right key either way.
 
+
+## 19. A running profile can carry its own Dock icon — through a clone, not an edit
+
+Every profile runs the one signed `/Applications/Claude.app`, so in the Dock and ⌘-Tab two open
+profiles are identical. Editing the bundle's icon would break its signature, its updates and its
+Keychain access. Measured 2026-10-31 on Claude 4.29.0, macOS 27:
+
+| Step | Result |
+|---|---|
+| `cp -Rc Claude.app` (APFS clone), 615 MB | 0.16 s, **no disk used** |
+| `codesign --verify` on the clone | valid |
+| custom icon set as Finder's paste-icon does (`NSWorkspace setIcon:forFile:`) | adds `Icon\r` and Finder info at the bundle root |
+| `codesign --verify` after that | **valid**; only `--strict` objects ("Finder information… not allowed") |
+| `spctl -a -vv` | **accepted**, `source=Notarized Developer ID` |
+| launched with `--user-data-dir` | the **Dock shows the badged icon** while it runs |
+| `claude://` handler, before / after the clone registers | `/Applications/Claude.app` both times — LaunchServices prefers it |
+
+Two details mattered. A custom icon is drawn as-is — macOS does not mask it as it masks an app's
+own `.icns` — so the clone's icon is pre-rounded on Apple's grid (824 px body, 185 px corner). And
+every "is Claude running" check matches argv[0] `…/Claude.app/Contents/MacOS/Claude`, split on
+whitespace; naming each clone `Claude.app` under `~/.config/claude-tandem/runtimes/<id>/` — a path
+with no spaces — made all of them see it with no code change. Confirmed with the clone running:
+`tandem --profile <p>` refused to edit its `spaces.json`, and `tandem profile quit` found and quit it.
+
+Opt-in (`app --dock-icon`) until a signed-in profile has used it: not yet observed is whether the
+clone needs a one-time Keychain approval for *Claude Safe Storage*, the key Electron encrypts the
+login cookies with.
+
 ---
 
 ## Two commands that caused damage during development

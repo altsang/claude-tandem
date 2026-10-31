@@ -16,6 +16,8 @@
 #                                    The badge is the name's initial unless you give one
 #                                    or two letters, an emoji, or an image (--badge auto
 #                                    goes back to the initial). All three are remembered.
+#                                    --dock-icon: while it runs, show the badge in the Dock
+#                                    too (--no-dock-icon turns it off) — see make_runtime
 #   tandem profile rename <p> <new>  rename a profile: launcher, list, claude @<new>,
 #                                    tandem --profile <new>. Its folders keep their id —
 #                                    see "Names and ids" below
@@ -148,7 +150,14 @@ cmd_desktop(){
   # but honor Chromium's --user-data-dir, and the single-instance lock is per data
   # folder, so this is a second, independent app. CLAUDE_CONFIG_DIR makes its Code tab
   # use the same login as `claude @<p>` in a terminal.
-  open -n -a "$CLAUDE_APP" --env "CLAUDE_CONFIG_DIR=$(config_dir "$p")" --args "--user-data-dir=$data"
+  local app="$CLAUDE_APP"
+  if dock_icon_on "$p"; then
+    # Claude updated since the copy was made, or it was never built: refresh it — instant
+    runtime_current "$p" || cmd_app "$p" >/dev/null 2>&1 || true
+    if runtime_current "$p"; then app="$(runtime_app "$p")"
+    else echo "  - dock icon: couldn't prepare the badged copy; opening Claude without it"; fi
+  fi
+  open -n -a "$app" --env "CLAUDE_CONFIG_DIR=$(config_dir "$p")" --args "--user-data-dir=$data"
   ok "opened Claude as '$(label "$p")'"
 }
 
@@ -156,13 +165,13 @@ cmd_desktop(){
 # whatever Claude.app currently ships, so `app --all` after an upgrade picks up a new
 # icon. The colour is remembered per profile in its config folder.
 make_icon(){
-  local p="$1" color="$2" out="$3" text="${4:-}" image="${5:-}" src
+  local p="$1" color="$2" out="$3" text="${4:-}" image="${5:-}" shape="${6:-bleed}" src
   src="$CLAUDE_APP/Contents/Resources/$(defaults read "$CLAUDE_APP/Contents/Info.plist" CFBundleIconFile 2>/dev/null)"
   [ -f "$src" ] || src="${src}.icns"
-  python3 - "$src" "$p" "$color" "$out" "$text" "$image" <<'PY' || return 1
+  python3 - "$src" "$p" "$color" "$out" "$text" "$image" "$shape" <<'PY' || return 1
 import sys, unicodedata
 from PIL import Image, ImageDraw, ImageFont
-src, name, color, out, text, image = sys.argv[1:]
+src, name, color, out, text, image, shape = sys.argv[1:]
 im = Image.open(src).convert("RGBA").resize((1024, 1024), Image.LANCZOS)   # icns opens at its largest
 # macOS 26+ puts an .icns whose art is not full-bleed on a grey plate. Claude's .icns
 # is a rounded tile inside transparent margins, so crop to the tile and fill its
@@ -214,9 +223,47 @@ else:
         ImageDraw.Draw(canvas).text((320, 320), label, font=font, fill="white", anchor="mm")
         g = fit(canvas, 210 if len(label) == 1 else 250)
     im.alpha_composite(g, (cx - g.width//2, cy - g.height//2))
+if shape == "rounded":
+    # A custom icon set on a bundle (the Dock copy's) is drawn as-is — macOS does not mask
+    # it the way it masks an app's own .icns — so round it here, on Apple's icon grid:
+    # an 824 px body with a 185 px corner, centred in 1024 with transparent margins.
+    body = im.resize((824, 824), Image.LANCZOS)
+    mask = Image.new("L", (824, 824), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, 823, 823), radius=185, fill=255)
+    im = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+    im.paste(body, (100, 100), mask)
 im.save(out, sizes=[(16,16),(32,32),(64,64),(128,128),(256,256),(512,512),(1024,1024)])
 PY
 }
+
+# --- the badge in the Dock while a profile runs (opt-in: app <p> --dock-icon) ---------
+# Every profile runs the one signed Claude.app, so a running profile shows Claude's own
+# Dock icon and two open profiles look identical. With --dock-icon a profile runs its own
+# APFS clone of Claude.app instead — instant, no extra disk — carrying a custom icon set
+# the way Finder's Get Info › paste does. Claude.app itself is never modified.
+# Measured 2026-10-31 (finding 19): the clone stays validly signed (codesign --verify;
+# Gatekeeper "accepted, Notarized Developer ID" — only --strict objects to the Finder
+# metadata), the Dock shows the badge while it runs, and claude:// links stay with
+# /Applications/Claude.app. Each clone is named Claude.app in a path with no spaces, so
+# every "is Claude running" check — they match argv[0] .../Claude.app/Contents/MacOS/Claude
+# split on whitespace — sees it without a change.
+runtime_app(){ echo "$CONFDIR/runtimes/$1/Claude.app"; }
+dock_icon_on(){ [ -f "$(config_dir "$1")/.profile-dock-icon" ]; }
+runtime_current(){   # built, and from the Claude.app installed now
+  local app; app="$(runtime_app "$1")"
+  [ -d "$app" ] && [ "$(defaults read "$app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null)" = "$(app_version)" ]
+}
+make_runtime(){   # <id> <icon file>
+  local p="$1" icon="$2" app; app="$(runtime_app "$p")"
+  case "$app" in *" "*) echo "  - dock icon: '$app' has a space in it; skipped"; return 1;; esac
+  if desktop_running "$p"; then echo "  - dock icon: '$(label "$p")' is open — it takes effect after you quit and reopen it"; return 1; fi
+  rm -rf "$app"; mkdir -p "$(dirname "$app")"   # exact path: our own clone
+  cp -Rc "$CLAUDE_APP" "$app" 2>/dev/null || cp -R "$CLAUDE_APP" "$app" || return 1   # -c: APFS clone
+  osascript -l JavaScript -e "ObjC.import('AppKit'); \$.NSWorkspace.sharedWorkspace.setIconForFileOptions(\$.NSImage.alloc.initWithContentsOfFile('$icon'), '$app', 0)" >/dev/null 2>&1 \
+    || { echo "  - dock icon: could not set the icon"; return 1; }
+  codesign --verify "$app" 2>/dev/null || { rm -rf "$app"; echo "  - dock icon: the copy failed its signature check, so it was removed"; return 1; }
+}
+remove_runtime(){ local d; d="$(dirname "$(runtime_app "$1")")"; [ -d "$d" ] && rm -rf "$d"; return 0; }
 
 # Distinct, readable on both light and dark Docks; chosen by name so it is stable.
 default_color(){
@@ -226,9 +273,11 @@ default_color(){
 }
 
 cmd_app(){
-  local p="" color="" all=0 badge="" bimage="" breset=0
+  local p="" color="" all=0 badge="" bimage="" breset=0 dock=""
   while [ $# -gt 0 ]; do
     case "$1" in
+      --dock-icon) dock=on; shift;;
+      --no-dock-icon) dock=off; shift;;
       --color) color="${2:-}"; shift 2;;
       --badge) badge="${2:-}"; shift 2;;
       --badge-image) bimage="${2:-}"; shift 2;;
@@ -241,6 +290,7 @@ cmd_app(){
     local q; for q in $(profiles); do [ "$q" = default ] || cmd_app "$q"; done; return
   fi
   check_name "$p"; p="$(need "$p")" || exit 1
+  [ "$p" = default ] && [ -n "$dock" ] && die "--dock-icon is for added profiles: default is Claude.app itself"
   if [ "$p" = default ] && [ -z "$badge$bimage$color" ] && [ "$breset" = 0 ]; then
     die "the default profile is Claude.app itself — it has no launcher (a badge or colour for it shows in the menu bar)"
   fi
@@ -295,6 +345,20 @@ sys.exit(0 if ok else 1)' "$badge" || die "--badge takes one or two letters or d
   # Finder and the Dock cache icons by bundle; touching the bundle makes them re-read it.
   touch "$app" "$app/Contents" "$app/Contents/Info.plist"
   ok "launcher: $app (drag it to the Dock)"
+
+  [ "$dock" = on ] && touch "$cfg/.profile-dock-icon"
+  if [ "$dock" = off ]; then
+    rm -f "$cfg/.profile-dock-icon"
+    if desktop_running "$p"; then ok "dock icon: off from the next time '$(label "$p")' opens"
+    else remove_runtime "$p"; ok "dock icon: off"; fi
+  fi
+  if dock_icon_on "$p"; then
+    local ricon="$CONFDIR/runtimes/$p/icon.icns"
+    mkdir -p "$(dirname "$ricon")"
+    make_icon "$(label "$p")" "$color" "$ricon" "$btext" "$bimg" rounded \
+      && make_runtime "$p" "$ricon" \
+      && ok "dock icon: on — '$(label "$p")' runs as its own badged copy of Claude (no extra disk)"
+  fi
 }
 
 # Quit one profile's desktop app. All profiles are the same bundle id, so quitting "Claude"
@@ -327,7 +391,7 @@ cmd_rename(){
   if [ "$to" = "$id" ]; then rm -f "$(name_file "$id")"; else printf '%s\n' "$to" > "$(name_file "$id")"; fi
   ok "'$old' is now '$to'"
   echo "    id stays '$id': folders, Claude Code login and handoffs are untouched"
-  if [ "$id" != default ] && [ -d "$HOME/Applications/Claude ($old).app" ]; then
+  if [ "$id" != default ] && { [ -d "$HOME/Applications/Claude ($old).app" ] || dock_icon_on "$id"; }; then
     rm -rf "$HOME/Applications/Claude ($old).app"   # exact path: our own generated launcher
     cmd_app "$id" >/dev/null && ok "launcher: Claude ($to).app — drag it to the Dock; the old tile now shows '?'"
   fi
@@ -401,8 +465,9 @@ list_json(){
     [ -n "$color" ] || { if [ "$p" = default ]; then color='#3A3A40'; else color="$(default_color "$p")"; fi; }
     [ "$p" != default ] && [ -d "$HOME/Applications/Claude ($(label "$p")).app" ] \
       && launcher="$HOME/Applications/Claude ($(label "$p")).app"
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$p" "$(label "$p")" "$cj" \
-      "$(data_dir "$p")/config.json" "$open" "$stale" "$color" "$cfg" "$launcher" "$pid"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$p" "$(label "$p")" "$cj" \
+      "$(data_dir "$p")/config.json" "$open" "$stale" "$color" "$cfg" "$launcher" "$pid" \
+      "$(dock_icon_on "$p" && echo 1 || echo 0)"
   done | python3 -c '
 import sys, json, os
 def load(f):
@@ -410,7 +475,7 @@ def load(f):
     except Exception: return {}
 out = []
 for line in sys.stdin:
-    pid, name, cj, dc, op, st, color, cfg, launcher, proc = line.rstrip("\n").split("\t")
+    pid, name, cj, dc, op, st, color, cfg, launcher, proc, dock = line.rstrip("\n").split("\t")
     acct = load(cj).get("oauthAccount") or {}
     da = load(dc).get("lastKnownAccountUuid")
     try: badge = open(os.path.join(cfg, ".profile-badge")).read().strip()
@@ -424,7 +489,7 @@ for line in sys.stdin:
         "stale": st == "1", "color": color,
         "badge": badge or (name[:2].upper() if len(name) <= 2 else name[0].upper()),
         "badge_image": img if os.path.exists(img) else None,
-        "launcher": launcher or None})
+        "launcher": launcher or None, "dock_icon": dock == "1"})
 print(json.dumps(out))'
 }
 
@@ -496,6 +561,8 @@ migrate_conf "$HOME/.config/claude-macos-mirror"
 migrate_conf "$HOME/.config/claude-profile"
 STAMP="$CONFDIR/checked-version"
 app_version(){ defaults read "$CLAUDE_APP/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null; }
+# Which app macOS opens claude:// links with (sign-in callbacks, "Open in Claude").
+url_handler(){ osascript -l JavaScript -e 'ObjC.import("AppKit"); var u=$.NSWorkspace.sharedWorkspace.URLForApplicationToOpenURL($.NSURL.URLWithString("claude://x")); u.isNil() ? "" : u.path.js' 2>/dev/null; }
 cmd_doctor(){
   local asar="$CLAUDE_APP/Contents/Resources/app.asar" bad=0 v; v="$(app_version)"
   echo "Claude.app $v"
@@ -508,8 +575,18 @@ cmd_doctor(){
   else echo "  ✗ Cowork store moved — tandem cannot find spaces.json or memory"; bad=1; fi
   if has 'CLAUDE_CONFIG_DIR'; then ok "Code tab honors CLAUDE_CONFIG_DIR (same login as claude @<p>)"
   else echo "  ✗ Code tab ignores CLAUDE_CONFIG_DIR — it will use ~/.claude's login"; bad=1; fi
+  # --dock-icon copies register with macOS like any app; links must still go to Claude.app
+  local h; h="$(url_handler)"
+  if [ "$h" = "$CLAUDE_APP" ]; then ok "claude:// links open $CLAUDE_APP"
+  elif [ -n "$h" ]; then
+    echo "  ⚠ claude:// links open $h — sign-in callbacks could reach the wrong account."
+    echo "    Re-register Claude.app: /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f $CLAUDE_APP"
+  fi
   local p; for p in $(profiles); do
     desktop_stale "$p" && { echo "  ⚠ '$p' is running code from before the update — quit and reopen it"; }
+    if dock_icon_on "$p" && ! runtime_current "$p"; then
+      echo "  - '$(label "$p")': its Dock-icon copy is from an older Claude — refreshed the next time it opens"
+    fi
   done
   if [ "$bad" = 0 ]; then mkdir -p "$(dirname "$STAMP")"; echo "$v" > "$STAMP"; fi
   return "$bad"

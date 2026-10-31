@@ -363,6 +363,7 @@ ones are open, since the Dock and ⌘-Tab can't tell two running profiles apart.
 | Hand Off a Project ▸ *project* ▸ *target* | `tandem send … --to <target> --wait` in Terminal; targets are your other profiles here and the other Mac, learned from the ownership events |
 | Receive a Project ▸ *project* | `tandem --profile <p> receive …` in Terminal, offering to quit that profile's app first |
 | Rename… · Change Badge… · Badge Colour | `tandem profile rename` / `app --badge` / `app --color` |
+| Show Badge in the Dock | `app --dock-icon` / `--no-dock-icon` — the running app carries the badge too |
 
 Plus New Profile…, Sync Claude Code Sessions, Run Doctor and Open at Login. Every item calls
 `tandem profile` or `tandem`, so the app holds no logic of its own. It is built with `swiftc` from
@@ -403,8 +404,17 @@ How it is isolated, and why:
 **Icons.** `tandem profile app <p>` builds the launcher's icon from whatever Claude.app currently
 ships, plus a coloured badge with the profile's initial (`--color '#hex'` to choose; it is
 remembered). The icon is full-bleed so macOS 26+ masks it rather than putting it on a grey plate.
-Once a profile is *running*, its Dock and ⌘-Tab icon is Claude's own: every profile runs the same
-signed Claude.app, and changing that bundle would break its signature and its updates.
+Once a profile is *running*, its Dock and ⌘-Tab icon is normally Claude's own: every profile runs
+the same signed Claude.app, and changing that bundle would break its signature and its updates.
+
+**The badge in the Dock, too** — `tandem profile app NAME --dock-icon` (or *Show Badge in the
+Dock* in the menu) makes that profile run as its own copy of Claude.app, carrying the badge.
+The copy is an APFS clone, so it costs no disk; Claude.app itself is never touched. The copy
+stays validly signed and Gatekeeper-accepted, `claude://` links still go to Claude.app, and
+every "is Claude running" check sees it — all checked, [finding 19](docs/findings.md). It takes
+effect the next time the profile opens, is refreshed automatically after Claude updates, and
+`--no-dock-icon` removes it. Opt-in while it's new: watch for a one-time Keychain prompt
+(*Claude Safe Storage*) the first time a signed-in profile opens through its copy.
 
 **Upgrades.** There is one Claude.app and every profile runs it, so there is nothing to upgrade
 per profile — but:
@@ -453,6 +463,7 @@ Several accounts on one Mac — any command above also takes `--profile NAME` fi
 ./bin/tandem profile list                                  # every profile: account, plan, open or not
 ./bin/tandem profile rename NAME NEW                       # a new name everywhere; folders keep their id
 ./bin/tandem profile app NAME --badge W --color '#0E9AA7'  # Dock launcher; badge = letters, an emoji, or --badge-image
+./bin/tandem profile app NAME --dock-icon                  # show the badge in the Dock while it runs (--no-dock-icon)
 ./bin/tandem profile quit NAME                             # quit that account's app, as ⌘Q does
 ./bin/tandem profile sync                                  # share Claude Code sessions between accounts
 ./bin/tandem profile doctor                                # after a Claude update: still compatible?
