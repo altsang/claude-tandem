@@ -601,9 +601,14 @@ whitespace; naming each clone `Claude.app` under `~/.config/claude-tandem/runtim
 with no spaces — made all of them see it with no code change. Confirmed with the clone running:
 `tandem --profile <p>` refused to edit its `spaces.json`, and `tandem profile quit` found and quit it.
 
-Opt-in (`app --dock-icon`) until a signed-in profile has used it: not yet observed is whether the
-clone needs a one-time Keychain approval for *Claude Safe Storage*, the key Electron encrypts the
-login cookies with.
+**Confirmed with a real second account, 2026-10-31.** Profile `Junipera` — desktop signed in to a
+second Claude account, Claude Code to a Team account — opened through its clone with **no Keychain
+prompt** for *Claude Safe Storage* (the key Electron encrypts login cookies with) and stayed signed
+in: the clone carries Claude.app's exact signature, so the Keychain item's access rule accepts it.
+The same run confirmed what the profiles design rested on: each profile's Claude Code login is its
+own (`claude auth status` showed `agilecto@gmail.com` · Max for default and `al@junipera.io` · Team
+for Junipera, both signed in at once), and `claude://` still opened `/Applications/Claude.app` with
+the clone running. `--dock-icon` stays opt-in only because it is a choice, not a risk.
 
 ---
 

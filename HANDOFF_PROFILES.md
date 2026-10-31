@@ -17,7 +17,8 @@ this was first written: rename by display name, custom launcher badges, `tandem 
 the Claude Tandem menu-bar app, memory merging on receive, and the rename of the whole project.
 What remains:
 
-1. Do the first real run with a second account (steps in "Remaining" below) — Al has to sign in.
+1. ~~First real run with a second account~~ — done 2026-10-31 (profile `Junipera`); next is a real
+   same-Mac project handoff (Remaining, step 5).
 2. Answer the two open questions about the desktop app (deep-link sign-in with two instances, and
    update behaviour), ideally with a full `rea` analysis.
 3. `tandem deploy` to publish engine v8 to the iCloud shared tree — **ask first**; it writes to the
@@ -90,8 +91,8 @@ on iCloud. So same-Mac account handoff reuses send/receive unchanged:
 
 | # | Step | Notes |
 |---|---|---|
-| 1 | `./bin/tandem profile create b`, then `claude @b` and `./bin/tandem profile desktop b`; sign in **from a private browser window** | First real two-account run. Confirm `tandem profile list` shows two different emails |
-| 2 | Verify Keychain isolation: `claude auth status` (default) still shows agilecto@gmail.com (max) after b signs in | Claude Switch claims per-config-dir Keychain items; not observed here yet |
+| 1 | ~~First real two-account run~~ | **Done 2026-10-31** — profile `Junipera`: desktop on a second account, Claude Code on `al@junipera.io` (Team); `tandem profile list` shows both |
+| 2 | ~~Verify Keychain isolation~~ | **Done** — default still `agilecto@gmail.com` (Max) with Junipera signed in; and through the `--dock-icon` clone, no Keychain prompt (finding 19) |
 | 3 | Desktop sign-in with two instances running: does the `claude://` callback reach the right one? | **Open question.** If it lands in default, sign b in while default is quit |
 | 4 | Cowork in profile b: open once (creates its spaces.json), check disk use of a second VM | Unknown size |
 | 5 | Real same-Mac handoff of a small project: `/handoff`, `tandem send P --to Madoka@b --wait`, quit b, `tandem --profile b receive P` | Install the `/handoff` skill in account b first (skills sync per account) |

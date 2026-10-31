@@ -413,8 +413,8 @@ The copy is an APFS clone, so it costs no disk; Claude.app itself is never touch
 stays validly signed and Gatekeeper-accepted, `claude://` links still go to Claude.app, and
 every "is Claude running" check sees it — all checked, [finding 19](docs/findings.md). It takes
 effect the next time the profile opens, is refreshed automatically after Claude updates, and
-`--no-dock-icon` removes it. Opt-in while it's new: watch for a one-time Keychain prompt
-(*Claude Safe Storage*) the first time a signed-in profile opens through its copy.
+`--no-dock-icon` removes it. Confirmed with a signed-in second account: no Keychain prompt, and it
+stays signed in.
 
 **Upgrades.** There is one Claude.app and every profile runs it, so there is nothing to upgrade
 per profile — but:
