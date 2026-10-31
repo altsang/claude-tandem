@@ -64,6 +64,13 @@ Then, forever after — leaving a machine and arriving at the other:
 ./bin/tandem receive "Quicken Reconciliation"                 # on Ji-su, ⌘V into Cowork
 ```
 
+Two Claude accounts on this Mac, side by side:
+
+```bash
+./bin/tandem profile create b && ./bin/tandem profile desktop b   # sign in to the second account
+./bin/tandem menubar                                             # see which window is which account
+```
+
 Names throughout are the two Macs this was built and measured on: `Madoka` (desktop) and `Ji-su` (laptop).
 
 ---
@@ -72,17 +79,17 @@ Names throughout are the two Macs this was built and measured on: `Madoka` (desk
 
 Cowork projects appear on every machine — until you attach a **local folder** to one. Then it is written into *that Mac's* `spaces.json`, gets a `Local` badge, and vanishes from the web and from your other Mac.
 
-The trap is that the two things you need never come together:
+Which kind of *session* you run decides what follows you:
 
 ```mermaid
 flowchart TB
-    Q["You want to continue<br/>on the other Mac"] --> C
-    Q --> L
-    C["Cloud project<br/>chats + memory sync ✅"] -->|"sessions run in a bridged VM"| CF["can't reach your files ❌"]
-    L["Local project<br/>reads your folder ✅"] -->|"machine-bound in spaces.json"| LF["host-loop chats don't sync;<br/>memory stays on that Mac ❌"]
+    Q["You want to continue<br/>on the other Mac"] --> R
+    Q --> H
+    R["Remote session<br/>chat syncs ✅"] -->|"folders granted per session"| RF["reaches your iCloud folder,<br/>one session at a time ⚠️"]
+    H["Host-loop session<br/>in a local project ✅ reads its folder"] -->|"machine-bound in spaces.json"| HF["chat never leaves this Mac;<br/>memory stays here ❌"]
 ```
 
-**File access and synced context are mutually exclusive today.** That gap is what this repo fills.
+A remote session's chat appears on both Macs and can be granted a folder on the shared drive ([findings 13 and 17](docs/findings.md)) — but the grant is per session, not per project. The everyday kind, a host-loop session in a local project, reads its folder with no setup and takes nothing with it. That second case is the gap this repo fills.
 
 So three separate things have to travel, and only the first has a native path:
 
@@ -103,7 +110,10 @@ So three separate things have to travel, and only the first has a native path:
 - **Folder linking without the file picker** — `tandem` writes the project's folder path itself, on both Macs.
 - **Upload verification** — proof the bytes actually left this Mac, which "staged" never gave you.
 - **One verb per side** — `send` and `receive`, each blocking until the transfer is provable, instead of a sequence of commands none of which could confirm the others' work.
-- **Diagnostics** for the failure modes that are silent and confusing, chiefly symlinked folder links.
+- **Memory that travels and merges** — `send` snapshots the project's memory, `receive` merges it into what this Mac already learned instead of replacing it; a clash keeps both for you to settle.
+- **Several Claude accounts on one Mac** — `tandem profile` runs each account's Claude app and Claude Code side by side, and hands a project to the other account the same way it hands one to the other Mac.
+- **A menu-bar app** — `tandem menubar` shows which running window is which account, since the Dock can't, and does the per-account chores from one menu.
+- **Diagnostics** for the failure modes that are silent and confusing: symlinked folder links, files that read empty, and a receiving Mac whose iCloud Drive has stopped syncing.
 
 ---
 
@@ -336,6 +346,8 @@ Moving a Cowork project to the other account works the same way as moving it to 
 ./bin/tandem --profile b receive "Quicken Reconciliation"   # defines it in b, installs memory, ⌘V
 ```
 
+**Hand off at the warning, not the wall.** `/handoff` runs inside the session, so it needs usage left: once an account hits its limit, its session can't write the document. Start the handoff when Claude warns you are approaching the limit.
+
 For Claude Code sessions, `tandem profile sync` copies `projects/` and `plans/` between profiles
 (newest wins), so `claude @b --resume` picks up a session started on account a.
 
@@ -432,6 +444,23 @@ per profile — but:
 ./bin/tandem memory-install "PROJECT" --force              # replace yours with theirs, backing yours up
 ```
 
+Several accounts on one Mac — any command above also takes `--profile NAME` first, to act as that account (`./bin/tandem --profile work receive "PROJECT"`):
+
+```bash
+./bin/tandem profile create NAME                           # a new account profile: its own folders, shared skills
+./bin/tandem profile desktop NAME                          # open that account's Claude app beside the others
+./bin/tandem profile code NAME                             # Claude Code as that account (in zsh: claude @NAME)
+./bin/tandem profile list                                  # every profile: account, plan, open or not
+./bin/tandem profile rename NAME NEW                       # a new name everywhere; folders keep their id
+./bin/tandem profile app NAME --badge W --color '#0E9AA7'  # Dock launcher; badge = letters, an emoji, or --badge-image
+./bin/tandem profile quit NAME                             # quit that account's app, as ⌘Q does
+./bin/tandem profile sync                                  # share Claude Code sessions between accounts
+./bin/tandem profile doctor                                # after a Claude update: still compatible?
+./bin/tandem menubar                                       # build and open the Claude Tandem menu-bar app
+```
+
+`mirror` and `claude-profile` — the names before the rename to Claude Tandem — still work, and say so.
+
 The flags worth knowing on the daily pair:
 
 | Flag | On | Effect |
@@ -478,6 +507,28 @@ The flags worth knowing on the daily pair:
 
 Releases are new files, never edits: the drive does not reliably propagate an in-place modification of a file the other Mac has already read. Callers resolve `coworkctl-v*.sh | sort -V | tail -1`.
 
+On each Mac, outside the shared drive:
+
+```
+~/.config/claude-tandem/                           shared-root override, held-project stash, doctor stamp
+~/.claude-ID/                                      a profile's Claude Code config (default: ~/.claude)
+~/Library/Application Support/Claude-ID/           a profile's Claude app data   (default: …/Claude)
+~/Applications/Claude (NAME).app                   a profile's Dock launcher
+~/Applications/Claude Tandem.app                   the menu-bar app
+```
+
+And this repo:
+
+```
+bin/tandem                  the CLI — handoffs, and `tandem profile …` / `tandem menubar` routed below
+bin/tandem-profile          the accounts half
+bin/coworkctl-vN.sh         the engine, deployed into the shared tree by `tandem deploy`
+bin/mirror, bin/claude-profile    the old names, forwarding
+macos/ClaudeTandem/         the menu-bar app's source (one Swift file, built with swiftc)
+skills/handoff/             the /handoff skill — upload it in Claude's Settings › Skills
+docs/findings.md            every claim here, measured
+```
+
 This repo lives **outside** the shared drive — a `.git` directory in a synced folder is the same two-writer hazard that produces conflict copies.
 
 ---
@@ -492,9 +543,12 @@ This repo lives **outside** the shared drive — a `.git` directory in a synced 
 | `send` → receiving Mac has verified and written its `claim` | **2m12s** · 2m46s in the 10 MB run |
 | that `claim` becoming visible back on the sender | **~90s** further |
 
+A later run, 2026-10-30: 3 files plus a 12-file memory snapshot, 28 uploads in all, confirmed in **12s**.
+
 Upload scales with size and you can watch it. Delivery to an idle peer runs ~2–3 minutes almost regardless of size — the latency is the drive noticing, not the bytes moving.
 
 - **Uploaded ≠ delivered.** `send` proves the bytes left this Mac; only the claim event proves they landed. `send --wait` waits for it.
+- **A stalled receiver looks like a slow one.** If the receiving Mac's iCloud Drive has stopped pulling — seen after a reboot — nothing arrives however long you wait. `receive` now says so after a minute; opening Finder › iCloud Drive restarts it ([finding 18](docs/findings.md)).
 - **One machine edits at a time.** That's what the ownership log is for.
 - **The document is the deliverable.** Files arrive on their own. Put the numbers in it.
 
@@ -512,6 +566,8 @@ Upload scales with size and you can watch it. Delivery to an idle peer runs ~2�
 | `/handoff` tries to do the transfer itself | old skill version registered | re-upload `skills/handoff/SKILL.md`; the current one writes the document and stops |
 | Skill upload rejected, "cannot have XML tags" | angle-bracket placeholders in `SKILL.md` | use bare words, not `<Project>` |
 | Project missing on the other Mac | local projects don't sync | `tandem send "P" --to MACHINE --no-doc`, then `tandem receive "P"` |
+| `ssh` to the other Mac: *REMOTE HOST IDENTIFICATION HAS CHANGED* | the other Mac is asleep or offline, and `peer.local` resolved to **this** Mac, so you met your own host key | not an attack — and **don't** delete its `known_hosts` line. Wake it, or connect by IP with `ssh -o HostKeyAlias=peer.local user@IP`, which still checks the right key |
+| `ssh` to the other Mac times out, though it is awake (AirPlay answers) | Remote Login is off — seen turning itself off on macOS 27, cause not yet found | System Settings › General › Sharing › Remote Login |
 | Not sure the files actually reached iCloud | `handoff` only staged them; nothing verified the upload | `tandem send` — it polls `isUploaded` until every file is up |
 | `receive` reports a memory **clash** | the same memory changed on both Macs while each held the project | compare `name.md` (this Mac's, kept) with `name.from-<Mac>.md` (theirs, not indexed); keep one, delete the other by exact path |
 | `receive` waits, then times out — and the sender's `send` said UPLOADED | **this** Mac's iCloud Drive stopped pulling (seen after a reboot: `brctl status` shows `client:needs-sync`) | open Finder › iCloud Drive; it restarts the download, then re-run `receive`. `receive` and `tandem check` now say when this Mac's drive looks stalled |

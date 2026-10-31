@@ -1,4 +1,4 @@
-# HANDOFF — multi-account Claude profiles + same-Mac handoffs (branch `profiles`)
+# HANDOFF — multi-account Claude profiles + same-Mac handoffs
 
 > **Since renamed:** the project is now Claude Tandem. `mirror` → `tandem`, `claude-profile` → `tandem profile`, and the repo is `~/workspace/claude-tandem` (`altsang/claude-tandem`). Commands below are updated; the old ones still work as shims.
 
@@ -12,24 +12,23 @@ in at a time. The goal: run both accounts side by side on one Mac (like the paid
 app at claudeswitch.dev), and let `tandem` hand a Cowork project from one account to the other
 when the first hits its usage limit.
 
-The code is written and partly tested (see Status). What remains:
+**Updated 2026-10-31.** The code is committed, merged into `main` and on both Macs. Built since
+this was first written: rename by display name, custom launcher badges, `tandem profile quit`,
+the Claude Tandem menu-bar app, memory merging on receive, and the rename of the whole project.
+What remains:
 
-1. Commit the `profiles` branch here, and the one-file change in `~/.dotfiles` — **only when Al
-   says so**; nothing is committed yet.
-2. Do the first real run with a second account (steps in "Remaining" below).
-3. Answer the two open questions about the desktop app (deep-link sign-in with two instances, and
+1. Do the first real run with a second account (steps in "Remaining" below) — Al has to sign in.
+2. Answer the two open questions about the desktop app (deep-link sign-in with two instances, and
    update behaviour), ideally with a full `rea` analysis.
-4. `tandem deploy` to publish engine v8 to the iCloud shared tree — **ask first**; it writes to the
+3. `tandem deploy` to publish engine v8 to the iCloud shared tree — **ask first**; it writes to the
    shared tree and reaches Ji-su.
 
 ## Before you start — check you actually have access
 
-- `git -C ~/workspace/claude-tandem branch --show-current` prints `profiles`, and
-  `git status -s` shows: `M README.md`, `M bin/tandem`, `M skills/handoff/SKILL.md`,
-  `?? bin/tandem-profile`, `?? bin/coworkctl-v8.sh` (plus this file). If the branch or files are
-  missing, the work did not travel — stop; it exists only on Madoka, uncommitted.
-- `git -C ~/.dotfiles status -s` shows `M claude/.claude/claude-session.zsh` (the `claude @<p>`
-  hook). Same rule.
+- `git -C ~/workspace/claude-tandem log --oneline -1` is on `main` and `bin/tandem-profile` and
+  `macos/ClaudeTandem/main.swift` exist. If not, `git pull` — everything is pushed.
+- `claude @<p>` needs the dotfiles hook, on the `claude-profiles` branch of `~/.dotfiles` (not yet
+  merged to `master`). Without it, use `./bin/tandem profile code <p>`.
 - `/Applications/Claude.app` exists. `./bin/tandem profile doctor` exits 0. If it reports ✗, the
   desktop app changed underneath the design — stop and read "Background" before changing code.
 - Python 3 with Pillow (icons only). Node ≥ 24.22.1 for `npx rea-agents` (Madoka has 24.1.0; rea
@@ -97,7 +96,7 @@ on iCloud. So same-Mac account handoff reuses send/receive unchanged:
 | 4 | Cowork in profile b: open once (creates its spaces.json), check disk use of a second VM | Unknown size |
 | 5 | Real same-Mac handoff of a small project: `/handoff`, `tandem send P --to Madoka@b --wait`, quit b, `tandem --profile b receive P` | Install the `/handoff` skill in account b first (skills sync per account) |
 | 6 | `tandem deploy` (ask Al) — publishes v8; Ji-su picks it up; without `TANDEM_ME` it behaves exactly like v7 | |
-| 7 | Commit both repos (ask Al) | |
+| 7 | ~~Commit both repos~~ | **Done** — merged to `main`, pushed, pulled on Ji-su |
 | 8 | Optional: full rea run for questions 3 and update behaviour | See Gotchas for how it failed |
 
 ## Gotchas

@@ -2,7 +2,7 @@
 
 > **Renamed 2026-10-30:** Claude MacOS Mirror is now **Claude Tandem**. The `mirror` command is `tandem`, `claude-profile` is `tandem profile`, and config moved from `~/.config/claude-macos-mirror` to `~/.config/claude-tandem`. Commands below use the new names. The findings themselves are unchanged.
 
-Everything here was verified on macOS 26.6.2 (Ji-su) and Darwin 25.5 (Madoka) on 2026-08-18.
+Findings 1–15 were verified on macOS 26.6.2 (Ji-su) and Darwin 25.5 (Madoka) from 2026-08-18; 16–18 on macOS 27 (both Macs) in September–October 2026. Where a later finding corrects an earlier one, the earlier one says so in place.
 These are not style preferences — each one cost real debugging time, and several look like
 "iCloud is broken" until you know the mechanism.
 
