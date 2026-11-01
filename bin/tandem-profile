@@ -487,7 +487,7 @@ cmd_rename(){
   [ -n "$from" ] && [ -n "$to" ] || die "usage: tandem profile rename <profile> <new-name>"
   check_name "$to"
   id="$(need "$from")" || exit 1
-  [ "$to" = default ] && die "'default' is reserved for ~/.claude"
+  [ "$to" = default ] && [ "$id" != default ] && die "'default' is reserved for ~/.claude"
   old="$(label "$id")"
   [ "$to" = "$old" ] && { ok "already called '$to'"; return 0; }
   if other="$(resolve "$to")" && [ "$other" != "$id" ]; then
@@ -503,15 +503,16 @@ cmd_rename(){
   echo "    use it as:  claude @$to   ·   tandem profile desktop $to   ·   tandem --profile $to …"
 }
 
-# "Claude Tandem": a menu-bar app (no Dock icon) built from macos/ClaudeTandem/main.swift
-# with the Command Line Tools' swiftc — no Xcode project. It runs bin/tandem for
+# "Claude Tandem": a menu-bar app (no Dock icon until its window opens) built from the
+# Swift files in macos/ClaudeTandem with the Command Line Tools' swiftc — no Xcode project. It runs bin/tandem for
 # everything, so it records where that is and the PATH it should run with: an app
 # started at login gets only /usr/bin:/bin, which has no claude and no python3 with
 # Pillow for drawing badges.
 cmd_menubar(){
-  local src="$HERE/../macos/ClaudeTandem/main.swift" app="$HOME/Applications/Claude Tandem.app"
+  local srcdir="$HERE/../macos/ClaudeTandem" app="$HOME/Applications/Claude Tandem.app" src f newer=0
   local bin="$app/Contents/MacOS/ClaudeTandem" force=0
   [ "${1:-}" = --rebuild ] && force=1
+  src="$srcdir/main.swift"
   [ -f "$src" ] || die "missing $src"
   command -v swiftc >/dev/null || die "swiftc not found — install the Command Line Tools: xcode-select --install"
   # Before the rename to Claude Tandem this was "Claude Profiles.app".
@@ -525,11 +526,12 @@ cmd_menubar(){
   # A Homebrew upgrade can leave main.swift older than the built app, so a new version rebuilds too.
   local ver; ver="$(cat "$HERE/../VERSION" 2>/dev/null || echo 1.0)"
   [ -f "$app/Contents/Info.plist" ] && [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist" 2>/dev/null)" != "$ver" ] && force=1
-  if [ "$force" = 1 ] || [ ! -x "$bin" ] || [ "$src" -nt "$bin" ] || [ "${BASH_SOURCE[0]}" -nt "$bin" ]; then
+  for f in "$srcdir"/*.swift; do [ "$f" -nt "$bin" ] && newer=1; done
+  if [ "$force" = 1 ] || [ ! -x "$bin" ] || [ "$newer" = 1 ] || [ "${BASH_SOURCE[0]}" -nt "$bin" ]; then
     pkill -x ClaudeTandem 2>/dev/null; sleep 0.5
     rm -rf "$app"   # exact path: our own generated bundle
     mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-    swiftc -O -swift-version 5 -o "$bin" "$src" -framework AppKit -framework ServiceManagement 2>&1 \
+    swiftc -O -swift-version 5 -o "$bin" "$srcdir"/*.swift -framework AppKit -framework SwiftUI -framework ServiceManagement 2>&1 \
       | grep -v '^$' ; [ -x "$bin" ] || die "swiftc failed"
     local plist="$app/Contents/Info.plist" pb=/usr/libexec/PlistBuddy
     $pb -c "Add :CFBundleName string 'Claude Tandem'" \
@@ -542,8 +544,19 @@ cmd_menubar(){
         -c "Add :LSUIElement bool true" \
         -c "Add :TandemScript string $HERE/tandem" \
         -c "Add :RepoDir string $here_now" \
-        -c "Add :UserPATH string $PATH" "$plist" >/dev/null
+        -c "Add :UserPATH string $PATH" \
+        -c "Add :NSAppleEventsUsageDescription string 'Claude Tandem opens Claude Code and handoffs in a new Ghostty window.'" \
+        "$plist" >/dev/null
+    # The app icon: the logo on a cream tile, drawn by the app itself, packed by iconutil.
+    local iset; iset="$(mktemp -d)/AppIcon.iconset"
+    if "$bin" --write-iconset "$iset" && iconutil -c icns -o "$app/Contents/Resources/AppIcon.icns" "$iset" 2>/dev/null; then
+      $pb -c "Add :CFBundleIconFile string AppIcon" "$plist" >/dev/null
+    else
+      echo "  - could not make the app icon; Finder shows a generic one"
+    fi
+    rm -rf "$(dirname "$iset")"   # exact path: our own mktemp folder
     codesign --force --sign - "$app" 2>/dev/null || echo "  - could not sign the app; macOS may refuse to open it"
+    touch "$app"   # Finder and the Dock cache icons by bundle; touching makes them re-read it
     ok "built $app"
   fi
   pgrep -x ClaudeTandem >/dev/null || open "$app"

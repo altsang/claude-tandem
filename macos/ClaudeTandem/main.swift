@@ -1,4 +1,5 @@
-// Claude Tandem — a menu-bar front end for bin/tandem (and its `tandem profile` half).
+// Claude Tandem — a menu-bar front end for bin/tandem (and its `tandem profile` half),
+// with a window for the profiles and getting started (Window.swift).
 //
 // Every action is a call to `tandem`, so the CLI stays the single
 // implementation and this file only draws the menu and asks questions. Steps that take
@@ -11,10 +12,11 @@
 //
 // `ClaudeTandem --dump-menu <dir>` builds the menu without showing it, prints its
 // tree and writes the icons it would draw into <dir>; the build checks itself with it.
+// `ClaudeTandem --write-iconset <dir>` draws the app icon for the build to make an .icns.
 import AppKit
 import ServiceManagement
 
-struct Profile: Decodable {
+struct Profile: Decodable, Equatable, Identifiable {
     let id: String
     let name: String
     let isDefault: Bool
@@ -29,8 +31,9 @@ struct Profile: Decodable {
     let dockIcon: Bool?
     let desktopAccount: String?
     let adoptable: Int?
+    let launcher: String?
     enum CodingKeys: String, CodingKey {
-        case id, name, email, plan, open, pid, stale, color, badge, adoptable
+        case id, name, email, plan, open, pid, stale, color, badge, adoptable, launcher
         case isDefault = "default", badgeImage = "badge_image", dockIcon = "dock_icon"
         case desktopAccount = "desktop_account"
     }
@@ -77,7 +80,7 @@ final class Action: NSObject {
     @objc func fire() { f() }
 }
 
-final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     let info = Bundle.main.infoDictionary ?? [:]
     lazy var tandem = info["TandemScript"] as? String ?? "tandem"
     lazy var repo = info["RepoDir"] as? String ?? NSHomeDirectory()
@@ -87,8 +90,11 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var status: NSStatusItem?
     var profiles: [Profile] = []
     var signInWatchers: [String: Timer] = [:]
+    let store = Store()
+    var window: NSWindow?
 
     func applicationDidFinishLaunching(_ n: Notification) {
+        store.app = self
         let s = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         s.button?.image = Self.statusIcon()
         s.button?.toolTip = "Claude Tandem"
@@ -97,6 +103,42 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.autoenablesItems = false
         s.menu = menu
         status = s
+        // First run, or only Claude.app itself so far: start with Get Started.
+        let seen = UserDefaults.standard.bool(forKey: "welcomed")
+        if !seen || loadProfiles().count < 2 {
+            UserDefaults.standard.set(true, forKey: "welcomed")
+            showWindow()
+        }
+    }
+
+    // Opened again from Finder, Spotlight or the launcher: show the window.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        showWindow()
+        return false
+    }
+
+    // MARK: the window
+
+    /// While the window is open the app gets a Dock icon and ⌘-Tab, like any app;
+    /// closing it goes back to living in the menu bar only.
+    func showWindow(select: String? = nil, newProfile: Bool = false) {
+        if window == nil {
+            window = makeMainWindow(store: store)
+            window?.delegate = self
+        }
+        if let select { store.selection = select }
+        NSApp.applicationIconImage = tandemAppIcon()
+        NSApp.setActivationPolicy(.regular)
+        store.startPolling()
+        activate()
+        window?.makeKeyAndOrderFront(nil)
+        if newProfile { store.showNewProfile = true }
+    }
+
+    func windowWillClose(_ n: Notification) {
+        window?.makeFirstResponder(nil)   // a field still being edited saves as the window closes
+        store.stopPolling()
+        NSApp.setActivationPolicy(.accessory)
     }
 
     // Rebuilt each time it opens, so it shows what is true now.
@@ -109,7 +151,8 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if profiles.isEmpty { header(menu, "Could not read profiles — try Run Doctor") }
         for p in profiles { menu.addItem(profileItem(p)) }
         menu.addItem(.separator())
-        add(menu, "New Profile…") { [unowned self] in self.newProfile() }
+        add(menu, "Open Claude Tandem…", key: ",") { [unowned self] in self.showWindow() }
+        add(menu, "New Profile…") { [unowned self] in self.showWindow(newProfile: true) }
         add(menu, "Sync Claude Code Sessions") { [unowned self] in self.terminal("\(q(self.tandem)) profile sync", title: "Sync sessions") }
         add(menu, "Run Doctor") { [unowned self] in self.terminal("\(q(self.tandem)) profile doctor", title: "Doctor") }
         menu.addItem(.separator())
@@ -156,9 +199,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         m.autoenablesItems = false
         header(m, p.isDefault ? "\(side(p)) — Claude.app itself" : "\(side(p)) — id \(p.id)")
         add(m, p.open ? "Show Claude" : "Open Claude") { [unowned self] in self.openDesktop(p) }
-        add(m, "Open Claude Code in Terminal") { [unowned self] in
-            self.terminal("claude @\(p.id)", title: "Claude Code — \(p.name)", wait: false)
-        }
+        add(m, "Open Claude Code in Terminal") { [unowned self] in self.openCode(p.id, name: p.name) }
         if p.stale {
             add(m, "Quit and Reopen (Claude was updated)") { [unowned self] in
                 self.cli(["quit", p.id]) { self.cli(["desktop", p.id]) }
@@ -174,6 +215,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
             add(m, "Bring In Earlier Sessions (\(n))…") { [unowned self] in self.adoptWizard(p.id) }
             m.addItem(.separator())
         }
+        add(m, "Settings…") { [unowned self] in self.showWindow(select: p.id) }
         add(m, "Rename…") { [unowned self] in self.rename(p) }
         add(m, "Change Badge…") { [unowned self] in self.changeBadge(p) }
         add(m, "Badge Colour", nil).submenu = colourMenu(p)
@@ -279,12 +321,39 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: actions
 
+    /// Brings a profile's Claude forward with a window — reopening it the way a Dock click
+    /// does, since Claude keeps running after its last window closes, and activating alone
+    /// shows nothing. A profile's own badged copy has a path of its own, so `open` on it
+    /// reaches that profile; one running from /Applications/Claude.app shares the default's
+    /// path, so it goes through `tandem profile desktop`, which hands Claude its data folder
+    /// and lets the running copy take it.
     func openDesktop(_ p: Profile) {
-        if p.open, let pid = p.pid, let running = NSRunningApplication(processIdentifier: pid) {
-            running.activate(options: [.activateAllWindows])
+        guard p.open, let pid = p.pid, let running = NSRunningApplication(processIdentifier: pid),
+              let url = running.bundleURL else { cli(["desktop", p.id]); return }
+        let shared = url.standardizedFileURL.path == "/Applications/Claude.app"
+        if p.isDefault || !shared {
+            let path = self.path
+            DispatchQueue.global(qos: .userInitiated).async {
+                _ = runProcess("/usr/bin/open", ["-a", url.path], path: path)
+                DispatchQueue.main.async { running.activate(options: [.activateAllWindows]) }
+            }
         } else {
             cli(["desktop", p.id])
         }
+    }
+
+    /// Claude Code as the profile, in Terminal. Through tandem rather than `claude @p`,
+    /// which needs a shell hook a Homebrew install doesn't have.
+    func openCode(_ id: String, name: String) {
+        terminal("\(q(tandem)) profile code \(q(id))", title: "Claude Code — \(name)", wait: false)
+    }
+
+    /// The /handoff skill's SKILL.md, selected in Finder.
+    func showSkill() {
+        let r = runProcess("/bin/bash", [tandem, "skill", "--print"], path: path)
+        let f = r.out.trimmingCharacters(in: .whitespacesAndNewlines)
+        if r.code == 0, !f.isEmpty { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: f)]) }
+        else { alert("Couldn’t find the /handoff skill", (r.err + r.out).trimmingCharacters(in: .whitespacesAndNewlines)) }
     }
 
     func rename(_ p: Profile) {
@@ -333,29 +402,6 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if hex.caseInsensitiveCompare(p.color) == .orderedSame { i.state = .on }
         }
         return m
-    }
-
-    func newProfile() {
-        guard let name = prompt("New profile",
-            "A short name for the second account — letters, digits, - and _. You can rename it later.",
-            initial: "", ok: "Create"), !name.isEmpty else { return }
-        cli(["create", name]) {
-            self.cli(["app", name]) {
-                self.activate()
-                let a = NSAlert()
-                a.messageText = "“\(name)” is ready — now sign in"
-                a.informativeText = "Sign in once in the desktop app and once in Claude Code. Use a private browser window when the sign-in page opens: otherwise claude.ai signs the new profile into the account it already has."
-                a.addButton(withTitle: "Open Claude as \(name)")
-                a.addButton(withTitle: "Open Claude Code")
-                a.addButton(withTitle: "Later")
-                switch a.runModal() {
-                case .alertFirstButtonReturn:
-                    self.cli(["desktop", name]) { self.watchForSignIn(name) }
-                case .alertSecondButtonReturn: self.terminal("claude @\(name)", title: "Claude Code — \(name)", wait: false)
-                default: break
-                }
-            }
-        }
     }
 
     func toggleLogin() {
@@ -418,21 +464,34 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: plumbing
 
-    /// `tandem profile …`, off the main thread; an alert if it fails, `then` if it succeeds.
-    func cli(_ args: [String], then: (() -> Void)? = nil) {
+    /// `tandem profile …`, off the main thread; an alert (and `onFail`) if it fails, `then`
+    /// if it succeeds. Either way the window re-reads the profiles.
+    func cli(_ args: [String], then: (() -> Void)? = nil) { cli(args, onFail: nil, then: then) }
+
+    func cli(_ args: [String], onFail: (() -> Void)?, then: (() -> Void)?) {
         let tandem = self.tandem, path = self.path
         DispatchQueue.global(qos: .userInitiated).async {
             let r = runProcess("/bin/bash", [tandem, "profile"] + args, path: path)
             DispatchQueue.main.async {
                 if r.code == 0 { then?() } else {
+                    onFail?()
                     self.alert("tandem profile \(args.first ?? "") didn’t work",
                                (r.err + r.out).trimmingCharacters(in: .whitespacesAndNewlines))
                 }
+                self.store.refresh()
             }
         }
     }
 
-    /// A step whose output matters runs in Terminal, as a .command script in a login,
+    /// The terminal steps open in: the choice in Settings, else Ghostty if it's installed,
+    /// else Terminal.
+    var terminalApp: String {
+        if let t = UserDefaults.standard.string(forKey: "terminal"), t != "Ghostty" || ghosttyInstalled { return t }
+        return ghosttyInstalled ? "Ghostty" : "Terminal"
+    }
+    var ghosttyInstalled: Bool { NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.mitchellh.ghostty") != nil }
+
+    /// A step whose output matters runs in a terminal, as a .command script in a login,
     /// interactive zsh — so the user's PATH and `claude @<profile>` are there.
     func terminal(_ command: String, title: String, wait: Bool = true) {
         var body = "#!/bin/zsh -il\ncd \(q(repo))\nprint -n \"\\e]0;\(title.replacingOccurrences(of: "\"", with: ""))\\a\"\n\(command)\n"
@@ -442,8 +501,25 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         do {
             try body.write(to: url, atomically: true, encoding: .utf8)
             try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
-        } catch { alert("Couldn’t open Terminal", "\(error)"); return }
+        } catch { alert("Couldn’t open a terminal", "\(error)"); return }
+        if terminalApp == "Ghostty", openInGhostty(url.path) { return }
         _ = runProcess("/usr/bin/open", ["-a", "Terminal", url.path], path: path)
+    }
+
+    /// A new window in the Ghostty that's already running, through its AppleScript — not
+    /// `open -na Ghostty`, which starts a second Ghostty that restores all your saved windows.
+    /// macOS asks once whether Claude Tandem may control Ghostty; if not, Terminal it is.
+    func openInGhostty(_ script: String) -> Bool {
+        let esc = script.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        let src = "tell application id \"com.mitchellh.ghostty\"\nactivate\nnew window with configuration {command:\"\(esc)\"}\nend tell"
+        var err: NSDictionary?
+        NSAppleScript(source: src)?.executeAndReturnError(&err)
+        guard let err else { return true }
+        let n = err[NSAppleScript.errorNumber] as? Int ?? 0
+        alert("Opened in Terminal instead of Ghostty",
+              n == -1743 ? "Claude Tandem isn’t allowed to control Ghostty. Allow it in System Settings › Privacy & Security › Automation › Claude Tandem."
+                         : "Ghostty didn’t open a window: \(err[NSAppleScript.errorMessage] as? String ?? "error \(n)").")
+        return false
     }
 
     func activate() { NSApp.activate(ignoringOtherApps: true) }
@@ -581,6 +657,9 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
 let app = NSApplication.shared
 let delegate = App()
 let args = CommandLine.arguments
+if let i = args.firstIndex(of: "--write-iconset"), i + 1 < args.count {
+    exit(writeIconset(to: args[i + 1]) ? 0 : 1)
+}
 if let i = args.firstIndex(of: "--dump-menu") {
     delegate.dumpMenu(into: i + 1 < args.count ? args[i + 1] : NSTemporaryDirectory())
     exit(0)
