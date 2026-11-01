@@ -16,42 +16,57 @@ CLAWD = ["000111111111111000",   # top of head
          "000010100001010000"]   # legs
 
 
-def wheel(cx, cy, r, c, anim):
-    spokes = "".join(f'<line x1="{cx}" y1="{cy-r+5}" x2="{cx}" y2="{cy+r-5}" transform="rotate({a} {cx} {cy})"/>'
-                     for a in (0, 60, 120))
-    cls = ' class="spin"' if anim else ""
-    return (f'<g{cls} stroke="{c}" stroke-width="2.5" opacity=".55">{spokes}</g>'
-            f'<circle cx="{cx}" cy="{cy}" r="{r}" stroke="{c}" stroke-width="7" fill="none"/>'
-            f'<circle cx="{cx}" cy="{cy}" r="3.5" fill="{c}"/>')
+# The bike is drawn on Clawd's own pixel grid, so riders and frame are one piece of block art.
+# Each line is traced point by point, inking a brush two cells wide and one tall at each step:
+# Clawd's cells are taller than wide, so that makes every stroke about square, whatever its angle.
+PW, PH = 3.0, 5.6                  # Clawd's pixel: his block characters are taller than wide
+GX, GY = 2.0, 2.2                  # grid origin, chosen so both riders land on whole cells
+
+
+def trace(points):
+    out = set()
+    for (ax, ay), (bx, by) in zip(points, points[1:]):
+        n = int(max(abs(bx - ax), abs(by - ay)) * 4) + 1
+        for k in range(n + 1):
+            x, y = ax + (bx - ax) * k / n, ay + (by - ay) * k / n
+            i, j = int((x - GX) // PW), int((y - GY) // PH)
+            out |= {(i, j), (i + 1, j)}
+    return out
+
+
+def circle(cx, cy, r):
+    import math
+    return trace([(cx + r * math.cos(t / 90 * math.pi), cy + r * math.sin(t / 90 * math.pi)) for t in range(181)])
+
+
+def rects(cs):
+    return "".join(f'<rect x="{GX+i*PW:.1f}" y="{GY+j*PH:.1f}" width="{PW+.05:.2f}" height="{PH+.05:.2f}"/>'
+                   for i, j in sorted(cs))
 
 
 def bike(c, anim=False):
-    return (wheel(50, 100, 30, c, anim) + wheel(192, 100, 30, c, anim) +
-            f'<g fill="none" stroke="{c}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">'
-            f'<path d="M50 100 L82 58 L98 100 Z"/>'                    # rear triangle
-            f'<path d="M82 58 L136 58 L146 100 L98 100"/>'             # top tube, front seat tube, boom
-            f'<path d="M136 58 L170 52 M146 100 L170 52 L192 100"/>'   # front tube, down tube, fork
-            f'<path d="M170 52 L166 38 L180 36"/>'                     # captain's bars
-            f'<path d="M136 58 L134 50 M82 58 L80 50"/>'               # seat posts
-            f'<path d="M72 48 H90 M126 48 H144"/>'                     # saddles
-            f'</g><circle cx="98" cy="100" r="7" fill="{c}"/><circle cx="146" cy="100" r="7" fill="{c}"/>')
+    cells = (circle(50, 100, 27) | circle(192, 100, 27) |
+             trace([(48, 100), (62, 58), (170, 58), (190, 100)]) |  # stay, one bar for both riders, fork
+             trace([(81, 58), (81, 47)]) | trace([(135, 58), (135, 47)]) |    # seat posts
+             trace([(170, 58), (170, 41), (182, 41)]))                       # bars
+    return f'<g fill="{c}" shape-rendering="crispEdges">{rects(cells)}</g>'
 
 
 def clawd(x, c):
-    pw, ph = 3.0, 5.6
+    pw, ph = PW, PH
     x0, y0 = x - len(CLAWD[0]) * pw / 2, 47 - len(CLAWD) * ph
     rects = "".join(f'<rect x="{x0+i*pw:.1f}" y="{y0+r*ph:.1f}" width="{pw+.05:.2f}" height="{ph+.05:.2f}"/>'
                     for r, row in enumerate(CLAWD) for i, v in enumerate(row) if v == "1")
     return f'<g class="bob" fill="{c}" shape-rendering="crispEdges">{rects}</g>'
 
 
-ANIM = ('<style>.spin{transform-box:fill-box;transform-origin:center;animation:s 1.4s linear infinite}'
-        '@keyframes s{to{transform:rotate(360deg)}}'
-        '.bob{animation:b .7s ease-in-out infinite alternate}.bob+.bob{animation-delay:-.35s}'
-        '@keyframes b{to{transform:translateY(-1.5px)}}</style>')
+ANIM = ('<style>.go rect{animation:f .45s steps(1) infinite}.go rect+rect{animation-delay:-.15s}.go rect+rect+rect{animation-delay:-.3s}'
+        '@keyframes f{33%{opacity:0}}'
+        '.bob{animation:b .6s steps(1) infinite}.bob+.bob{animation-delay:-.3s}'
+        '@keyframes b{50%{transform:translateY(-2px)}}</style>')
 riders = clawd(80, D) + clawd(134, O)       # the stoker a shade darker: two accounts, one ride
-speed = (f'<g stroke="{O}" stroke-width="4" stroke-linecap="round" opacity=".45">'
-         f'<path d="M4 70 H16"/><path d="M0 84 H12"/><path d="M6 98 H14"/></g>')
+speed = (f'<g class="go" fill="{O}" opacity=".45" shape-rendering="crispEdges">'
+         f'<rect x="5" y="69.4" width="12" height="5.6"/><rect x="-1" y="80.6" width="12" height="5.6"/><rect x="5" y="91.8" width="9" height="5.6"/></g>')
 
 
 def write(name, vb, body):
