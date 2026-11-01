@@ -89,7 +89,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var signInWatchers: [String: Timer] = [:]
 
     func applicationDidFinishLaunching(_ n: Notification) {
-        let s = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        let s = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         s.button?.image = Self.statusIcon()
         s.button?.toolTip = "Claude Tandem"
         let menu = NSMenu()
@@ -493,13 +493,30 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: drawing
 
+    // The logo in miniature (assets/gen-logo.py): two Clawds on a tandem, one block per character.
+    // Blocks are taller than wide, like Clawd's terminal characters.
+    static let iconSprite = [
+        ".#######...#######...",
+        ".#.###.#...#.###.#...",
+        "#########.##########.",
+        ".#######...#######.#.",
+        "..#.#.#.....#.#.#..#.",
+        "..#################..",
+        "..#...............#..",
+        ".###.............###.",
+        "#...#...........#...#",
+        ".###.............###.",
+    ]
+
     static func statusIcon() -> NSImage {
-        let img = NSImage(size: NSSize(width: 20, height: 16), flipped: false) { _ in
-            NSColor.black.setStroke()
-            for x in [1.5, 7.5] {
-                let c = NSBezierPath(ovalIn: NSRect(x: x, y: 2.5, width: 11, height: 11))
-                c.lineWidth = 1.6
-                c.stroke()
+        let bw: CGFloat = 1, bh: CGFloat = 1.5
+        let size = NSSize(width: CGFloat(iconSprite[0].count) * bw, height: CGFloat(iconSprite.count) * bh)
+        let img = NSImage(size: size, flipped: true) { _ in
+            NSColor.black.setFill()
+            for (j, row) in iconSprite.enumerated() {
+                for (i, ch) in row.enumerated() where ch == "#" {
+                    NSRect(x: CGFloat(i) * bw, y: CGFloat(j) * bh, width: bw, height: bh).fill()
+                }
             }
             return true
         }

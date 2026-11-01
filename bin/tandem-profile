@@ -544,7 +544,7 @@ cmd_menubar(){
     ok "built $app"
   fi
   pgrep -x ClaudeTandem >/dev/null || open "$app"
-  ok "Claude Tandem is in the menu bar (two circles). Turn on Open at Login from its menu."
+  ok "Claude Tandem is in the menu bar (two Clawds on a bike). Turn on Open at Login from its menu."
 }
 
 cmd_code(){
