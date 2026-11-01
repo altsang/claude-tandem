@@ -196,4 +196,4 @@ then run `./bin/tandem`, or put `bin/` on your `PATH`. You'll need `python3` wit
 
 ---
 
-<sub>**Claude Tandem is an independent, open-source project. It is not made, endorsed or supported by Anthropic.** Claude, Claude Code and the Clawd character are Anthropic's; Clawd appears in the logo as a tribute to the tool this one is built around. Licensed under [MIT](LICENSE).</sub>
+<sub>**Claude Tandem is an independent, open-source project. It is not made, endorsed or supported by Anthropic.** Claude, Claude Code and the Clawd character are Anthropic's; Clawd appears in the logo as a tribute to the tool this one is built around, and the mockups draw Claude's app icon, simplified, to show where it appears in the Dock. Licensed under [MIT](LICENSE).</sub>

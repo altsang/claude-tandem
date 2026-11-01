@@ -4,7 +4,7 @@
 Pure CSS keyframes — no script, no SMIL, no GIF — so GitHub plays them in an <img>.
 Each element is shown or hidden on one shared loop, commands "type" through a
 widening clip, and the pointer moves by animated translate. Claude's windows are
-drawn schematically (no Claude logo, placeholder accounts). Terminal lines are the
+drawn schematically (Claude's Dock icon simplified, placeholder accounts). Terminal lines are the
 tool's real output, shortened where marked.
 
     python3 assets/gen-mockups.py      # writes the three SVGs beside this file
@@ -15,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 UI = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
 MONO = "ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace"
 TEAL, BLUE, GRAPH, AMBER = "#18A8B4", "#2350C8", "#3A3A40", "#B25E00"
-CLAUDE_TILE = "#D9773F"   # a warm tile standing in for the app icon — not Claude's mark
+CLAUDE_TILE = "#DB6B46"   # the Claude app icon's terracotta, behind its starburst (glyph="spark")
 
 
 class Scene:
@@ -146,9 +146,28 @@ def terminal(sc, x, y, w, h, title="Terminal"):
     s.append(t(x + w / 2, y + 15, title, 10.5, "#8B949E", anchor="middle"))
     return "".join(s)
 
-def tile(cx, cy, size, color, glyph="bubble"):
+# The Claude app icon's starburst, simplified: (angle°, length as a fraction of the tile) per ray,
+# uneven like the real one.
+SPARK = [(-4, .37), (24, .27), (52, .36), (83, .30), (112, .38), (143, .26),
+         (172, .36), (203, .30), (236, .38), (262, .27), (293, .35), (322, .29)]
+
+def spark(cx, cy, size, fill="#FEFCFB"):
+    import math
+    out = []
+    for a, l in SPARK:
+        r, w = math.radians(a), size * 0.032
+        ex, ey = cx + math.cos(r) * size * l, cy + math.sin(r) * size * l
+        px, py = -math.sin(r) * w, math.cos(r) * w
+        out.append(f'<path d="M{cx+px:.2f} {cy+py:.2f}L{ex+px*.35:.2f} {ey+py*.35:.2f}'
+                   f'L{ex-px*.35:.2f} {ey-py*.35:.2f}L{cx-px:.2f} {cy-py:.2f}Z" '
+                   f'stroke="{fill}" stroke-width="{size*0.02:.2f}" stroke-linejoin="round"></path>')
+    return f'<g fill="{fill}">{"".join(out)}<circle cx="{cx}" cy="{cy}" r="{size*0.06:.2f}"></circle></g>'
+
+def tile(cx, cy, size, color, glyph="spark"):
     s = [f'<rect x="{cx-size/2}" y="{cy-size/2}" width="{size}" height="{size}" rx="{size*0.23}" fill="{color}"></rect>']
-    if glyph == "bubble":   # a generic chat bubble, not Claude's mark
+    if glyph == "spark":
+        s.append(spark(cx, cy, size))
+    elif glyph == "bubble":   # a generic chat bubble, not Claude's mark
         r = size * 0.22
         s.append(f'<rect x="{cx-r*1.3}" y="{cy-r}" width="{r*2.6}" height="{r*1.8}" rx="{r*0.7}" fill="#FFFFFF"></rect>'
                  f'<path d="M{cx-r*0.6} {cy+r*0.75} l-{r*0.5} {r*0.6} l{r*1.0} -{r*0.6}Z" fill="#FFFFFF"></path>')
