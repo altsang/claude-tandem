@@ -102,7 +102,7 @@ Every profile runs the same Claude.app, so out of the box two open accounts look
 |---|---|
 | **A name** | `tandem profile rename work Junipera` — used everywhere you type or see it; its folders and logins never move |
 | **A badge** | one or two letters in any script, an emoji, or an image: `--badge W` · `--badge 지` · `--badge 💼` · `--badge-image logo.png` |
-| **A Dock launcher** | `tandem profile app work` — Claude's current icon, wearing the badge |
+| **A Dock launcher** | `tandem profile app work` — Claude's current icon, wearing the badge. Pin this one from `~/Applications`, not the running app: a pinned running icon opens your default account ([why](docs/troubleshooting.md#profiles)) |
 | **A badged Dock icon while it runs** | `--dock-icon` — the profile runs as its own copy of Claude.app (an APFS clone: no extra disk, still validly signed, no Keychain prompt — [finding 19](docs/findings.md)) |
 | **The menu bar** | every profile with its badge, account, plan and whether it's open — [below](#the-menu-bar-app) |
 

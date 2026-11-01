@@ -158,6 +158,10 @@ It takes effect the next time the profile opens. The profile then runs from its 
 
 When Claude updates, the copy is remade the next time the profile opens.
 
+**Pin the launcher, not the running icon.** Drag `~/Applications/Claude (work).app` to the Dock. In Finder that's your home folder's Applications, not the one in the sidebar: press ⌘⇧G and type `~/Applications`. Don't use *Options › Keep in Dock* on a running profile. That pins a copy of Claude that no longer knows which profile it is, and clicking it brings up your default account.
+
+While the profile runs you'll see **two icons**: the pinned launcher, and the running app with its badge. The launcher only starts the profile, then gets out of the way. One icon that does both isn't possible while Claude.app stays unmodified ([finding 20](findings.md)).
+
 ---
 
 ## Moving work to another account

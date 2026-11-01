@@ -28,6 +28,7 @@
 - [17. There are TWO session stores — and only one of them syncs](#17-there-are-two-session-stores--and-only-one-of-them-syncs)
 - [18. A stalled iCloud Drive on the RECEIVING Mac looks exactly like a missing handoff](#18-a-stalled-icloud-drive-on-the-receiving-mac-looks-exactly-like-a-missing-handoff)
 - [19. A running profile can carry its own Dock icon — through a clone, not an edit](#19-a-running-profile-can-carry-its-own-dock-icon--through-a-clone-not-an-edit)
+- [20. One Dock icon per profile is out of reach while Claude.app stays unmodified](#20-one-dock-icon-per-profile-is-out-of-reach-while-claudeapp-stays-unmodified)
 - [Two commands that caused damage during development](#two-commands-that-caused-damage-during-development)
 
 </details>
@@ -639,6 +640,31 @@ The same run confirmed what the profiles design rested on: each profile's Claude
 own (`claude auth status` showed `agilecto@gmail.com` · Max for default and `al@junipera.io` · Team
 for Junipera, both signed in at once), and `claude://` still opened `/Applications/Claude.app` with
 the clone running. `--dock-icon` stays opt-in only because it is a choice, not a risk.
+
+## 20. One Dock icon per profile is out of reach while Claude.app stays unmodified
+
+**Measured 2026-11-01, on profile `Junipera`.** The goal: pin a profile's badged copy, so one Dock
+icon both launches the profile and lights up while it runs, like any app. Two separate walls:
+
+**A pinned copy, clicked, brings up the account that's already open.** Every copy of Claude has the
+same bundle id, `com.anthropic.claudefordesktop`. With the default Claude running, `open -a` on the
+stopped copy — what a Dock click does — started nothing and brought the running default Claude
+forward. Only `open -n`, which the Dock never passes, starts a second instance. This is also why
+pinning a running profile's icon ("Keep in Dock") later opens the default account.
+
+**A copy that adds its own arguments is killed at launch.** The copy only becomes the profile when
+it gets `--user-data-dir`, and nothing in an unmodified bundle can supply it: `LSEnvironment` lives
+in the signed `Info.plist`, and `CLAUDE_USER_DATA_DIR` is ignored by signed builds (finding 19's
+background). Moving the program to `Contents/MacOS/Claude.real` and putting a script in its place
+— which would have left Anthropic's binary untouched — got it **SIGKILLed on start (exit 137)**, with
+no window and no log line. Claude carries restricted entitlements (`keychain-access-groups`,
+`com.apple.application-identifier` for team `Q6L2SF6YDW`), which macOS honours only when the binary
+is the bundle's main executable under Anthropic's signature. Re-signing ad hoc would strip that
+signature and fail the same way.
+
+So the launcher in `~/Applications` stays: clicking it always opens the right profile, and a running
+profile shows a second, lit icon beside it. The experiment was undone by `tandem profile app
+Junipera --dock-icon`, which rebuilt a clone that passes `codesign --verify` again.
 
 ---
 
