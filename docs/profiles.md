@@ -33,15 +33,17 @@ The layout matches [Claude Switch](https://claudeswitch.dev)'s, so a profile mad
 
 ## Create one and sign in
 
+If `tandem` isn't installed yet: `brew install altsang/tap/claude-tandem`.
+
 ```bash
-./bin/tandem profile create work
+tandem profile create work
 ```
 
 Then sign in **once on each surface** — the desktop app and Claude Code keep separate logins:
 
 ```bash
-./bin/tandem profile desktop work      # a second Claude window: sign in
-./bin/tandem profile code work         # Claude Code as `work`: sign in
+tandem profile desktop work      # a second Claude window: sign in
+tandem profile code work         # Claude Code as `work`: sign in
 ```
 
 **Sign in from a private browser window.** When the sign-in page opens, claude.ai otherwise signs the new profile straight into whichever account your browser is already using — and you end up with two profiles on one account.
@@ -49,7 +51,7 @@ Then sign in **once on each surface** — the desktop app and Claude Code keep s
 Check it took — each row should show a different account:
 
 ```bash
-./bin/tandem profile list
+tandem profile list
 PROFILE          CODE (terminal)                    DESKTOP                            OPEN
 default          you@personal.com (max)             account c9390ef8                   yes
 work             you@company.com (team)             account d37cdc9d                   yes
@@ -70,9 +72,9 @@ If you signed this account into your **regular** Claude before giving it a profi
 For a profile you already have, the menu marks it *"4 earlier sessions to bring in"* and offers **Bring In Earlier Sessions…** in its submenu. `tandem profile list` points it out too. From the terminal:
 
 ```bash
-./bin/tandem profile adopt work --dry-run      # what it would bring in
-./bin/tandem profile adopt work --restart      # copy it, closing and reopening `work` if it's open
-./bin/tandem profile adopt work --never        # stop offering (adopt still works if you ask)
+tandem profile adopt work --dry-run      # what it would bring in
+tandem profile adopt work --restart      # copy it, closing and reopening `work` if it's open
+tandem profile adopt work --never        # stop offering (adopt still works if you ask)
 ```
 
 It **copies, never moves**: each Claude Code session's record and its full conversation, checked byte for byte, and only what the profile doesn't already have. Your regular Claude keeps its originals. The profile's app has to be closed while it copies, because a running app rewrites its own session list from memory.
@@ -111,7 +113,7 @@ It takes the profile's id or its name, and anything after it goes to Claude Code
 A profile's **id** is the suffix in its folder names, chosen at `create`, and it never changes. Its **name** is what you see and type, and you can change it any time:
 
 ```bash
-./bin/tandem profile rename work Junipera
+tandem profile rename work Junipera
 ```
 
 Afterwards `Junipera` works everywhere — launcher, list, menu bar, `claude @Junipera`, `tandem --profile Junipera` — and so does `work`. The folders stay put because three things are tied to their paths:
@@ -129,13 +131,13 @@ Reserved: `default`, and `3p`, which Claude itself uses for `Application Support
 ## Badges, launchers and the Dock
 
 ```bash
-./bin/tandem profile app work                          # "Claude (work)" in ~/Applications — drag it to the Dock
-./bin/tandem profile app work --badge W                # one or two letters, in any script: --badge 지
-./bin/tandem profile app work --badge 💼               # one emoji
-./bin/tandem profile app work --badge-image logo.png   # an image, cropped to the circle
-./bin/tandem profile app work --color '#0E9AA7'        # the badge colour
-./bin/tandem profile app work --badge auto             # back to the name's initial
-./bin/tandem profile app --all                         # rebuild every launcher, e.g. after Claude's icon changes
+tandem profile app work                          # "Claude (work)" in ~/Applications — drag it to the Dock
+tandem profile app work --badge W                # one or two letters, in any script: --badge 지
+tandem profile app work --badge 💼               # one emoji
+tandem profile app work --badge-image logo.png   # an image, cropped to the circle
+tandem profile app work --color '#0E9AA7'        # the badge colour
+tandem profile app work --badge auto             # back to the name's initial
+tandem profile app --all                         # rebuild every launcher, e.g. after Claude's icon changes
 ```
 
 The launcher is Claude's own current icon with the badge in the corner. Badge and colour are remembered, so rebuilding keeps them. `default` is Claude.app itself and has no launcher, but it can still have a badge and colour for the menu bar.
@@ -143,8 +145,8 @@ The launcher is Claude's own current icon with the badge in the corner. Badge an
 **A badged icon while it runs.** Normally every running profile shows Claude's own Dock and ⌘-Tab icon, because they all run the one Claude.app. Turn this on and the profile shows its badge while it's open:
 
 ```bash
-./bin/tandem profile app work --dock-icon        # or: menu bar › work › Show Badge in the Dock
-./bin/tandem profile app work --no-dock-icon     # off again
+tandem profile app work --dock-icon        # or: menu bar › work › Show Badge in the Dock
+tandem profile app work --no-dock-icon     # off again
 ```
 
 It takes effect the next time the profile opens. The profile then runs from its own copy of Claude.app in `~/.config/claude-tandem/runtimes/work/`. The copy is an **APFS clone**: no extra disk, made in a fraction of a second. It carries a custom icon set the same way Finder's *Get Info › paste icon* does. Checked before it was offered ([finding 19](findings.md)):
@@ -164,13 +166,13 @@ When one account is close to its usage limit, hand the project to another. It's 
 
 ```bash
 /handoff                                                 # in the Cowork session, on account A
-./bin/tandem send "My Project" --to Madoka@work          # Madoka is this Mac's name
-./bin/tandem --profile work receive "My Project"         # then ⌘V into a session on `work`
+tandem send "My Project" --to Madoka@work          # Madoka is this Mac's name
+tandem --profile work receive "My Project"         # then ⌘V into a session on `work`
 ```
 
 - **Hand off at the warning, not the wall.** `/handoff` runs inside the session and needs usage to do it. Once the account is at its limit, it can't write the document.
 - **Only the receiving account's app needs to be closed,** and only when the project is new to that account. `receive` adds it to that account's project list, which the app would otherwise overwrite from memory. Account A can stay open.
-- **The `/handoff` skill installs per account,** since skills sync by account. Add it in every account you hand work *from*.
+- **The `/handoff` skill installs per account,** since skills sync by account. Add it in every account you hand work *from*; `tandem skill` shows you the file.
 - **Memory comes across and merges** into whatever the receiving account already knows on that project.
 
 The full mechanics are in the [handoffs guide](handoffs.md).
@@ -182,8 +184,8 @@ The full mechanics are in the [handoffs guide](handoffs.md).
 Claude Code keeps sessions as plain files under each config folder. To pick up a terminal session on another account:
 
 ```bash
-./bin/tandem profile sync --dry-run     # what would be copied
-./bin/tandem profile sync               # copy projects/ and plans/ between all profiles, newest wins
+tandem profile sync --dry-run     # what would be copied
+tandem profile sync               # copy projects/ and plans/ between all profiles, newest wins
 claude @work --resume                   # the session started on default is there
 ```
 
@@ -196,14 +198,14 @@ Never continue the *same* session in two profiles at once. The copies diverge, a
 There's one Claude.app, so there's nothing to update per profile. But each profile's app **checks for updates on its own**. When one installs an update, any other profile that's open keeps running the old code from a bundle that's been replaced underneath it:
 
 ```bash
-./bin/tandem profile list
+tandem profile list
 work             you@company.com (team)             account d37cdc9d                   yes — QUIT+REOPEN (app updated since)
 ```
 
 Quit and reopen each open profile; the menu bar offers *Quit and Reopen*. Then:
 
 ```bash
-./bin/tandem profile doctor
+tandem profile doctor
 Claude.app 4.29.0
   ✓ honors --user-data-dir (profiles run side by side)
   ✓ records lastKnownAccountUuid (tandem finds the signed-in account)
@@ -221,7 +223,7 @@ Profiles rest on behaviour found inside Claude's app bundle, not a documented in
 There's no `remove` command, on purpose: a profile's folders hold its sign-ins, Cowork projects and memory. To remove one, hand off anything it owns first (`tandem status`), quit it, then delete by **exact path**:
 
 ```bash
-./bin/tandem profile quit work
+tandem profile quit work
 rm -rf ~/.claude-work "$HOME/Library/Application Support/Claude-work" \
        "$HOME/Applications/Claude (work).app" ~/.config/claude-tandem/runtimes/work
 ```

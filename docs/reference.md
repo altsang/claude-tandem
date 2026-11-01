@@ -1,7 +1,8 @@
 # Command reference
 
-`tandem` is one command with two halves: the handoff verbs, and `tandem profile …` for accounts. Run it as `./bin/tandem` from the repo, or put `bin/` on your `PATH`. `tandem help` and `tandem profile help` print the same thing in brief.
+`tandem` is one command with two halves: the handoff verbs, and `tandem profile …` for accounts. Install it with `brew install altsang/tap/claude-tandem`, or run `./bin/tandem` from a clone of the repo. `tandem help` and `tandem profile help` print the same thing in brief.
 
+- [Install and update](#install-and-update)
 - [Accounts: `tandem profile`](#accounts-tandem-profile)
 - [Handoffs](#handoffs)
 - [Acting as a profile: `--profile`](#acting-as-a-profile---profile)
@@ -9,6 +10,20 @@
 - [Lower-level verbs](#lower-level-verbs)
 - [Files Tandem keeps](#files-tandem-keeps)
 - [Environment](#environment)
+
+---
+
+## Install and update
+
+| Command | |
+|---|---|
+| `brew install altsang/tap/claude-tandem` | install `tandem`, with Python and Pillow for drawing badges. The old names `mirror` and `claude-profile` come too |
+| `brew upgrade claude-tandem` | update. The menu-bar app and Dock launchers keep working; `tandem menubar` rebuilds the app for the new version |
+| `brew uninstall claude-tandem` | remove the CLI. Profiles, their sign-ins, `~/Applications/Claude Tandem.app` and the launchers stay; remove those yourself if you want them gone |
+| `tandem version` | the installed version |
+| `tandem skill [--print]` | show the `/handoff` skill's `SKILL.md` in Finder, to add in Claude › Settings › Skills; `--print` only prints the path |
+
+The menu-bar app is compiled on your Mac, so `tandem menubar` needs the Command Line Tools (`xcode-select --install`).
 
 ---
 
@@ -29,7 +44,7 @@ Anywhere a profile is named you can use its id or its name. `default` is the Cla
 | `tandem profile app --all` | rebuild every launcher, e.g. after Claude's icon changes |
 | `tandem profile sync [--dry-run]` | copy Claude Code sessions (`projects/`, `plans/`) between all profiles, newest wins |
 | `tandem profile doctor` | after a Claude update: check what profiles rely on, flag apps to reopen and stale Dock copies, check where `claude://` links go |
-| `tandem menubar [--rebuild]` | build and open the Claude Tandem menu-bar app. Rebuilds itself when its source changes or the repo moves |
+| `tandem menubar [--rebuild]` | build and open the Claude Tandem menu-bar app. Rebuilds itself when its source changes, the version changes or the install moves |
 
 `app` options, all remembered for next time:
 
@@ -151,6 +166,8 @@ _handoff/projects/P.TIME.manifest.json   sizes and md5s: what receive verifies a
 ~/Applications/Claude Tandem.app         the menu-bar app
 ```
 
+**Where Tandem itself lives:** the repo, or with Homebrew `$(brew --prefix)/opt/claude-tandem/libexec/`, which holds the same `bin/`, `macos/` and `skills/` below plus `VERSION`. The menu-bar app and the Dock launchers record the `opt/` path, which stays put across `brew upgrade`.
+
 **In this repo:**
 
 ```
@@ -160,6 +177,7 @@ bin/coworkctl-vN.sh       the engine, copied into the shared tree by `tandem dep
 bin/mirror, bin/claude-profile   the names before Claude Tandem: forward, and say so
 macos/ClaudeTandem/       the menu-bar app: one Swift file, built by `tandem menubar`
 skills/handoff/           the /handoff skill
+VERSION                   the release, printed by `tandem version`
 docs/                     these guides, and findings.md
 ```
 

@@ -2,12 +2,23 @@
 
 Most of these fail *silently*: nothing errors, things just look fine and aren't. The measurements behind each are in [findings.md](findings.md).
 
+- [Installing](#installing)
 - [Profiles](#profiles)
 - [Handoffs](#handoffs)
 - [Reaching your other Mac](#reaching-your-other-mac)
 - [Two commands never to run](#two-commands-never-to-run)
 
 ---
+
+## Installing
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `tandem: command not found` after `brew install` | Homebrew's `bin` isn't on your `PATH` | add `eval "$(/opt/homebrew/bin/brew shellenv)"` to `~/.zprofile`, then open a new terminal |
+| `tandem` runs an older copy than you expect | a clone's `bin/` comes before Homebrew on your `PATH` | `which -a tandem` lists them in order; drop the clone from `PATH`, or run it as `./bin/tandem` |
+| `tandem menubar`: *swiftc not found* | the Command Line Tools aren't installed | `xcode-select --install`, then `tandem menubar` again |
+| The menu-bar app's menus do nothing after you delete the clone it was built from | the app runs the `tandem` it was built with | `tandem menubar` from the copy you use now: it sees the install moved and rebuilds |
+| Drawing a badge fails with *No module named PIL* (from a clone) | the `python3` on your `PATH` has no Pillow; the Homebrew install brings its own | `python3 -m pip install --user Pillow`, or install with Homebrew |
 
 ## Profiles
 

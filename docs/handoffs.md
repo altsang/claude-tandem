@@ -68,11 +68,17 @@ sequenceDiagram
 
 ## Set up
 
+On **both** Macs, install Tandem first:
+
+```bash
+brew install altsang/tap/claude-tandem
+```
+
 ### 1. The shared drive
 
 ```bash
-./bin/tandem deploy       # puts the engine in the shared tree; on the second Mac the drive delivers it
-./bin/tandem check        # ✓ shared tree present — if ✗, the drive hasn't synced yet: fix that first
+tandem deploy       # puts the engine in the shared tree; on the second Mac the drive delivers it
+tandem check        # ✓ shared tree present — if ✗, the drive hasn't synced yet: fix that first
 ```
 
 Everything hinges on one folder **both Macs can see**. iCloud Drive is the default and needs no configuration:
@@ -94,14 +100,14 @@ ls -d ~/Library/Mobile\ Documents/com~apple~CloudDocs ~/Library/CloudStorage/* 2
 On the Macs this was built on, Dropbox was installed on both and looked like a fine choice. But it wasn't signed in on the laptop, so it would have failed silently at the worst moment. For Google Drive the path contains your email, so point each Mac at it:
 
 ```bash
-./bin/tandem use-root "~/Library/CloudStorage/GoogleDrive-you@gmail.com/My Drive/Claude"
+tandem use-root "~/Library/CloudStorage/GoogleDrive-you@gmail.com/My Drive/Claude"
 ```
 
 Use the same Google account on both Macs, and set Drive to **mirror** files rather than stream them (Settings › My Drive syncing options). Roots don't have to match between Macs; the folder link is per Mac.
 
 ### 2. The `/handoff` skill
 
-Claude › **Settings › Skills › Add** → `skills/handoff/SKILL.md`. Skills sync by account, so add it once **per account** you'll hand work from, not once per Mac.
+`tandem skill` shows the file in Finder, wherever Tandem is installed. Add it in Claude › **Settings › Skills › Add**. Skills sync by account, so add it once **per account** you'll hand work from, not once per Mac.
 
 It writes `HANDOFF_<topic>.md` into the project folder and stops. The transfer belongs to the terminal. `skills/pickup/SKILL.md` is in the repo but deliberately not installed: `receive` already claims the project and puts the document on your clipboard.
 
@@ -111,15 +117,15 @@ Move the project's folder into the shared tree, once, on the Mac that has it:
 
 ```bash
 ls ~/Documents/Claude/Projects/                     # the folder name is often NOT the project name
-./bin/tandem rename "Finances" "Quicken Reconciliation"   # if they differ, align them first
-./bin/tandem migrate "Quicken Reconciliation"
+tandem rename "Finances" "Quicken Reconciliation"   # if they differ, align them first
+tandem migrate "Quicken Reconciliation"
 ```
 
 `migrate` copies into the shared tree and md5-verifies every file. Only then does it move the original aside, as `.PROJECT.pre-icloud-<time>`; it never deletes it. Then the first move to the other side, with no document yet:
 
 ```bash
-./bin/tandem send "Quicken Reconciliation" --to Ji-su --no-doc   # on Madoka
-./bin/tandem receive "Quicken Reconciliation"                    # on Ji-su, with Claude quit
+tandem send "Quicken Reconciliation" --to Ji-su --no-doc   # on Madoka
+tandem receive "Quicken Reconciliation"                    # on Ji-su, with Claude quit
 ```
 
 `receive` writes the other Mac's project definition **and** its folder link, so there's no folder picker. Relaunch Claude and the project is there.
@@ -144,8 +150,8 @@ ls ~/Documents/Claude/Projects/                     # the folder name is often N
 Each profile is its own side, so this is the same loop:
 
 ```bash
-./bin/tandem send "P" --to Madoka@work               # from the default account
-./bin/tandem --profile work receive "P"              # as `work` — only `work`'s app needs closing
+tandem send "P" --to Madoka@work               # from the default account
+tandem --profile work receive "P"              # as `work` — only `work`'s app needs closing
 ```
 
 The files are already on this Mac, so the drive only has to round-trip the small ownership event. Run `/handoff` before the account hits its usage limit: at the limit, the session can't write the document. More in the [profiles guide](profiles.md#moving-work-to-another-account).
@@ -164,8 +170,8 @@ Cowork keeps per-project memory, a folder of small notes plus a `MEMORY.md` inde
 Everything is backed up first, as `memory.bak-<time>`. Merging rather than replacing matters because both sides learn while they hold a project. After Adobe Stock Plan went to Ji-su and back, Madoka's 11 memories had the method and Ji-su's 1 had the newest status; replacing would have lost that line ([finding 12c](findings.md)).
 
 ```bash
-./bin/tandem memory-install "P" --merge     # what receive runs
-./bin/tandem memory-install "P" --force     # replace this side's memory with the snapshot instead
+tandem memory-install "P" --merge     # what receive runs
+tandem memory-install "P" --force     # replace this side's memory with the snapshot instead
 ```
 
 If Claude is open when you receive, memory waits; quit Claude and run the `--merge` line.
@@ -177,7 +183,7 @@ If Claude is open when you receive, memory waits; quit Claude and run the `--mer
 The ownership log records who holds a project. It can't stop you editing the copy that stays behind. `--hold` can:
 
 ```bash
-./bin/tandem send "P" --to Ji-su --note "…" --hold
+tandem send "P" --to Ji-su --note "…" --hold
 ```
 
 | What it writes, on this Mac | Effect |
@@ -194,16 +200,16 @@ It doesn't cover anything outside Cowork, such as Finder, Excel or Quicken. Noth
 ## Proving it arrived
 
 ```bash
-./bin/tandem status       # who holds what, and the last note
-./bin/tandem log "P"      # the project's ownership history
-./bin/tandem check        # shared root, account, drive sync state, broken folder links
-./bin/tandem conflicts    # iCloud conflict copies — must report nothing
+tandem status       # who holds what, and the last note
+tandem log "P"      # the project's ownership history
+tandem check        # shared root, account, drive sync state, broken folder links
+tandem conflicts    # iCloud conflict copies — must report nothing
 ```
 
 The same digest on both Macs means the same bytes:
 
 ```bash
-cd "$(./bin/tandem path 'P')" && find . -type f ! -name .DS_Store ! -path './.handoff/*' \
+cd "$(tandem path 'P')" && find . -type f ! -name .DS_Store ! -path './.handoff/*' \
   -exec md5 -q {} \; -print | paste - - | sort | md5
 ```
 
