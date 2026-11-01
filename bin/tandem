@@ -21,6 +21,9 @@
 #   tandem profile create|desktop|app|rename|code|quit|list|sync|doctor <p> ...
 #   tandem menubar                   the Claude Tandem menu-bar app
 #
+#   tandem skill                     show the /handoff skill to add in Claude › Settings › Skills
+#   tandem version                   print the installed version
+#
 #   tandem use-root <path>           set the shared drive root for THIS Mac
 #   tandem deploy                    install/refresh tooling into the shared tree
 #   tandem migrate <Project>         move a local project INTO the shared tree
@@ -1432,6 +1435,9 @@ case "${1:-help}" in
   wait)           shift; cmd_wait "$@";;
   status|handoff|pickup|log|conflicts|materialize)
             e="$(engine)" || exit 1; exec bash "$e" "$@";;
+  skill)    shift; f="$HERE/skills/handoff/SKILL.md"; [ -f "$f" ] || die "missing $f"
+            echo "$f"; [ "${1:-}" = --print ] || open -R "$f";;
+  version|-v|--version) cat "$HERE/VERSION" 2>/dev/null || echo unknown;;
   help|-h|--help) usage;;
   *) echo "unknown command: $1" >&2; echo; usage; exit 1;;
 esac

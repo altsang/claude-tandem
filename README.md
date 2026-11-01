@@ -41,20 +41,20 @@
 **A second account on this Mac** — no shared drive, nothing else to set up:
 
 ```bash
-git clone git@github.com:altsang/claude-tandem.git ~/workspace/claude-tandem && cd ~/workspace/claude-tandem
+brew install altsang/tap/claude-tandem
 
-./bin/tandem profile create work        # a profile: its own logins, sharing your skills and settings
-./bin/tandem profile desktop work       # a second Claude app opens — sign in from a private browser window
-./bin/tandem profile code work          # Claude Code as that account — sign in once
-./bin/tandem menubar                    # see every account, and which window is which
+tandem profile create work        # a profile: its own logins, sharing your skills and settings
+tandem profile desktop work       # a second Claude app opens — sign in from a private browser window
+tandem profile code work          # Claude Code as that account — sign in once
+tandem menubar                    # see every account, and which window is which
 ```
 
 **Your other Mac** — once per machine, then one command per side:
 
 ```bash
-./bin/tandem deploy                                          # both Macs; uses iCloud Drive by default
-./bin/tandem send "My Project" --to Ji-su --wait             # the Mac you're leaving
-./bin/tandem receive "My Project"                            # the Mac you're arriving at, then ⌘V
+tandem deploy                                          # both Macs; uses iCloud Drive by default
+tandem send "My Project" --to Ji-su --wait             # the Mac you're leaving
+tandem receive "My Project"                            # the Mac you're arriving at, then ⌘V
 ```
 
 Examples use the two Macs this was built and measured on — `Madoka` (desktop) and `Ji-su` (laptop) — and a second account named `work`.
@@ -80,7 +80,7 @@ A **profile** is a second identity for both, kept in its own folders. Claude.app
 | Claude Code sessions | ✅ own — `tandem profile sync` copies them across so `--resume` works on either | |
 
 ```bash
-./bin/tandem profile list
+tandem profile list
 PROFILE          CODE (terminal)                    DESKTOP                            OPEN
 default          you@personal.com (max)             account c9390ef8                   yes
 work             you@company.com (team)             account d37cdc9d                   yes
@@ -130,8 +130,8 @@ What travels, and how:
 ```bash
 # out of usage on this account? at the warning, not the wall: /handoff needs usage left
 /handoff                                                       # in the Cowork session
-./bin/tandem send "My Project" --to Madoka@work                # hand it to the other account
-./bin/tandem --profile work receive "My Project"               # take it as that account, then ⌘V
+tandem send "My Project" --to Madoka@work                # hand it to the other account
+tandem --profile work receive "My Project"               # take it as that account, then ⌘V
 ```
 
 <p align="center">
@@ -147,7 +147,7 @@ What travels, and how:
 
 ## The menu-bar app
 
-`./bin/tandem menubar` builds and opens **Claude Tandem**, a small native app with no Dock icon. It sits in the menu bar as the logo in miniature — two Clawds on a tandem — and follows the menu bar from light to dark. Every item runs the same CLI, so it holds no logic of its own.
+`tandem menubar` builds and opens **Claude Tandem**, a small native app with no Dock icon. It sits in the menu bar as the logo in miniature — two Clawds on a tandem — and follows the menu bar from light to dark. Every item runs the same CLI, so it holds no logic of its own.
 
 <p align="center">
   <img src="assets/menubar-demo.svg" alt="Clicking the two-Clawds tandem icon in the menu bar opens the Claude Tandem menu: every profile with its badge, account and plan; a profile's submenu with Show Claude, Hand Off a Project, Bring In Earlier Sessions and Show Badge in the Dock; choosing Bring In Earlier Sessions opens a question offering Copy Them, Not Now or Never for This Profile, and ends with a Done notice" width="880"/>
@@ -161,18 +161,26 @@ It flags a profile that needs reopening after Claude updates itself, offers to q
 ## Install
 
 ```bash
-git clone git@github.com:altsang/claude-tandem.git ~/workspace/claude-tandem
+brew install altsang/tap/claude-tandem
 ```
+
+That puts `tandem` on your `PATH` and brings Python with **Pillow** for drawing badges. `brew upgrade claude-tandem` updates it; the menu-bar app rebuilds itself the next time you run `tandem menubar`.
 
 | Needs | For |
 |---|---|
 | macOS with the Claude desktop app | everything — tested on macOS 26 and 27, Claude 4.29 |
-| `bash`, `python3` | everything; `python3` with **Pillow** to draw badges |
-| `swiftc` (`xcode-select --install`) | the menu-bar app only |
+| [Homebrew](https://brew.sh) | the install above |
+| Command Line Tools (`xcode-select --install`) | the menu-bar app only — `tandem menubar` builds it on your Mac with `swiftc` |
 | A drive both Macs sync — iCloud Drive by default | handoffs between Macs only; profiles on one Mac need nothing shared |
-| The `/handoff` skill — Claude › Settings › Skills › Add `skills/handoff/SKILL.md` | handoffs; skills sync by account, so add it once in each account you hand work *from* |
+| The `/handoff` skill — `tandem skill` shows the file; add it in Claude › Settings › Skills | handoffs; skills sync by account, so add it once in each account you hand work *from* |
 
-Optional: put `bin/` on your `PATH` to type `tandem` instead of `./bin/tandem`. `mirror` and `claude-profile`, the commands' names before this project became Claude Tandem, still work and say so.
+**From a clone instead**, to follow `main` or change the code:
+
+```bash
+git clone git@github.com:altsang/claude-tandem.git ~/workspace/claude-tandem
+```
+
+then run `./bin/tandem`, or put `bin/` on your `PATH`. You'll need `python3` with Pillow yourself. `mirror` and `claude-profile`, the commands' names before this project became Claude Tandem, still work and say so.
 
 ---
 

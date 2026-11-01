@@ -522,6 +522,9 @@ cmd_menubar(){
   # The bundle records this repo's path, so a moved checkout needs a rebuild too.
   local here_now; here_now="$(cd "$HERE/.." && pwd)"
   [ -f "$app/Contents/Info.plist" ] && [ "$(/usr/libexec/PlistBuddy -c 'Print :RepoDir' "$app/Contents/Info.plist" 2>/dev/null)" != "$here_now" ] && force=1
+  # A Homebrew upgrade can leave main.swift older than the built app, so a new version rebuilds too.
+  local ver; ver="$(cat "$HERE/../VERSION" 2>/dev/null || echo 1.0)"
+  [ -f "$app/Contents/Info.plist" ] && [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist" 2>/dev/null)" != "$ver" ] && force=1
   if [ "$force" = 1 ] || [ ! -x "$bin" ] || [ "$src" -nt "$bin" ] || [ "${BASH_SOURCE[0]}" -nt "$bin" ]; then
     pkill -x ClaudeTandem 2>/dev/null; sleep 0.5
     rm -rf "$app"   # exact path: our own generated bundle
@@ -534,7 +537,7 @@ cmd_menubar(){
         -c "Add :CFBundleIdentifier string local.claude-tandem" \
         -c "Add :CFBundleExecutable string ClaudeTandem" \
         -c "Add :CFBundlePackageType string APPL" \
-        -c "Add :CFBundleShortVersionString string 1.0" \
+        -c "Add :CFBundleShortVersionString string $ver" \
         -c "Add :LSMinimumSystemVersion string 13.0" \
         -c "Add :LSUIElement bool true" \
         -c "Add :TandemScript string $HERE/tandem" \
