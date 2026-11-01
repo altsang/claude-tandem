@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/logo.svg" alt="Claude Tandem: two Clawds riding a tandem bicycle" width="260"/>
+
 # Claude Tandem
 
 ### Run every Claude account you have — side by side, on every Mac you have — and hand work between them without losing the thread.
@@ -195,3 +197,7 @@ Optional: put `bin/` on your `PATH` to type `tandem` instead of `./bin/tandem`. 
 | **[Command reference](docs/reference.md)** | every command and flag, the files Tandem keeps, environment variables |
 | **[Troubleshooting](docs/troubleshooting.md)** | symptoms, causes and fixes — most of them silent failures found the hard way |
 | **[Findings](docs/findings.md)** | the lab notebook: what was measured, when, and what turned out to be wrong |
+
+---
+
+<sub>**Claude Tandem is an independent, open-source project. It is not made, endorsed or supported by Anthropic.** Claude, Claude Code and the Clawd character are Anthropic's; Clawd appears in the logo as a tribute to the tool this one is built around. Licensed under [MIT](LICENSE).</sub>
