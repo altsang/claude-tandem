@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.svg" alt="Claude Tandem: two Clawds riding a tandem bicycle" width="260"/>
+<img src="assets/logo.svg" alt="Claude Tandem: two Clawds riding a tandem bicycle, hopping out of step as they pedal" width="260"/>
 
 # Claude Tandem
 
@@ -67,15 +67,10 @@ The Claude app and Claude Code each hold **one** signed-in account. If you have 
 
 A **profile** is a second identity for both, kept in its own folders. Claude.app is never copied into or modified; every profile runs the real, signed app, side by side.
 
-```mermaid
-flowchart LR
-    C["Claude.app<br/>one signed install"] --> D["default<br/>you@personal · Max"]
-    C --> W["work<br/>you@company · Team"]
-    D --- DD["Application Support/Claude<br/>~/.claude"]
-    W --- WD["Application Support/Claude-work<br/>~/.claude-work"]
-    S["shared by every profile:<br/>skills · settings · CLAUDE.md<br/>plugins · agents · commands"] -.-> D
-    S -.-> W
-```
+<p align="center">
+  <img src="assets/profiles-demo.svg" alt="A Mac with Claude open as a personal account. In the terminal, tandem profile create work and tandem profile desktop work; a second Claude window opens, signs in, and shows a company account; the Dock gains a second Claude icon wearing a W badge; tandem profile list shows both accounts open" width="880"/>
+  <br/><sub>Two accounts, two windows, side by side — the second one wearing its badge in the Dock.</sub>
+</p>
 
 | | Per profile | Shared across profiles |
 |---|---|---|
@@ -117,13 +112,10 @@ Every profile runs the same Claude.app, so out of the box two open accounts look
 
 The same two commands move a Cowork project **to another account on this Mac** or **to your other Mac**, because to Tandem each profile is simply another side: `Madoka`, `Madoka@work`, `Ji-su`.
 
-```mermaid
-flowchart LR
-    A["Madoka<br/>default"] -->|"send --to Madoka@work"| B["Madoka@work<br/>same Mac, other account"]
-    A -->|"send --to Ji-su"| J["Ji-su<br/>other Mac"]
-    B -.->|"either way back"| A
-    J -.-> A
-```
+<p align="center">
+  <img src="assets/accounts-handoff-demo.svg" alt="Two Claude windows side by side. The personal account warns it is approaching its usage limit; /handoff writes a brief; in the terminal tandem send hands the project to Madoka@work and tandem --profile work receive verifies every file and merges memory; the work account's window then picks up from the pasted brief" width="880"/>
+  <br/><sub>Handing a project to your other account, before the first one runs out — terminal output from the tool itself, shortened.</sub>
+</p>
 
 What travels, and how:
 
@@ -155,16 +147,12 @@ What travels, and how:
 
 ## The menu-bar app
 
-`./bin/tandem menubar` builds and opens **Claude Tandem**, a small native app with no Dock icon. Every item runs the same CLI, so it holds no logic of its own.
+`./bin/tandem menubar` builds and opens **Claude Tandem**, a small native app with no Dock icon. It sits in the menu bar as the logo in miniature — two Clawds on a tandem — and follows the menu bar from light to dark. Every item runs the same CLI, so it holds no logic of its own.
 
-```
- ◎◎  Claude profiles on Madoka
-     (A) default     you@personal.com · Max  · Open      ▸  Show Claude · Open Claude Code · Quit
-     (J) Junipera    you@company.com · Team  · Open      ▸  Hand Off a Project ▸ project ▸ target
-     ─────────────────────────────────────────              Receive a Project ▸ project
-     New Profile…  ·  Sync Claude Code Sessions             Rename… · Change Badge… · Badge Colour
-     Run Doctor  ·  Open at Login  ·  Quit                  Show Badge in the Dock  ✓
-```
+<p align="center">
+  <img src="assets/menubar-demo.svg" alt="Clicking the two-Clawds tandem icon in the menu bar opens the Claude Tandem menu: every profile with its badge, account and plan; a profile's submenu with Show Claude, Hand Off a Project, Bring In Earlier Sessions and Show Badge in the Dock; choosing Bring In Earlier Sessions opens a question offering Copy Them, Not Now or Never for This Profile, and ends with a Done notice" width="880"/>
+  <br/><sub>Every profile at a glance, and the chores for each — here, bringing in an account's earlier sessions.</sub>
+</p>
 
 It flags a profile that needs reopening after Claude updates itself, offers to quit an account's app before receiving into it, and lists your other Mac as a handoff target as soon as the two have exchanged a project.
 
