@@ -371,7 +371,7 @@ def load_list(path):
 
 
 def resolve(d, to, frm):
-    """An intent's free-text "to" (written by a Cowork session) matched to a known side:
+    """An intent's free-text "to" (written by a Claude session) matched to a known side:
     exactly, case-insensitively; or Mac@profile-name. None when it names nothing known."""
     if not to or not to.strip():
         return None
@@ -451,7 +451,7 @@ def show_inbox(d):
             print("    tandem %ssend \"%s\" --to %s%s" % (prof(i), p, i.get("to") or "SIDE", (" --note \"%s\"" % i["note"]) if i["note"] else ""))
         elif i["kind"] == "request":
             print("? %s asks for %s, held by %s" % (i["other"], p, i["side"]))
-            print("    run /handoff in its Cowork session, then: tandem %ssend \"%s\" --to %s" % (prof(i), p, i["other"]))
+            print("    run /handoff in its Claude session, then: tandem %ssend \"%s\" --to %s" % (prof(i), p, i["other"]))
         elif i["kind"] == "settling":
             print("⏸ %s — received; waits for %s's Claude to quit: %s" % (p, who, i["note"]))
             print("    tandem %ssettle \"%s\"" % (prof(i), p))

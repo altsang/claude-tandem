@@ -57,7 +57,7 @@ tandem deploy                                          # both Macs; uses iCloud 
 tandem menubar                                         # both Macs; then Settings › Open at Login
 ```
 
-From then on `/handoff` in a Cowork session is the only thing you type: Tandem on this Mac asks to send it, and Tandem on the other one tells you it arrived. In a terminal or a script it's one command per side:
+From then on `/handoff` in a Claude session is the only thing you type: Tandem on this Mac asks to send it, and Tandem on the other one tells you it arrived. In a terminal or a script it's one command per side:
 
 ```bash
 tandem send "My Project" --to Ji-su --wait             # the Mac you're leaving
@@ -81,7 +81,7 @@ A **profile** is a second identity for both, kept in its own folders. Claude.app
 
 | | Per profile | Shared across profiles |
 |---|---|---|
-| Desktop sign-in, Cowork projects, project memory | ✅ own | |
+| Desktop sign-in, Claude projects, project memory | ✅ own | |
 | Claude Code sign-in and usage | ✅ own — separate Keychain logins, confirmed with two real accounts | |
 | Skills, `settings.json`, `CLAUDE.md`, plugins, agents, commands | | ✅ one copy, so a change applies everywhere |
 | Claude Code sessions | ✅ own — `tandem profile sync` copies them across so `--resume` works on either | |
@@ -119,7 +119,7 @@ Every profile runs the same Claude.app, so out of the box two open accounts look
 
 ### Why handoffs exist
 
-**A Cowork session belongs to the Mac it started on.** The everyday kind, a *host-loop* session in a local project, which reads your folder with no setup, runs on this computer. Its chat, the project's definition and folder link, and what Claude learned while working all live on this Mac, under this account. iCloud can sync the project's files, but nothing that makes them a project Claude knows.
+**A Claude session belongs to the Mac it started on.** The everyday kind, a *host-loop* session in a local project, which reads your folder with no setup, runs on this computer. Its chat, the project's definition and folder link, and what Claude learned while working all live on this Mac, under this account. iCloud can sync the project's files, but nothing that makes them a project Claude knows.
 
 So the moment you move, the thread breaks:
 
@@ -127,7 +127,7 @@ So the moment you move, the thread breaks:
 - **To your other account**, because this one is near its usage limit. Accounts share nothing, so the second one starts cold too.
 - **Back and forth.** When both Macs can edit the same folder, nothing says which copy is current.
 
-Claude Tandem was built to overcome that: to move a Cowork project between Macs and accounts without losing the thread. A handoff carries everything that doesn't travel by itself:
+Claude Tandem was built to overcome that: to move a Claude project between Macs and accounts without losing the thread. A handoff carries everything that doesn't travel by itself:
 
 - the project's definition, written into the receiving Claude;
 - its memory, merged rather than overwritten;
@@ -135,11 +135,11 @@ Claude Tandem was built to overcome that: to move a Cowork project between Macs 
 - every file, verified byte for byte;
 - a record of who holds it now, so only one place works on it at a time.
 
-*Remote* Cowork sessions do sync their chat, but only between Macs signed into the same account, and they reach your files only through folders granted to each session. Handoffs are for everything else ([finding 17](docs/findings.md#17-there-are-two-session-stores--and-only-one-of-them-syncs)).
+*Remote* Claude sessions do sync their chat, but only between Macs signed into the same account, and they reach your files only through folders granted to each session. Handoffs are for everything else ([finding 17](docs/findings.md#17-there-are-two-session-stores--and-only-one-of-them-syncs)).
 
 ### How
 
-The same two commands move a Cowork project **to another account on this Mac** or **to your other Mac**, because to Tandem each profile is simply another side: `Madoka`, `Madoka@work`, `Ji-su`.
+The same two commands move a Claude project **to another account on this Mac** or **to your other Mac**, because to Tandem each profile is simply another side: `Madoka`, `Madoka@work`, `Ji-su`.
 
 <p align="center">
   <img src="assets/accounts-handoff-demo.svg" alt="Two Claude windows side by side. The personal account warns it is approaching its usage limit; /handoff writes a brief; in the terminal tandem send hands the project to Madoka@work and tandem --profile work receive verifies every file and merges memory; the work account's window then picks up from the pasted brief" width="880"/>
@@ -158,7 +158,7 @@ What travels, and how:
 
 ```bash
 # out of usage on this account? at the warning, not the wall: /handoff needs usage left
-/handoff                                                       # in the Cowork session
+/handoff                                                       # in the Claude session
 tandem send "My Project" --to Madoka@work                # hand it to the other account
 tandem --profile work receive "My Project"               # take it as that account, then ⌘V
 ```

@@ -79,7 +79,7 @@ jisu = [
     (19, 20.3, None, "transactions — see the note in accounts.md before you re-import.", "txt"),
     (20, 20.6, None, "  ⋮", "dim"),
     (21, 21.0, None, "  installed 20 memory file(s) from Madoka (20260822T171204Z) — 42.1 KB", "ok"),
-    (23, 21.5, None, "  ✓ HANDOFF_quicken_aug.md copied to the clipboard — open 'Quicken Reconciliation' in Cowork and paste it.", "ok"),
+    (23, 21.5, None, "  ✓ HANDOFF_quicken_aug.md copied to the clipboard — open 'Quicken Reconciliation' in Claude and paste it.", "ok"),
 ]
 
 MADOKA_ROWS = 22

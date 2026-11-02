@@ -7,7 +7,7 @@ description: Resume a workload handed over from the user's other Mac (Madoka / J
 
 > **Not installed by default.** `tandem receive` claims the project and hands you the document, so
 > this skill has nothing mechanical left to do. It is kept for anyone who wants the prerequisite
-> ritual inside the session — but note that a Cowork session cannot force iCloud to deliver, so it
+> ritual inside the session — but note that a Claude session cannot force iCloud to deliver, so it
 > can report a folder as missing when the data is merely un-enumerated. See `docs/findings.md` 12.
 
 Counterpart to `/handoff`. Shared projects live at one path identical on both Macs:
@@ -69,7 +69,7 @@ tandem project-repath "PROJECT" "$(tandem path "PROJECT")"
 
 Then relaunch Claude. No folder picker is involved.
 
-Note also that **cloud** Cowork projects run in a bridged VM and could not reach `~/Library` at
+Note also that **cloud** Claude projects run in a bridged VM and could not reach `~/Library` at
 all. Use the `Local`-badged project for file work.
 
 ## Ownership

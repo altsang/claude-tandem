@@ -147,7 +147,7 @@ Under `--profile`, Tandem uses that profile's data folder, its project list and 
 | `tandem materialize [PATH]` | force the drive to download real contents |
 | `tandem handoff P --to SIDE` · `tandem pickup [P]` | the engine's raw handoff and claim, without `send`'s checks |
 
-`tandem link` is deprecated: symlinked folders break Cowork.
+`tandem link` is deprecated: symlinked folders break Claude.
 
 ---
 

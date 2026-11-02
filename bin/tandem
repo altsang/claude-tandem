@@ -1,6 +1,6 @@
 #!/bin/bash
 # tandem — the Claude Tandem CLI: run several Claude accounts on one Mac, and hand
-#          Cowork projects between accounts and between Macs.
+#          Claude projects between accounts and between Macs.
 #
 #   Setup verbs run from this repo. Runtime verbs are delegated to the versioned
 #   engine deployed in the shared tree (see bin/VERSIONING.md for why it is
@@ -55,7 +55,7 @@
 #   tandem deploy                    install/refresh tooling into the shared tree
 #   tandem migrate <Project>         move a local project INTO the shared tree
 #   tandem path <Project>            print the shared folder path (also copies it)
-#   tandem link <Project>            DEPRECATED — symlinks break Cowork folder grants
+#   tandem link <Project>            DEPRECATED — symlinks break Claude folder grants
 #   tandem rename <Old> <New>        rename a shared project everywhere
 #
 #   tandem hold <Project> --to <M>   lock THIS Mac out of a project it handed away:
@@ -320,7 +320,7 @@ cmd_check(){
   [ -n "$e" ] && ok "engine: $(basename "$e")" || echo "  ✗ engine not deployed"
   echo "  shared projects:"
   for d in "$PROJECTS"/*/; do [ -d "$d" ] && echo "      $(basename "$d")"; done
-  echo "  granted folders that will fail in Cowork:"
+  echo "  granted folders that will fail in Claude:"
   python3 - "$USERDATA" <<'PY'
 import json,glob,os,sys
 fs=[x for x in glob.glob(os.path.join(sys.argv[1],
@@ -388,7 +388,7 @@ cmd_link(){
   [ -d "$PROJECTS/$name" ] || die "'$name' is not in the shared tree ($PROJECTS)"
   echo "tandem link is deprecated and creates nothing."
   echo
-  echo "Cowork registers a symlinked folder as \"connected\" and then fails every read"
+  echo "Claude registers a symlinked folder as \"connected\" and then fails every read"
   echo "inside it with \"is not inside a folder connected to Cowork on this device\","
   echo "because the resolved real path falls outside the connected scope. The folder"
   echo "looks fine in the UI, which makes it hard to diagnose. Verified 2026-08-19."
@@ -442,7 +442,7 @@ cmd_migrate(){
       || echo "  ! could not repoint the grant — run: tandem project-repath \"$name\" \"$dst\" --replace \"$src\""
   fi
   echo
-  echo "  NO symlink is created, deliberately. Cowork registers a symlinked folder as"
+  echo "  NO symlink is created, deliberately. Claude registers a symlinked folder as"
   echo "  \"connected\" but then refuses every read inside it, because the resolved real"
   echo "  path is outside the connected scope. Verified 2026-08-19."
   echo
@@ -451,12 +451,12 @@ cmd_migrate(){
   echo "  at the shared copy."
   echo "      $dst"
   echo
-  echo "  That path is identical on both Macs. Keep the backup until Cowork reads the"
+  echo "  That path is identical on both Macs. Keep the backup until Claude reads the"
   echo "  project successfully."
 }
 
 # Rename a shared project everywhere: the folder, its ownership history, and this
-# Mac's symlink. Useful when the folder name does not match the Cowork project name.
+# Mac's symlink. Useful when the folder name does not match the Claude project name.
 cmd_rename(){
   local old="${1:-}" new="${2:-}"
   [ -n "$old" ] && [ -n "$new" ] || die "usage: tandem rename <Old> <New>"
@@ -684,7 +684,7 @@ PY
 #
 # Two spaces.json writes do it, both per-machine and both reversible:
 #   1. a banner prepended to the project's instructions. Verified 2026-08-20: a local
-#      project's instructions land verbatim in the Cowork session's systemPrompt, so
+#      project's instructions land verbatim in the Claude session's systemPrompt, so
 #      the assistant reads the notice before you type and can refuse.
 #   2. folders[] emptied, so the session cannot read a byte even if it ignores the
 #      banner.
@@ -735,7 +735,7 @@ e["instructions"]=banner+instr
 e["folders"]=[]
 json.dump(d,open(dst,"w"),indent=2)
 print(f'  "{name}" held for {to}')
-print(f'      folder unlinked ({len(folders)} path(s) stashed) — Cowork here can read nothing')
+print(f'      folder unlinked ({len(folders)} path(s) stashed) — Claude here can read nothing')
 print(f'      notice added to the project instructions — sessions here will refuse to edit')
 PY
   echo "  Relaunch Claude. Release it with:  tandem release \"$name\"   (or 'tandem receive')"
@@ -899,7 +899,7 @@ require_claude_quit(){
 }
 
 cmd_project_list(){
-  local f; f="$(spaces_file)" || die "no spaces.json found (has Cowork ever run on this Mac?)"
+  local f; f="$(spaces_file)" || die "no spaces.json found (has Claude ever run on this Mac?)"
   python3 - "$f" <<'PY'
 import json,sys,os
 d=json.load(open(sys.argv[1]))
@@ -978,7 +978,7 @@ cmd_project_import(){
     fi
     # The definition is a few hundred bytes and lands first. The FILES are the slow part,
     # and they arrive DATALESS -- listed at full size with no content -- so only a read
-    # materializes them. Importing before that gives Cowork a project whose files read
+    # materializes them. Importing before that gives Claude a project whose files read
     # empty, with nothing to indicate why. Same loop `tandem wait` uses; md5-verified.
     local left=$(( timeout - (SECONDS - start) ))
     [ "$left" -lt 60 ] && left=60
@@ -990,7 +990,7 @@ cmd_project_import(){
   fi
   [ -n "$src" ] && [ -f "$src" ] || die "no exported definition for \"$name\" in $HANDOFF/projects
      Run 'tandem project-export \"$name\"' on the other Mac first, and give the drive time to sync."
-  local f; f="$(spaces_file)" || die "no spaces.json on this Mac (open Cowork once to create it)"
+  local f; f="$(spaces_file)" || die "no spaces.json on this Mac (open Claude once to create it)"
   cp "$f" "$f.bak-$(date +%Y%m%d-%H%M%S)"
   python3 - "$f" "$src" "$PROJECTS" <<'PY'
 import json,sys,os
@@ -1052,7 +1052,7 @@ if e is None: print(f'no local project named "{name}"',file=sys.stderr); sys.exi
 old=[p.get("path") for p in (e.get("folders") or [])]
 if replace:
     # swap that one folder, keep the project's others (a Google Drive folder, say) — and
-    # the new one first, where Cowork looks for the project's own files
+    # the new one first, where Claude looks for the project's own files
     rest=[{"path":p} for p in old if p not in (replace, path)]
     e["folders"]=[{"path":path}]+rest
 else:
@@ -1272,7 +1272,7 @@ cmd_send(){
     else
       doc="$(cd "$PROJECTS/$name" && ls -t HANDOFF*.md 2>/dev/null | head -1)"
       [ -n "$doc" ] || die "no HANDOFF*.md in '$name' — nothing would carry the context.
-     Run /handoff in the Cowork session that did the work; it writes the document.
+     Run /handoff in the Claude session that did the work; it writes the document.
      To send the files anyway:  tandem send \"$name\" --to $to --no-doc"
     fi
     # A document older than the last handoff event is almost certainly the previous
@@ -1367,7 +1367,7 @@ PY
 
 # The receive side, in one verb: wait for the event, verify every file against the
 # manifest, define the project here if this Mac has never seen it, claim it, and put
-# the handoff document on the clipboard so the Cowork session is one paste away.
+# the handoff document on the clipboard so the Claude session is one paste away.
 cmd_receive(){
   local name="" timeout=900 defer=0
   while [ $# -gt 0 ]; do
@@ -1448,7 +1448,7 @@ cmd_receive(){
   if [ "$wfrc" = 2 ]; then
     die "'$name' has been EDITED since it was handed over — nothing was claimed.
      The files above are present; they no longer match the manifest written at handoff.
-     That is normal when work continued here without running 'tandem receive' (a Cowork
+     That is normal when work continued here without running 'tandem receive' (a Claude
      session does the work; it never records a claim). Nothing is wrong with the data.
      Close it properly from the Mac that did the work:
          tandem send \"$name\" --to <the other Mac> --note \"...\"
@@ -1471,12 +1471,12 @@ cmd_receive(){
   else
     local def; def="$(find_definition "$name")"
     if [ -z "$def" ]; then
-      # A folder in the shared tree that is not a Cowork project on the sender -- a
+      # A folder in the shared tree that is not a Claude project on the sender -- a
       # plumbing test, or files shared without a project. Verified and claimed all the
       # same; there is simply nothing to define here. Failing now would throw away a
       # transfer that already checked out by md5.
       echo "  ! no project definition was sent — files only"
-      echo "    ('$name' is not a Cowork project on the sending Mac, so there is none to add)"
+      echo "    ('$name' is not a Claude project on the sending Mac, so there is none to add)"
     else
       require_claude_quit
       cmd_project_import "$name" | sed '/tandem pickup/d'
@@ -1529,12 +1529,12 @@ cmd_receive(){
     echo "    Tandem's app does it automatically; by hand: tandem ${PROFILE:+--profile $PROFILE }settle \"$name\""
   fi
 
-  # 6. the whole point of the trip: get that document into the Cowork session
+  # 6. the whole point of the trip: get that document into the Claude session
   if [ -n "$doc" ] && [ -f "$PROJECTS/$name/$doc" ]; then step brief done "$doc"; else step brief skip; fi
   if [ -n "$doc" ] && [ -f "$PROJECTS/$name/$doc" ] && [ -z "${TANDEM_NO_CLIPBOARD:-}" ] && command -v pbcopy >/dev/null 2>&1; then
     pbcopy < "$PROJECTS/$name/$doc"
     echo
-    echo "  ✓ $doc copied to the clipboard — open '$name' in Cowork and paste it."
+    echo "  ✓ $doc copied to the clipboard — open '$name' in Claude and paste it."
   fi
 }
 
@@ -1715,7 +1715,7 @@ cmd_brief(){
   if ev="$(newest_event "$name")"; then IFS=$'\t' read -r _v _m _t _a doc <<< "$ev"; fi
   # engines ≤ v8 can shift the doc into the note on a claim; the newest file is the fallback
   [ -n "$doc" ] && [ -f "$PROJECTS/$name/$doc" ] || doc="$(cd "$PROJECTS/$name" && ls -t HANDOFF*.md 2>/dev/null | head -1)"
-  [ -n "$doc" ] || die "'$name' has no HANDOFF*.md — run /handoff in its Cowork session"
+  [ -n "$doc" ] || die "'$name' has no HANDOFF*.md — run /handoff in its Claude session"
   local f="$PROJECTS/$name/$doc"
   case "$mode" in
     path) echo "$f";;

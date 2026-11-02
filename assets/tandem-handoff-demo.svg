@@ -128,5 +128,5 @@ text[style*="animation-name"]{opacity:0;animation-duration:32.0s;animation-itera
 <text x="18.5" y="839.5" class="t" fill="#adbac7" style="animation-name:a51">transactions — see the note in accounts.md before you re-import.</text>
 <text x="18.5" y="856.5" class="t" fill="#768390" style="animation-name:a52">  ⋮</text>
 <text x="18.5" y="873.5" class="t" fill="#57ab5a" style="animation-name:a53">  installed 20 memory file(s) from Madoka (20260822T171204Z) — 42.1 KB</text>
-<text x="18.5" y="907.5" class="t" fill="#57ab5a" style="animation-name:a54">  ✓ HANDOFF_quicken_aug.md copied to the clipboard — open &#x27;Quicken Reconciliation&#x27; in Cowork and paste it.</text>
+<text x="18.5" y="907.5" class="t" fill="#57ab5a" style="animation-name:a54">  ✓ HANDOFF_quicken_aug.md copied to the clipboard — open &#x27;Quicken Reconciliation&#x27; in Claude and paste it.</text>
 </svg>

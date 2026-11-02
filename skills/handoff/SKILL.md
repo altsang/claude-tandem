@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Write the handoff document that lets the user's other Mac (Madoka / Ji-su) continue this work. Use when the user says to hand off, move, send, or continue work on their other machine or laptop, or invokes /handoff by name. Captures everything the receiving machine needs into a self-contained document, then hands the transfer itself to the tandem CLI. Use this instead of improvising a summary, because a host-loop Cowork session cannot sync its chat and the other machine starts with no memory of this conversation.
+description: Write the handoff document that lets the user's other Mac (Madoka / Ji-su) continue this work. Use when the user says to hand off, move, send, or continue work on their other machine or laptop, or invokes /handoff by name. Captures everything the receiving machine needs into a self-contained document, then hands the transfer itself to the tandem CLI. Use this instead of improvising a summary, because a host-loop Claude session cannot sync its chat and the other machine starts with no memory of this conversation.
 ---
 
 # Hand off a workload to the other Mac
@@ -62,7 +62,7 @@ Assume a competent agent with zero context who will act on it literally.
 ```markdown
 # HANDOFF — one-line subject
 
-Paste this whole document as your first message in Cowork. It is self-contained.
+Paste this whole document as your first message in Claude. It is self-contained.
 
 ## Your task
 What must be accomplished, concretely, with the actual numbers.

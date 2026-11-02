@@ -285,7 +285,7 @@ extension Store {
                 }
             case .request:
                 notifier.post(id: item.key, title: "\(item.other.map(label) ?? "The other Mac") asks for \(p.name)",
-                              body: "Run /handoff in its Cowork session, then send it — or send it without a brief.",
+                              body: "Run /handoff in its Claude session, then send it — or send it without a brief.",
                               category: "REQUEST", info: ["project": p.name, "side": item.side, "to": item.other ?? ""])
             case .delivered:
                 notifier.post(id: item.key, title: "\(p.name) was received",
@@ -744,7 +744,7 @@ struct InboxRow: View {
             let to = item.to.map(store.label) ?? item.other.map { "“\($0)” (pick who it goes to)" } ?? "—"
             return "/handoff wrote \(item.doc ?? item.project.doc?.name ?? "a brief") \(ago(item.at)) · to \(to)"
         case .request:
-            return "\(store.label(item.side)) holds it · asked \(ago(item.at)). Run /handoff in its Cowork session, then send it."
+            return "\(store.label(item.side)) holds it · asked \(ago(item.at)). Run /handoff in its Claude session, then send it."
         case .settling:
             let name = store.profile(forSide: item.side)?.name ?? item.side
             return "Received and claimed. Still to do for \(name) once its Claude quits: \(item.note ?? "")."
@@ -799,7 +799,7 @@ struct JobRow: View {
                 Spacer()
                 if job.ok, job.kind == "receive", let p = job.project, let s = job.side {
                     Button("Open in Claude") { store.openInClaude(p, as: s) }
-                        .help("Puts the brief on the clipboard and brings this profile’s Claude forward — paste it into the project’s Cowork session")
+                        .help("Puts the brief on the clipboard and brings this profile’s Claude forward — paste it into the project’s Claude session")
                 }
                 if !job.running { Button { store.jobs.removeAll { $0.id == job.id } } label: { Image(systemName: "xmark") }.buttonStyle(.borderless) }
             }
@@ -1131,7 +1131,7 @@ struct SendSheet: View {
             }
         } else {
             VStack(alignment: .trailing, spacing: 4) {
-                Text(p?.doc == nil ? "None — run /handoff in its Cowork session" : "None").foregroundStyle(.orange)
+                Text(p?.doc == nil ? "None — run /handoff in its Claude session" : "None").foregroundStyle(.orange)
                 Toggle("Send without one", isOn: $draft.noDoc).toggleStyle(.checkbox)
             }
         }

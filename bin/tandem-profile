@@ -35,7 +35,7 @@
 #   tandem profile doctor            after a Claude upgrade: re-check what profiles rely on,
 #                                    and flag profiles still running the pre-update app
 #
-#   Cowork projects move between profiles with tandem, which treats each profile as
+#   Claude projects move between profiles with tandem, which treats each profile as
 #   its own side of a handoff:  tandem send <Project> --to "<Mac>@<p>"
 #                               tandem --profile <p> receive <Project>
 #
@@ -43,7 +43,7 @@
 #   rename gives it a name you see and type instead, and the id keeps working too.
 #   Moving the folders would sign the profile out of Claude Code (its Keychain item
 #   is "Claude Code-credentials-<hash of the config path>"), break the absolute paths
-#   its Cowork sessions recorded, and orphan tandem's ownership events, which name
+#   its Claude sessions recorded, and orphan tandem's ownership events, which name
 #   the side <Mac>@<id> on the shared drive.
 
 set -uo pipefail
@@ -404,7 +404,7 @@ cmd_quit(){
 # looks lost. Found 2026-10-31: four Junipera-account sessions (AI Video Editing Kit for
 # Chloe, …) stranded this way, then copied by hand and confirmed in the profile's Code tab.
 # Copies, never moves — the regular app keeps its originals — and only what is missing.
-# Cowork data the account left is reported, not moved: its session files record absolute
+# Claude project data the account left is reported, not moved: its session files record absolute
 # paths into the regular app's folder, so moving them needs path rewriting not yet proven.
 adopt_py(){   # <mode: scan|copy> <profile config dir> <profile data dir>
   python3 - "$1" "$APPSUPPORT/Claude" "$HOME/.claude" "$2" "$3" <<'PY'
@@ -479,7 +479,7 @@ print(f"  {name} is account {r["account"][:8]}. Left in your regular Claude from
 print(f"    {n} Claude Code session(s) not yet in {name}" + (":" if n else ""))
 for s in r["sessions"]: print(f"      · {s["title"]}  ({s["cwd"]})" + ("" if s["transcript"] else "  — transcript not found; the record alone"))
 if r["cowork_projects"] or r["cowork_sessions"]:
-    print(f"    {r["cowork_projects"]} Cowork project(s) and {r["cowork_sessions"]} Cowork session(s) — listed only, not moved (see adopt in docs/profiles.md)")' "$r" "$(label "$p")"
+    print(f"    {r["cowork_projects"]} Claude project(s) and {r["cowork_sessions"]} Claude session(s) — listed only, not moved (see adopt in docs/profiles.md)")' "$r" "$(label "$p")"
   local n; n="$(python3 -c 'import json,sys; print(len(json.loads(sys.argv[1])["sessions"]))' "$r")"
   [ "$n" = 0 ] && return 0
   [ "$dry" = 1 ] && { echo "  (dry run — nothing copied)"; return 0; }
@@ -729,8 +729,8 @@ cmd_doctor(){
   else echo "  ✗ no longer checks --user-data-dir — second desktop profiles may open the DEFAULT data"; bad=1; fi
   if has 'lastKnownAccountUuid'; then ok "records lastKnownAccountUuid (tandem finds the signed-in account)"
   else echo "  ✗ lastKnownAccountUuid gone — tandem falls back to the newest spaces.json"; bad=1; fi
-  if has 'local-agent-mode-sessions'; then ok "Cowork store is still local-agent-mode-sessions/"
-  else echo "  ✗ Cowork store moved — tandem cannot find spaces.json or memory"; bad=1; fi
+  if has 'local-agent-mode-sessions'; then ok "Claude's project store is still local-agent-mode-sessions/"
+  else echo "  ✗ Claude's project store moved — tandem cannot find spaces.json or memory"; bad=1; fi
   if has 'CLAUDE_CONFIG_DIR'; then ok "Code tab honors CLAUDE_CONFIG_DIR (same login as claude @<p>)"
   else echo "  ✗ Code tab ignores CLAUDE_CONFIG_DIR — it will use ~/.claude's login"; bad=1; fi
   # --dock-icon copies register with macOS like any app; links must still go to Claude.app

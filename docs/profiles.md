@@ -22,7 +22,7 @@ An **id** and two folders. `default` is the Claude you already have:
 
 | | `default` | profile `work` |
 |---|---|---|
-| Desktop app data — sign-in, Cowork projects, project memory | `~/Library/Application Support/Claude` | `~/Library/Application Support/Claude-work` |
+| Desktop app data — sign-in, Claude projects, project memory | `~/Library/Application Support/Claude` | `~/Library/Application Support/Claude-work` |
 | Claude Code config and sign-in | `~/.claude` | `~/.claude-work` |
 | Skills, `settings.json`, `CLAUDE.md`, plugins, agents, commands | the real files | links to `~/.claude`'s — change once, every account sees it |
 | Handoff identity | `Madoka` | `Madoka@work` |
@@ -79,7 +79,7 @@ tandem profile adopt work --never        # stop offering (adopt still works if y
 
 It **copies, never moves**: each Claude Code session's record and its full conversation, checked byte for byte, and only what the profile doesn't already have. Your regular Claude keeps its originals. The profile's app has to be closed while it copies, because a running app rewrites its own session list from memory.
 
-**Not yet:** Cowork projects and sessions the account left behind. `adopt` lists them but doesn't move them, because their files record absolute paths into the regular app's folder and moving them needs path rewriting that hasn't been proven yet.
+**Not yet:** Claude projects and sessions the account left behind. `adopt` lists them but doesn't move them, because their files record absolute paths into the regular app's folder and moving them needs path rewriting that hasn't been proven yet.
 
 ---
 
@@ -120,7 +120,7 @@ tandem profile rename work Junipera
 Afterwards `Junipera` works everywhere — launcher, list, menu bar, `claude @Junipera`, `tandem --profile Junipera` — and so does `work`. The folders stay put because three things are tied to their paths:
 
 - **The Claude Code sign-in.** Its Keychain item is named after a hash of the config folder's path, so moving `~/.claude-work` would sign that account out.
-- **Cowork sessions,** which record absolute paths into the data folder.
+- **Claude sessions,** which record absolute paths into the data folder.
 - **Handoff ownership,** recorded on the shared drive as `Madoka@work`. Renaming that would orphan every project the account holds.
 
 Names are resolved on the Mac where you set them. To address a profile on your *other* Mac — `--to Ji-su@work` — use its id.
@@ -170,7 +170,7 @@ While the profile runs you'll see **two icons**: the pinned launcher, and the ru
 When one account is close to its usage limit, hand the project to another. It's the same handoff that moves a project between Macs, with the other account as the target:
 
 ```bash
-/handoff                                                 # in the Cowork session, on account A
+/handoff                                                 # in the Claude session, on account A
 tandem send "My Project" --to Madoka@work          # Madoka is this Mac's name
 tandem --profile work receive "My Project"         # then ⌘V into a session on `work`
 ```
@@ -214,7 +214,7 @@ tandem profile doctor
 Claude.app 4.29.0
   ✓ honors --user-data-dir (profiles run side by side)
   ✓ records lastKnownAccountUuid (tandem finds the signed-in account)
-  ✓ Cowork store is still local-agent-mode-sessions/
+  ✓ Claude's project store is still local-agent-mode-sessions/
   ✓ Code tab honors CLAUDE_CONFIG_DIR (same login as claude @<p>)
   ✓ claude:// links open /Applications/Claude.app
 ```
@@ -225,7 +225,7 @@ Profiles rest on behaviour found inside Claude's app bundle, not a documented in
 
 ## Removing a profile
 
-There's no `remove` command, on purpose: a profile's folders hold its sign-ins, Cowork projects and memory. To remove one, hand off anything it owns first (`tandem status`), quit it, then delete by **exact path**:
+There's no `remove` command, on purpose: a profile's folders hold its sign-ins, Claude projects and memory. To remove one, hand off anything it owns first (`tandem status`), quit it, then delete by **exact path**:
 
 ```bash
 tandem profile quit work

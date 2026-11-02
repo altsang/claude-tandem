@@ -1,6 +1,6 @@
 # Handoffs — moving a project between accounts and Macs
 
-A **handoff** moves a Cowork project from one place you work to another — to the account in your other profile, or to your other Mac — with its files, its definition, what Claude learned on it, and a brief of where you were. Every side has a name: `Madoka`, `Madoka@work`, `Ji-su`.
+A **handoff** moves a Claude project from one place you work to another — to the account in your other profile, or to your other Mac — with its files, its definition, what Claude learned on it, and a brief of where you were. Every side has a name: `Madoka`, `Madoka@work`, `Ji-su`.
 
 - [Why it exists](#why-it-exists)
 - [When you need one](#when-you-need-one)
@@ -20,7 +20,7 @@ A **handoff** moves a Cowork project from one place you work to another — to t
 
 ## Why it exists
 
-Claude's Cowork sessions are tied to the computer they run on. A **host-loop** session in a local project is the everyday kind: it reads your folder directly, with no grants and no setup. It runs on this Mac, and everything that makes it useful stays here:
+Claude sessions are tied to the computer they run on. A **host-loop** session in a local project is the everyday kind: it reads your folder directly, with no grants and no setup. It runs on this Mac, and everything that makes it useful stays here:
 
 - **the conversation:** `local_<uuid>.json` under `local-agent-mode-sessions/`, never synced;
 - **the project:** its definition and folder link, written into this Mac's `spaces.json` for one account;
@@ -28,7 +28,7 @@ Claude's Cowork sessions are tied to the computer they run on. A **host-loop** s
 
 The files can sit on iCloud Drive and sync. Everything else stays put. Open the same folder on your laptop, or in your second account when the first runs low, and Claude starts from nothing. It doesn't know the project, what was decided, or what comes next. Worse, the files may have arrived *dataless*: listed, but empty until something forces the download. And with two Macs able to edit, nothing says which copy is current.
 
-Claude Tandem was built to overcome that, so that moving a Cowork project between Madoka and Ji-su, or between accounts, is as reliable as staying put. A handoff carries what doesn't travel by itself:
+Claude Tandem was built to overcome that, so that moving a Claude project between Madoka and Ji-su, or between accounts, is as reliable as staying put. A handoff carries what doesn't travel by itself:
 
 | Doesn't travel by itself | A handoff carries it as |
 |---|---|
@@ -38,11 +38,11 @@ Claude Tandem was built to overcome that, so that moving a Cowork project betwee
 | Real bytes on the other side | an upload checked file by file before `send` returns, and an **md5 check** of every file before `receive` claims it |
 | Knowing who works on it now | an append-only **ownership record**, so two places never edit it at once |
 
-If your work already runs as Cowork **remote** sessions, their chat syncs on its own to every Mac signed into the same account ([finding 17](findings.md#17-there-are-two-session-stores--and-only-one-of-them-syncs)). Even then, a handoff is how a project moves to a *different* account, and how you know the files arrived whole.
+If your work already runs as Claude **remote** sessions, their chat syncs on its own to every Mac signed into the same account ([finding 17](findings.md#17-there-are-two-session-stores--and-only-one-of-them-syncs)). Even then, a handoff is how a project moves to a *different* account, and how you know the files arrived whole.
 
 ## When you need one
 
-What crosses on its own depends on the kind of Cowork session:
+What crosses on its own depends on the kind of Claude session:
 
 ```mermaid
 flowchart TB
@@ -68,7 +68,7 @@ A handoff carries every ❌. It's measured, too: a remote session (Quicken Recon
 
 ## How a handoff works
 
-Two steps per side. One happens in Cowork, because only the session knows what you were doing. The other happens in a terminal, because only a terminal can prove the transfer.
+Two steps per side. One happens in Claude, because only the session knows what you were doing. The other happens in a terminal, because only a terminal can prove the transfer.
 
 ```mermaid
 sequenceDiagram
@@ -84,10 +84,10 @@ sequenceDiagram
     B->>B: md5-verify each file · merge memory · write spaces.json
     B->>D: claim — the only real proof of delivery (~2m)
     D-->>A: claim becomes visible on the sender (~90s later)
-    B->>B: ⌘V the document into Cowork
+    B->>B: ⌘V the document into Claude
 ```
 
-**Why the split.** A Cowork session is sandboxed to its project folder. It can't run `fileproviderctl`, see the shared `_handoff/` tree, or use any CLI, so it can never verify that a transfer completed. The terminal can never write the document, because the context lives in the session. Each side does only what the other can't, and each mechanism has exactly one implementation.
+**Why the split.** A Claude session is sandboxed to its project folder. It can't run `fileproviderctl`, see the shared `_handoff/` tree, or use any CLI, so it can never verify that a transfer completed. The terminal can never write the document, because the context lives in the session. Each side does only what the other can't, and each mechanism has exactly one implementation.
 
 ---
 
@@ -168,7 +168,7 @@ With Claude Tandem running on both sides (Open at Login on), a handoff is clicks
 
 | Where | What happens |
 |---|---|
-| Cowork, where you are | `/handoff` writes the brief, plus a small *send intent* saying where it goes (`.handoff/intents/`) |
+| Claude, where you are | `/handoff` writes the brief, plus a small *send intent* saying where it goes (`.handoff/intents/`) |
 | This Mac, within a minute | a notification: **Send P to Ji-su?** Send… shows the brief and its age, the note, and whether Ji-su is awake. Send runs `tandem send` with its steps shown |
 | The other side, at drive speed (2–3 min) | a notification: **P arrived from Madoka — Receive.** Receiving verifies every file and claims it, even with Claude open |
 | Then | **Open in Claude** puts the brief on the clipboard and brings that profile's Claude forward: ⌘V |
@@ -212,10 +212,10 @@ A Mac that appears in the ownership log but publishes no card is listed too, as 
 
 | Where | Step | What it guarantees |
 |---|---|---|
-| Cowork, where you are | `/handoff` | `HANDOFF_<topic>.md` in the project folder: task, prerequisites, background, status, gotchas |
+| Claude, where you are | `/handoff` | `HANDOFF_<topic>.md` in the project folder: task, prerequisites, background, status, gotchas |
 | Terminal, same Mac | `tandem send "P" --to Ji-su --note "…" --wait` | Materializes the folder and writes an md5 manifest. Exports the definition, snapshots memory, and records the ownership event. Then blocks until every file reports `isUploaded`, and with `--wait` until the other side claims it |
 | Terminal, the other side | `tandem receive "P"` | Waits for the event addressed to *this* side and **md5-verifies every file**. Defines the project if new here, merges memory, claims it. Copies the document to the clipboard |
-| Cowork, the other side | **⌘V** | the brief, in front of the session that has to act on it |
+| Claude, the other side | **⌘V** | the brief, in front of the session that has to act on it |
 
 `send` won't ship a project without a `HANDOFF*.md` (`--no-doc` overrides), and warns if the newest one predates the last handoff. `receive` won't claim a project that wasn't handed to it. Once it's handed over, don't edit the project where you left it; `tandem status` shows who holds what.
 
@@ -238,7 +238,7 @@ The files are already on this Mac, so the drive only has to round-trip the small
 
 ## Memory
 
-Cowork keeps per-project memory, a folder of small notes plus a `MEMORY.md` index, separately on each Mac and for each account. `send` snapshots the sender's, md5-manifested and upload-verified with everything else. `receive` **merges** it in:
+Claude keeps per-project memory, a folder of small notes plus a `MEMORY.md` index, separately on each Mac and for each account. `send` snapshots the sender's, md5-manifested and upload-verified with everything else. `receive` **merges** it in:
 
 - memories the receiver lacks are added and indexed
 - identical ones are skipped
@@ -271,7 +271,7 @@ tandem send "P" --to Ji-su --note "…" --hold
 
 Both are reversed by `receive` when the project comes back, or by `tandem release "P"` by hand. Both edit `spaces.json`, so Claude must be quit. If it's open, `send` finishes the transfer and prints the `tandem hold` line to run afterwards. The notice never travels to the other side: its markers are stripped on export.
 
-It doesn't cover anything outside Cowork, such as Finder, Excel or Quicken. Nothing in iCloud offers a lock, and locking the files would stop the drive writing the other Mac's changes back.
+It doesn't cover anything outside Claude, such as Finder, Excel or Quicken. Nothing in iCloud offers a lock, and locking the files would stop the drive writing the other Mac's changes back.
 
 ---
 
@@ -313,8 +313,8 @@ Upload scales with size. Delivery to an idle Mac takes about 2–3 minutes almos
 
 ## The folder link
 
-A local project's folder link is one field: `folders[].path` in that Mac's `spaces.json`. There's no token, bookmark or consent record anywhere else. A project linked by Tandem is byte-for-byte the same as one linked in the app, and Cowork reads it without the folder picker ever opening.
+A local project's folder link is one field: `folders[].path` in that Mac's `spaces.json`. There's no token, bookmark or consent record anywhere else. A project linked by Tandem is byte-for-byte the same as one linked in the app, and Claude reads it without the folder picker ever opening.
 
 - **Claude must be quit while it's written.** A running app rewrites `spaces.json` from memory and silently discards the change, so Tandem refuses to write it while the relevant profile's Claude is open.
-- **Never link a symlink.** Cowork registers a symlinked folder as connected, then fails *every* read inside it with *"is not inside a folder connected to Cowork on this device."* Tandem always links the shared path itself, and `tandem check` flags any project that isn't.
+- **Never link a symlink.** Claude registers a symlinked folder as connected, then fails *every* read inside it with *"is not inside a folder connected to Cowork on this device."* Tandem always links the shared path itself, and `tandem check` flags any project that isn't.
 - **Picking a folder by hand?** `tandem path "P"` prints the path and copies it to the clipboard. In the app use Add folder › **⌘⇧G** › paste. Finder hides `~/Library` and shows `Mobile Documents/com~apple~CloudDocs` as "iCloud Drive", so you can't browse there.

@@ -550,7 +550,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
             + titles.joined(separator: "\n") + more
             + "\n\nThey’ll be copied — your regular Claude keeps its own. "
             + (p.open ? "\(p.name) will close for a moment and reopen." : "")
-            + (cowork > 0 ? "\n\nIt also left Cowork projects or sessions there; those aren’t moved yet." : "")
+            + (cowork > 0 ? "\n\nIt also left Claude projects or sessions there; those aren’t moved yet." : "")
         a.addButton(withTitle: "Copy Them")
         a.addButton(withTitle: "Not Now")
         a.addButton(withTitle: "Never for This Profile")

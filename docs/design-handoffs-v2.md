@@ -8,11 +8,11 @@ A handoff works and it proves itself, but the person carries every step:
 
 | Step | Today | Cost |
 |---|---|---|
-| 1 | `/handoff` in Cowork writes the brief | fine — only the session can write it |
+| 1 | `/handoff` in Claude writes the brief | fine — only the session can write it |
 | 2 | Open a terminal, type `tandem send "P" --to Ji-su --note … --wait` | you remember the project's exact name and the other side's name |
 | 3 | Walk to the other Mac, open a terminal, `tandem receive "P"` | nothing tells that Mac that anything is coming |
 | 4 | If Claude is open there, `receive` stops before it claims: quit Claude, run it again | the one step that has to touch `spaces.json` blocks all the others |
-| 5 | ⌘V the brief into Cowork | fine |
+| 5 | ⌘V the brief into Claude | fine |
 
 And nothing answers **"where is everything right now?"**:
 
@@ -27,7 +27,7 @@ And nothing answers **"where is everything right now?"**:
 ```mermaid
 sequenceDiagram
     autonumber
-    participant S as Cowork on Madoka
+    participant S as Claude on Madoka
     participant A as Tandem on Madoka
     participant D as Shared drive
     participant B as Tandem on Ji-su
@@ -94,7 +94,7 @@ Projects/P/.handoff/requests/<ts>-<side>.json
 
 The holding Mac gets a notification: **"Ji-su asks for P"**. It offers:
 
-- **Copy /handoff prompt**: you run it in that project's Cowork session.
+- **Copy /handoff prompt**: you run it in that project's Claude session.
 - **Send without a brief**, when there's nothing to say.
 
 A request, too, is consumed by the next ownership event.
@@ -176,5 +176,5 @@ Every button maps to a command; the table is in [the reference](reference.md#the
 
 ## Not doing
 
-- **Writing the brief without the session.** Only the Cowork session knows what it was doing. Tandem can't read a host-loop chat, and pretending to summarize it would be fiction.
+- **Writing the brief without the session.** Only the Claude session knows what it was doing. Tandem can't read a host-loop chat, and pretending to summarize it would be fiction.
 - **A direct network channel between Macs.** v3 pushed over SSH and two writers to one synced path made conflict copies ([VERSIONING](../bin/VERSIONING.md)). The drive stays the only transport, and the app's notices ride on it.

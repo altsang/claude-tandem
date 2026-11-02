@@ -309,7 +309,7 @@ def handoff_accounts():
     sc.typed(tx + 14, p(5), 'tandem --profile work receive "Film Kit"', 6.7)
     sc.add(t(tx, p(6), "  ✓ all 14 files delivered and verified by md5", fill="#57AB5A", **M), 8.3)
     sc.add(t(tx, p(7), "  merged memory from Madoka: 12 added, 0 clash", fill="#8B949E", **M), 8.7)
-    sc.add(t(tx, p(8), "claimed by Madoka@work · HANDOFF_film_kit.md copied — ⌘V in Cowork", fill="#C9A4FF", **M), 9.2)
+    sc.add(t(tx, p(8), "claimed by Madoka@work · HANDOFF_film_kit.md copied — ⌘V in Claude", fill="#C9A4FF", **M), 9.2)
     sc.write("accounts-handoff-demo.svg")
 
 
@@ -474,9 +474,34 @@ def note(x, y, w, title, body, button=None):
 
 
 # ============================================================ 4. a handoff through the app — no terminal
+def two_computers(sc, split):
+    """Puts the scene's two halves on two computers: the left half on a desktop monitor
+    (Madoka), the right half on a laptop (Ji-su), with a gap between them, so it can't be
+    read as one screen running two Macs. The scene is drawn once and shown twice, each
+    copy clipped to its half; the pointer and every timeline carry over unchanged."""
+    body = "\n".join(sc.body)
+    L, R = (34, 22), (100, 22)          # where each half's content lands
+    W, H = sc.w + 130, sc.h + 104
+    lx, ly = L; rx, ry = R
+    mon = (f'<rect x="{lx-12}" y="{ly-12}" width="{split+24}" height="{sc.h+24}" rx="16" fill="#1D1D1F"></rect>'
+           f'<rect x="{lx+split/2-22}" y="{ly+sc.h+12}" width="44" height="38" fill="#B9BCC4"></rect>'
+           f'<rect x="{lx+split/2-80}" y="{ly+sc.h+48}" width="160" height="9" rx="4" fill="#A9ADB6"></rect>')
+    sx0 = split + rx                    # the laptop screen's left edge
+    lap = (f'<rect x="{sx0-10}" y="{ry-10}" width="{sc.w-split+20}" height="{sc.h+20}" rx="14" fill="#1D1D1F"></rect>'
+           f'<path d="M{sx0-26} {ry+sc.h+10}h{sc.w-split+52}v6a8 8 0 0 1 -8 8h{-(sc.w-split+36)}a8 8 0 0 1 -8 -8Z" fill="#C3C6CD"></path>'
+           f'<rect x="{sx0+(sc.w-split)/2-34}" y="{ry+sc.h+10}" width="68" height="5" rx="2.5" fill="#A9ADB6"></rect>')
+    sc.body = [f'<rect width="{W}" height="{H}" rx="14" fill="#F2F3F6"></rect>', mon, lap,
+               f'<defs><clipPath id="half-l"><rect x="0" y="0" width="{split}" height="{sc.h}" rx="4"></rect></clipPath>'
+               f'<clipPath id="half-r"><rect x="{split}" y="0" width="{sc.w-split}" height="{sc.h}" rx="4"></rect></clipPath></defs>',
+               f'<g transform="translate({lx},{ly})" clip-path="url(#half-l)">{body}</g>',
+               f'<g transform="translate({rx},{ry})" clip-path="url(#half-r)">{body}</g>',
+               t(lx + split / 2, H - 8, "Madoka — desktop", 11, "#6E6E73", 600, "middle"),
+               t(sx0 + (sc.w - split) / 2, H - 8, "Ji-su — laptop", 11, "#6E6E73", 600, "middle")]
+    sc.w, sc.h = W, H
+
+
 def handoff_app():
     sc = Scene(900, 600, 26.0)
-    sc.add(f'<rect width="900" height="600" rx="14" fill="#E7E9EE"></rect>')
     for x0, mac in ((0, "Madoka"), (452, "Ji-su")):
         sc.add(f'<rect x="{x0+4}" y="4" width="444" height="592" rx="11" fill="#DDE0E6"></rect>'
                f'<rect x="{x0+4}" y="4" width="444" height="22" rx="11" fill="#F7F7F9"></rect>'
@@ -562,6 +587,7 @@ def handoff_app():
     sc.moving(POINTER, [(0.0, 300, 420), (3.6, b1[0], b1[1]), (4.4, b1[0], b1[1]), (5.4, send_btn[0], send_btn[1]),
                         (6.0, send_btn[0], send_btn[1]), (10.6, 640, 200), (12.2, b3[0], b3[1]), (12.9, b3[0], b3[1]),
                         (16.6, ob[0], ob[1]), (17.6, ob[0], ob[1]), (19.0, 760, 230)])
+    two_computers(sc, 452)
     sc.write("handoff-app-demo.svg")
 
 
