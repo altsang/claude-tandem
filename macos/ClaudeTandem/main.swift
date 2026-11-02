@@ -15,6 +15,7 @@
 // `ClaudeTandem --write-iconset <dir>` draws the app icon for the build to make an .icns.
 import AppKit
 import ServiceManagement
+import SwiftUI
 
 struct Profile: Decodable, Equatable, Identifiable {
     let id: String
@@ -94,6 +95,8 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
     var signInWatchers: [String: Timer] = [:]
     let store = Store()
     var window: NSWindow?
+    var settingsWindow: NSWindow?
+    let handoffsMenu = NSMenu(title: "Handoffs")
 
     func applicationDidFinishLaunching(_ n: Notification) {
         store.app = self
@@ -105,6 +108,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         menu.autoenablesItems = false
         s.menu = menu
         status = s
+        NSApp.mainMenu = mainMenu()
         // the ledger runs whether or not the window is open: it is how handoffs get noticed
         store.notifier.store = store
         store.notifier.setup()
@@ -112,7 +116,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         // `--show <page>` (handoffs, macs, settings, setup, or a profile id) opens the window there.
         let argv = CommandLine.arguments
         if let i = argv.firstIndex(of: "--show"), i + 1 < argv.count {
-            showWindow(select: argv[i + 1])
+            if argv[i + 1] == "settings" { showSettings() } else { showWindow(select: argv[i + 1]) }
             return
         }
         // First run, or only Claude.app itself so far: start with Get Started.
@@ -138,7 +142,10 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
             window = makeMainWindow(store: store)
             window?.delegate = self
         }
+        if store.profiles.isEmpty { store.profiles = loadProfiles() }
         if let select { store.selection = select }
+        // Get Started is the first page only until it's done; then the window opens on Handoffs.
+        else if store.selection == "setup" || store.selection == nil, store.setupLeft == 0 { store.selection = "handoffs" }
         NSApp.applicationIconImage = tandemAppIcon()
         NSApp.setActivationPolicy(.regular)
         store.windowOpen = true
@@ -150,14 +157,184 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
     }
 
     func windowWillClose(_ n: Notification) {
-        window?.makeFirstResponder(nil)   // a field still being edited saves as the window closes
-        store.stopPolling()
-        store.windowOpen = false
-        NSApp.setActivationPolicy(.accessory)
+        guard let closing = n.object as? NSWindow else { return }
+        closing.makeFirstResponder(nil)   // a field still being edited saves as the window closes
+        if closing === window {
+            store.stopPolling()
+            store.windowOpen = false
+        }
+        // Back to living in the menu bar once neither window is left open.
+        let others = [window, settingsWindow].compactMap { $0 }.filter { $0 !== closing && $0.isVisible }
+        if others.isEmpty { NSApp.setActivationPolicy(.accessory) }
+    }
+
+    /// Settings, in a window of its own as on any Mac app: ⌘, from the app menu or the status
+    /// menu. Three tabs in its toolbar, each one grouped form sized to what it holds.
+    func showSettings(tab: Int? = nil) {
+        if settingsWindow == nil {
+            let tabs = SettingsTabs()
+            func item(_ label: String, _ symbol: String, _ view: some View) -> NSTabViewItem {
+                let host = NSHostingController(rootView: view)
+                host.sizingOptions = .preferredContentSize
+                host.title = label   // the tab controller names the window after the selected tab
+                let i = NSTabViewItem(viewController: host)
+                i.label = label
+                i.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
+                return i
+            }
+            tabs.tabStyle = .toolbar
+            // General first, as in every Mac app's Settings; Maintenance, the occasional tools, last.
+            tabs.addTabViewItem(item("General", "gearshape", GeneralSettings(store: store)))
+            tabs.addTabViewItem(item("Handoffs", "arrow.left.arrow.right", HandoffsSettings(store: store)))
+            tabs.addTabViewItem(item("Maintenance", "wrench.and.screwdriver", MaintenanceSettings(store: store)))
+            let w = NSWindow(contentViewController: tabs)
+            w.styleMask = [.titled, .closable]
+            w.toolbarStyle = .preference
+            w.tabbingMode = .disallowed
+            w.isReleasedWhenClosed = false
+            w.delegate = self
+            settingsWindow = w
+            tabs.fit()
+            w.center()
+        }
+        if let tab, let tabs = settingsWindow?.contentViewController as? SettingsTabs { tabs.selectedTabViewItemIndex = tab }
+        NSApp.applicationIconImage = tandemAppIcon()
+        NSApp.setActivationPolicy(.regular)
+        activate()
+        settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    /// A new name for a profile, asked for in a small sheet-like alert (the sidebar's Rename…).
+    func renameProfile(_ p: Profile) {
+        guard let n = prompt("Rename \(p.name)", "Letters, digits, - and _. Its folders keep the id “\(p.id)”, so sign-ins and handoffs are untouched.",
+                             initial: p.name, ok: "Rename"), n != p.name else { return }
+        guard validName(n) || (p.isDefault && n == "default"),
+              !store.profiles.contains(where: { $0.id != p.id && ($0.name == n || $0.id == n) }) else {
+            alert("Can’t use “\(n)”", "Use letters, digits, - and _, and a name no other profile has."); return
+        }
+        cli(["rename", p.id, n])
+    }
+
+    // MARK: the main menu — shown while a window is open
+
+    func mainMenu() -> NSMenu {
+        let bar = NSMenu()
+        func top(_ title: String, _ m: NSMenu) { let i = NSMenuItem(title: title, action: nil, keyEquivalent: ""); i.submenu = m; bar.addItem(i) }
+        func std(_ m: NSMenu, _ title: String, _ sel: Selector, _ key: String, _ mods: NSEvent.ModifierFlags = .command) {
+            let i = NSMenuItem(title: title, action: sel, keyEquivalent: key); i.keyEquivalentModifierMask = mods; m.addItem(i)
+        }
+        func go(_ m: NSMenu, _ title: String, _ key: String, _ page: String) {
+            add(m, title, key: key) { [unowned self] in self.showWindow(select: page) }
+        }
+
+        let appMenu = NSMenu(title: "Claude Tandem")
+        std(appMenu, "About Claude Tandem", #selector(NSApplication.orderFrontStandardAboutPanel(_:)), "")
+        appMenu.addItem(.separator())
+        add(appMenu, "Settings…", key: ",") { [unowned self] in self.showSettings() }
+        appMenu.addItem(.separator())
+        std(appMenu, "Hide Claude Tandem", #selector(NSApplication.hide(_:)), "h")
+        std(appMenu, "Hide Others", #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option])
+        std(appMenu, "Show All", #selector(NSApplication.unhideAllApplications(_:)), "")
+        appMenu.addItem(.separator())
+        std(appMenu, "Quit Claude Tandem", #selector(NSApplication.terminate(_:)), "q")
+        top("Claude Tandem", appMenu)
+
+        let file = NSMenu(title: "File")
+        add(file, "New Profile…", key: "n") { [unowned self] in self.showWindow(newProfile: true) }
+        file.addItem(.separator())
+        std(file, "Close", #selector(NSWindow.performClose(_:)), "w")
+        top("File", file)
+
+        let edit = NSMenu(title: "Edit")
+        std(edit, "Undo", Selector(("undo:")), "z")
+        std(edit, "Redo", Selector(("redo:")), "z", [.command, .shift])
+        edit.addItem(.separator())
+        std(edit, "Cut", #selector(NSText.cut(_:)), "x")
+        std(edit, "Copy", #selector(NSText.copy(_:)), "c")
+        std(edit, "Paste", #selector(NSText.paste(_:)), "v")
+        std(edit, "Delete", #selector(NSText.delete(_:)), "")
+        std(edit, "Select All", #selector(NSText.selectAll(_:)), "a")
+        top("Edit", edit)
+
+        let view = NSMenu(title: "View")
+        std(view, "Show Sidebar", #selector(NSSplitViewController.toggleSidebar(_:)), "s", [.command, .control])
+        view.addItem(.separator())
+        go(view, "Get Started", "1", "setup")
+        go(view, "Handoffs", "2", "handoffs")
+        go(view, "Macs", "3", "macs")
+        view.addItem(.separator())
+        std(view, "Enter Full Screen", #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control])
+        top("View", view)
+
+        handoffsMenu.delegate = self
+        handoffsMenu.autoenablesItems = false
+        top("Handoffs", handoffsMenu)
+
+        let win = NSMenu(title: "Window")
+        std(win, "Minimize", #selector(NSWindow.performMiniaturize(_:)), "m")
+        std(win, "Zoom", #selector(NSWindow.performZoom(_:)), "")
+        win.addItem(.separator())
+        std(win, "Bring All to Front", #selector(NSApplication.arrangeInFront(_:)), "")
+        top("Window", win)
+        NSApp.windowsMenu = win
+
+        let help = NSMenu(title: "Help")
+        let site = "https://github.com/altsang/claude-tandem/blob/main/"
+        for (t, path) in [("Claude Tandem Help", "README.md"), ("Handoffs Guide", "docs/handoffs.md"), ("Troubleshooting", "docs/troubleshooting.md")] {
+            add(help, t) { NSWorkspace.shared.open(URL(string: site + path)!) }
+        }
+        help.addItem(.separator())
+        go(help, "Get Started Checklist", "", "setup")
+        top("Help", help)
+        NSApp.helpMenu = help
+        return bar
+    }
+
+    /// The Handoffs menu, rebuilt as it opens: Check Now, then what can be done right now.
+    func buildHandoffsMenu(_ m: NSMenu) {
+        m.removeAllItems()
+        add(m, "Check Now", key: "r") { [unowned self] in self.store.refreshLedger() }
+        m.addItem(.separator())
+        let all = store.ledger?.projects ?? []
+        let held = all.filter { store.isMine($0.holder) && $0.state == "held" }
+        let arriving = all.filter { store.isMine($0.holder) && $0.state == "sent" }
+        if held.isEmpty {
+            add(m, "Hand Off Project…", key: "H", nil).isEnabled = false
+        }
+        for (n, x) in held.enumerated() {
+            let i = add(m, "Hand Off \(x.name)…", key: n == 0 ? "H" : "") { [unowned self] in
+                self.showWindow(select: "handoffs")
+                self.store.draft(x.name, from: x.holder ?? "")
+            }
+            if held.count > 1 { i.title += " — \(store.label(x.holder ?? ""))" }
+        }
+        for x in arriving {
+            add(m, "Receive \(x.name) as \(store.label(x.holder ?? ""))") { [unowned self] in
+                self.store.startReceive(x.name, as: x.holder ?? "")
+                self.showWindow(select: "handoffs")
+            }
+        }
+        let others = all.filter { !store.isMine($0.holder) && $0.holder != nil }
+        let ask = add(m, "Ask for a Project", nil)
+        if others.isEmpty || store.profiles.isEmpty { ask.isEnabled = false } else {
+            let sub = NSMenu(); sub.autoenablesItems = false
+            for x in others {
+                if store.profiles.count == 1, let pr = store.profiles.first {
+                    add(sub, x.name) { [unowned self] in self.store.ask(x.name, as: self.side(pr)) }
+                } else {
+                    let pm = NSMenu(); pm.autoenablesItems = false
+                    for pr in store.profiles { add(pm, "As \(pr.name)") { [unowned self] in self.store.ask(x.name, as: self.side(pr)) } }
+                    add(sub, x.name, nil).submenu = pm
+                }
+            }
+            ask.submenu = sub
+        }
     }
 
     // Rebuilt each time it opens, so it shows what is true now.
-    func menuNeedsUpdate(_ menu: NSMenu) { build(menu) }
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu === handoffsMenu { buildHandoffsMenu(menu) } else { build(menu) }
+    }
 
     func build(_ menu: NSMenu) {
         menu.removeAllItems()
@@ -171,10 +348,12 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
             menu.addItem(.separator())
         }
         header(menu, "Claude profiles on \(mac)")
-        if profiles.isEmpty { header(menu, "Could not read profiles — see Open Claude Tandem… › Settings") }
+        if profiles.isEmpty { header(menu, "Could not read profiles — run Settings… › Maintenance › Check") }
         for p in profiles { menu.addItem(profileItem(p)) }
         menu.addItem(.separator())
-        add(menu, "Open Claude Tandem…", key: ",") { [unowned self] in self.showWindow() }
+        add(menu, "Open Claude Tandem…") { [unowned self] in self.showWindow() }
+        add(menu, "Settings…", key: ",") { [unowned self] in self.showSettings() }
+        menu.addItem(.separator())
         add(menu, "Quit Claude Tandem", key: "q") { NSApp.terminate(nil) }
     }
 
@@ -287,7 +466,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         if let n = p.adoptable, n > 0 {
             add(m, "Bring In Earlier Sessions (\(n))…") { [unowned self] in self.adoptWizard(p.id) }
         }
-        add(m, "Settings…") { [unowned self] in self.showWindow(select: p.id) }
+        add(m, "Show in Claude Tandem…") { [unowned self] in self.showWindow(select: p.id) }
         return m
     }
 
@@ -604,6 +783,25 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         }
         save(Self.statusIcon(), "status.png")
         for p in profiles { save(badgeImage(p, size: 96), "badge-\(p.id).png") }
+    }
+}
+
+/// Settings' tabs. Each tab is sized to its form; switching tabs resizes the window to it,
+/// keeping its top edge where it was, as System Settings-era preference windows do.
+final class SettingsTabs: NSTabViewController {
+    override func tabView(_ tabView: NSTabView, didSelect item: NSTabViewItem?) {
+        super.tabView(tabView, didSelect: item)
+        fit()
+    }
+    func fit() {
+        guard let w = view.window, let v = tabViewItems[selectedTabViewItemIndex].viewController?.view else { return }
+        let size = v.fittingSize
+        guard size.width > 0, size.height > 0 else { return }
+        let frame = w.frameRect(forContentRect: NSRect(origin: .zero, size: size))
+        var f = w.frame
+        f.origin.y += f.height - frame.height
+        f.size = frame.size
+        w.setFrame(f, display: true, animate: w.isVisible)
     }
 }
 

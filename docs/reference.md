@@ -227,20 +227,20 @@ Both read the same inbox and settings. A send, receive or settle takes a per-pro
 | Send… | `tandem [--profile P] send "X" --to SIDE --note … [--hold]` |
 | Not Now | `tandem inbox dismiss KEY` |
 | Quit Claude and Finish · Finish Now | `tandem profile quit P` then `tandem [--profile P] settle` |
-| Ask for It | `tandem [--profile P] ask "X"` |
+| Ask for It · Handoffs › Ask for a Project | `tandem [--profile P] ask "X"` |
 | Open in Claude | `tandem [--profile P] brief "X" --open` |
 | History… | `tandem log "X"` |
 | Unlock | `tandem [--profile P] release "X"` |
 | Move to the Shared Drive | `tandem [--profile P] migrate "X"` |
 | Handoffs › Shared projects · Only on one Mac · the Macs page | `tandem where` |
-| Handoffs › Check Now | `tandem where` |
+| Check Now (↻ in the toolbar, Handoffs › Check Now ⌘R) | `tandem where` |
 | (every few minutes, while it runs) | `tandem presence` |
-| Settings › Handoffs | `tandem config set on-arrival …` · `tandem config set on-brief …` |
+| Settings (⌘,) › Handoffs | `tandem config set on-arrival …` · `tandem config set on-brief …` |
 | Settings › Maintenance: Check · Run Doctor · Sync Claude Code sessions · Find conflict copies · Update the shared engine | `tandem check` · `tandem profile doctor` · `tandem profile sync` · `tandem conflicts` · `tandem deploy` |
 | Notifications, and acting automatically, while it runs | `tandem watch [--notify]` |
 | Open Claude Tandem at login | `tandem watch --install`, the headless equivalent |
 
-Only the app has the terminal choice for Claude Code (Terminal or Ghostty) and the Get Started checklist (`tandem check` and `tandem profile doctor` cover what it checks). Only the CLI has the lower-level verbs below, `use-root` and `rename`.
+Only the app has the terminal choice for Claude Code (Terminal or Ghostty) and the Get Started checklist (`tandem check` and `tandem profile doctor` cover what it checks). Only the CLI has the lower-level verbs below and `use-root`.
 
 ---
 
@@ -290,7 +290,7 @@ bin/tandem-profile        the accounts half
 bin/tandem-ledger.py      what is where (`where`, `inbox`, `presence`) and `watch`
 bin/coworkctl-vN.sh       the engine, copied into the shared tree by `tandem deploy`
 bin/mirror, bin/claude-profile   the names before Claude Tandem: forward, and say so
-macos/ClaudeTandem/       the app, built by `tandem menubar`: main.swift (menu bar), Window.swift (profiles, settings), Handoffs.swift (handoffs, Macs, notifications)
+macos/ClaudeTandem/       the app, built by `tandem menubar`: main.swift (menu bar, main menu, Settings window), Window.swift (profiles, settings tabs), Handoffs.swift (handoffs, Macs, notifications)
 skills/handoff/           the /handoff skill
 VERSION                   the release, printed by `tandem version`
 docs/                     these guides, and findings.md

@@ -186,31 +186,31 @@ The same thing in a terminal, for scripts or a Mac without the app:
 `tandem menubar` builds and opens **Claude Tandem**, a native app: a menu-bar icon (the logo in miniature, two Clawds on a tandem) and a window. Every action runs the same CLI, so it holds no logic of its own.
 
 <p align="center">
-  <img src="assets/menubar-demo.svg" alt="The two-Clawds tandem icon in the menu bar wears a dot: something is waiting. Its menu lists the arrival first, then every profile with its badge, account and plan, then Open Claude Tandem and Quit. The work profile's submenu offers Show Claude, Open Claude Code, Quit, Receive, Hand Off, Bring In Earlier Sessions and Settings; bringing in its earlier sessions copies four Claude Code sessions into its Code tab" width="880"/>
+  <img src="assets/menubar-demo.svg" alt="The two-Clawds tandem icon in the menu bar wears a dot: something is waiting. Its menu lists the arrival first, then every profile with its badge, account and plan, then Open Claude Tandem, Settings and Quit. The work profile's submenu offers Show Claude, Open Claude Code, Quit, Receive, Hand Off, Bring In Earlier Sessions and Show in Claude Tandem; bringing in its earlier sessions copies four Claude Code sessions into its Code tab" width="880"/>
   <br/><sub>The menu bar: what's waiting, then every profile.</sub>
 </p>
 
 **The menu bar** is for the profiles you have, and for whatever is waiting:
 
 - When something is waiting, the icon gets a dot, and the top of the menu lists it: a project arriving for one of your profiles, a brief ready to send, or your other Mac asking for a project.
-- Each profile: Show or Open Claude, Open Claude Code, Quit, Receive, Hand Off, Bring In Earlier Sessions, and Settings.
-- **Open Claude Tandem…** (⌘,) opens the window. Everything else is there.
+- Each profile: Show or Open Claude, Open Claude Code, Quit, Receive, Hand Off, Bring In Earlier Sessions, and Show in Claude Tandem.
+- **Open Claude Tandem…** opens the window, and **Settings…** (⌘,) its settings. Everything else is there.
 
 <p align="center">
   <img src="assets/window-demo.svg" alt="The Claude Tandem window. The Handoffs page shows Film Kit waiting for the work profile; one click on Receive turns it into a finished receive with Open in Claude, and the shared projects list who holds each one. The Macs page shows Madoka and Ji-su side by side: online, Tandem version, iCloud Drive in sync, and each profile's account and what it holds" width="880"/>
   <br/><sub>The window: what's waiting, who holds what, and every Mac.</sub>
 </p>
 
-**The window** (Open Claude Tandem…, or open the app from Finder) has the rest:
+**The window** (Open Claude Tandem…, or open the app from Finder) has the rest. Its title bar names the page and sums it up (*1 waiting · 3 shared*), and it has a menu bar like any Mac app's: ⌘1–⌘3 for the pages, ⌘R to check the shared drive now, ⌘N for a new profile, ⇧⌘H to hand off a project, and a Handoffs menu with what you can receive or ask for.
 
 | | |
 |---|---|
-| **Get Started** | a checklist from a second profile to the `/handoff` skill |
-| **Handoffs** | what's waiting for you, sends and receives running now (step by step), every shared project and who holds it, and the projects still only on one Mac |
+| **Get Started** | a checklist from a second profile to the `/handoff` skill. Once every step is done the window opens on Handoffs instead, and the checklist is under Help |
+| **Handoffs** | what's waiting for you, sends and receives running now (step by step), every shared project and who holds it, and the projects still only on one Mac. Right-click a project, or use its ⋯, for Hand Off, Ask for It, History, Unlock and Show in Finder |
 | **Macs** | every Mac running Tandem: when it was last seen, its Tandem version and iCloud health, each profile on it with its account, and what each holds |
-| **A profile** | its accounts, the projects it holds (Hand Off…) and the ones coming to it (Receive), its name, badge and Dock launcher |
-| **+** in the toolbar | a new profile |
-| **Settings** | what happens when a handoff arrives or `/handoff` writes a brief; Open at Login and your terminal; and Maintenance — Check, Doctor, Sync Claude Code Sessions, conflict copies and the shared engine — with their output in place |
+| **A profile** | the projects it holds (Hand Off…) and the ones coming to it (Receive), its accounts, its name, badge and Dock launcher. Show Claude, Claude Code and Quit are in the toolbar; right-click it in the sidebar for those and Rename. The **+** beside *Profiles*, or File › New Profile…, makes a new one |
+
+**Settings** (⌘,) is a window of its own, with three tabs: **General** (Open at Login and your terminal), **Handoffs** (what happens when a handoff arrives or `/handoff` writes a brief) and **Maintenance** (Check, Doctor, Sync Claude Code Sessions, conflict copies and the shared engine, with their output in place).
 
 Leave **Open at Login** on, on every Mac. Tandem only notices handoffs, and publishes the card that puts this Mac on the other one's Macs page, while it runs.
 

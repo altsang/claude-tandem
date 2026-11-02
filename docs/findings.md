@@ -730,6 +730,23 @@ Login on Ji-su had never been off. This is a different case from the *changed ke
 **this** Mac, so the key shown was this Mac's own. Check which key you're shown before you
 conclude anything: `ssh-keygen -lf ~/.ssh/known_hosts | grep <fingerprint>`.
 
+## 24. A Mac's card can be on the drive and still unreadable — keep the last one
+
+**Seen 2026-11-02.** Madoka's Macs page showed Ji-su as *No card* while Ji-su's app was running
+and had published a card a few minutes earlier. On Ji-su, `_handoff/presence/Ji-su/` held
+`20261102T090725Z.json`. On Madoka the same folder was there and empty: Ji-su had written its new
+card and deleted the old one, and iCloud had delivered the delete before the new file. A
+dataless card does the same thing: it is listed but reads empty.
+
+Either way the Mac had a card a minute ago and has one again a minute later. In between, the
+ledger knew nothing about it and the page fell back to *known from handoffs*. That is the wrong
+picture, and it was the first thing the window showed.
+
+**Fix (1.1.2):** `tandem where` keeps the last card it read from each Mac in
+`~/.config/claude-tandem/cards/<Mac>.json`, and uses it while the drive has nothing readable for
+that Mac. Its age still comes from its own timestamp, so the page says *seen 6 min ago*, which
+is true. A Mac that never published a card still shows as *No card*.
+
 ---
 
 ## Two commands that caused damage during development

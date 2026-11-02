@@ -40,6 +40,8 @@ final class Store: ObservableObject {
     @Published var jobs: [Job] = []
     @Published var sendDraft: SendDraft?
     @Published var logJob: Job?
+    @Published var settingsLogJob: Job?   // maintenance output, shown over the Settings window
+    @Published var ledgerAt: Date?        // when the ledger was last read
     @Published var config: [String: String] = [:]   // `tandem config`, shared with the CLI and tandem watch
     var ledgerLoading = false
     var ledgerTimer: Timer?
@@ -72,6 +74,18 @@ final class Store: ObservableObject {
 
     /// The profile the Get Started steps are about: the first one that isn't Claude.app itself.
     var second: Profile? { profiles.first { !$0.isDefault } }
+
+    /// Get Started's steps, done or not, in its order. The page and the sidebar's count both
+    /// read this, so they can't disagree.
+    var setupSteps: [Bool] {
+        let p = second
+        return [FileManager.default.fileExists(atPath: "/Applications/Claude.app"),
+                p != nil, p?.desktopAccount != nil, p?.email != nil,
+                p?.launcher.map(dockPinned) ?? false,
+                UserDefaults.standard.bool(forKey: "skillAdded"),
+                SMAppService.mainApp.status == .enabled]
+    }
+    var setupLeft: Int { setupSteps.filter { !$0 }.count }
 }
 
 /// Whether the Dock keeps this app pinned. Read from the Dock's own preferences.
@@ -95,6 +109,7 @@ func makeMainWindow(store: Store) -> NSWindow {
                      backing: .buffered, defer: false)
     w.title = "Claude Tandem"
     w.isReleasedWhenClosed = false
+    w.tabbingMode = .disallowed   // one window: no tab bar items in View or Window
     w.contentMinSize = NSSize(width: 720, height: 480)
     w.contentView = NSHostingView(rootView: MainView(store: store))
     w.center()
@@ -104,51 +119,100 @@ func makeMainWindow(store: Store) -> NSWindow {
 
 struct MainView: View {
     @ObservedObject var store: Store
+    @ViewState private var hoverProfiles = false
 
     var body: some View {
         NavigationSplitView {
             List(selection: $store.selection) {
                 Section {
-                    Label("Get Started", systemImage: "checklist").tag("setup")
+                    // Get Started only while something is left to do; Help › Get Started Checklist
+                    // still opens it afterwards.
+                    if store.setupLeft > 0 || store.selection == "setup" {
+                        Label("Get Started", systemImage: "checklist")
+                            .badge(store.setupLeft)
+                            .tag("setup")
+                    }
                     // the tag goes last: a modifier after it wraps the row, and List then can't select it
                     Label("Handoffs", systemImage: "arrow.left.arrow.right")
                         .badge(store.inbox.filter { $0.kind != .settling }.count)
                         .tag("handoffs")
                     Label("Macs", systemImage: "laptopcomputer.and.iphone").tag("macs")
                 }
-                Section("Profiles") {
-                    ForEach(store.profiles) { p in ProfileRow(store: store, p: p).tag(p.id) }
-                }
                 Section {
-                    Label("Settings", systemImage: "gearshape").tag("settings")
+                    ForEach(store.profiles) { p in
+                        ProfileRow(store: store, p: p)
+                            .contextMenu { ProfileMenu(store: store, p: p) }
+                            .tag(p.id)
+                    }
+                } header: {
+                    HStack {
+                        Text("Profiles")
+                        Spacer()
+                        // New Profile lives in File › New Profile… ⌘N; this is the shortcut to it
+                        // where the profiles are, shown on hover like Finder's sidebar controls.
+                        Button { store.showNewProfile = true } label: { Image(systemName: "plus") }
+                            .buttonStyle(.borderless)
+                            .help("New Profile… (⌘N)")
+                            .accessibilityLabel("New Profile")
+                            .opacity(hoverProfiles ? 1 : 0)
+                    }
+                    .contentShape(Rectangle())
+                    .onHover { hoverProfiles = $0 }
                 }
             }
             .navigationSplitViewColumnWidth(min: 220, ideal: 250)
-            .toolbar {
-                ToolbarItem {
-                    Button { store.showNewProfile = true } label: { Label("New Profile", systemImage: "plus") }
-                        .help("New profile")
-                }
-            }
         } detail: {
             if store.selection == "setup" || store.selection == nil {
                 GetStartedView(store: store)
-            } else if store.selection == "settings" {
-                SettingsView(store: store)
+                    .navigationTitle("Get Started")
+                    .navigationSubtitle(store.setupLeft == 0 ? "All set" : "\(store.setupLeft) step\(store.setupLeft == 1 ? "" : "s") left")
             } else if store.selection == "handoffs" {
                 HandoffsView(store: store).navigationTitle("Handoffs")
             } else if store.selection == "macs" {
                 MacsView(store: store).navigationTitle("Macs")
             } else if let p = store.profiles.first(where: { $0.id == store.selection }) {
                 ProfileDetail(store: store, p: p).id(p.id)   // fresh fields per profile
+                    .navigationTitle(p.name)
+                    .navigationSubtitle(profileLine(p, email: true))
             } else if store.loaded {
-                Text("That profile is gone.").foregroundStyle(.secondary)
+                Text("That profile is gone.").foregroundStyle(.secondary).navigationTitle("Profiles")
             } else {
                 ProgressView()
             }
         }
         .sheet(isPresented: $store.showNewProfile) { NewProfileSheet(store: store) }
         .sheet(item: $store.logJob) { job in LogSheet(job: job) }
+    }
+}
+
+/// A profile's actions, for its right-click menu in the sidebar — the same ones as its
+/// submenu in the menu bar.
+struct ProfileMenu: View {
+    @ObservedObject var store: Store
+    let p: Profile
+    var body: some View {
+        let app = store.app, side = app?.side(p) ?? p.id
+        let all = store.ledger?.projects ?? []
+        let held = all.filter { $0.holder == side && $0.state == "held" }
+        let coming = all.filter { $0.holder == side && $0.state == "sent" }
+        Button(p.open ? "Show Claude" : "Open Claude") { app?.openDesktop(p) }
+        Button("Open Claude Code") { app?.openCode(p.id, name: p.name) }
+        if p.stale {
+            Button("Quit and Reopen") { app?.cli(["quit", p.id]) { app?.cli(["desktop", p.id]) } }
+        } else if p.open {
+            Button("Quit Claude") { app?.cli(["quit", p.id]) }
+        }
+        if !held.isEmpty || !coming.isEmpty { Divider() }
+        ForEach(coming) { x in
+            Button("Receive \(x.name)") { store.selection = "handoffs"; store.startReceive(x.name, as: side) }
+        }
+        if !held.isEmpty {
+            Menu("Hand Off") {
+                ForEach(held) { x in Button(x.name + "…") { store.selection = "handoffs"; store.draft(x.name, from: side) } }
+            }
+        }
+        Divider()
+        Button("Rename…") { app?.renameProfile(p) }
     }
 }
 
@@ -171,17 +235,27 @@ struct ProfileRow: View {
             Badge(store: store, p: p, size: 26)
             VStack(alignment: .leading, spacing: 1) {
                 Text(p.name).fontWeight(.semibold)
-                Text(who(p)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                Text(profileLine(p, email: false)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
             if p.stale {
-                Image(systemName: "arrow.clockwise.circle.fill").foregroundStyle(.orange).help("Reopen to update")
+                Image(systemName: "arrow.clockwise.circle.fill").foregroundStyle(.orange)
             } else if p.open {
-                Circle().fill(.green).frame(width: 8, height: 8).help("Open")
+                Circle().fill(.green).frame(width: 8, height: 8)
             }
         }
         .padding(.vertical, 2)
+        .help(p.email ?? "Claude Code not signed in")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(p.name), \(profileLine(p, email: false))")
     }
+}
+
+/// "you@x.com · Max · Claude open": a profile's account and whether its Claude runs, in words.
+func profileLine(_ p: Profile, email: Bool) -> String {
+    let state = p.stale ? "Reopen to update" : (p.open ? "Claude open" : "Claude closed")
+    return [email ? (p.email ?? "Claude Code not signed in") : nil, p.plan?.capitalized, state]
+        .compactMap { $0 }.joined(separator: " · ")
 }
 
 func who(_ p: Profile) -> String {
@@ -199,10 +273,8 @@ struct ProfileDetail: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                header
-                actions
-                GroupBox("Accounts") { accounts.padding(6) }
-                GroupBox("Projects") { ProfileProjects(store: store, p: p).padding(6) }
+                GroupBox("Projects") { ProfileProjects(store: store, p: p).frame(maxWidth: .infinity, alignment: .leading).padding(6) }
+                GroupBox("Accounts") { accounts.frame(maxWidth: .infinity, alignment: .leading).padding(6) }
                 if let n = p.adoptable, n > 0 {
                     GroupBox("Earlier sessions") {
                         HStack {
@@ -213,10 +285,10 @@ struct ProfileDetail: View {
                         }.padding(6)
                     }
                 }
-                GroupBox("Name") { nameBox.padding(6) }
-                GroupBox("Badge") { badgeBox.padding(6) }
+                GroupBox("Name") { nameBox.frame(maxWidth: .infinity, alignment: .leading).padding(6) }
+                GroupBox("Badge") { badgeBox.frame(maxWidth: .infinity, alignment: .leading).padding(6) }
                 if !p.isDefault {
-                    GroupBox("Dock") { dockBox.padding(6) }
+                    GroupBox("Dock") { dockBox.frame(maxWidth: .infinity, alignment: .leading).padding(6) }
                 }
             }
             .padding(24)
@@ -224,6 +296,22 @@ struct ProfileDetail: View {
         }
         // A click on empty space ends editing, which saves the field, as in any Mac window.
         .background(Color.clear.contentShape(Rectangle()).onTapGesture { NSApp.keyWindow?.makeFirstResponder(nil) })
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button(p.open ? "Show Claude" : "Open Claude") { app?.openDesktop(p) }
+                    .help(p.open ? "Bring \(p.name)’s Claude forward" : "Open Claude as \(p.name)")
+                Button { app?.openCode(p.id, name: p.name) } label: { Label("Open Claude Code", systemImage: "terminal") }
+                    .help("Open Claude Code as \(p.name)")
+                if p.stale {
+                    Button { app?.cli(["quit", p.id]) { self.app?.cli(["desktop", p.id]) } } label: {
+                        Label("Quit and Reopen", systemImage: "arrow.clockwise")
+                    }.help("Claude was updated: quit and reopen \(p.name) to run the new version")
+                } else {
+                    Button { app?.cli(["quit", p.id]) } label: { Label("Quit Claude", systemImage: "power") }
+                        .help("Quit \(p.name)’s Claude").disabled(!p.open)
+                }
+            }
+        }
     }
 
     /// A new name, saved when editing ends. Unchanged: nothing. Not allowed: beep, and the
@@ -250,45 +338,13 @@ struct ProfileDetail: View {
         return true
     }
 
-    var header: some View {
-        HStack(spacing: 16) {
-            Badge(store: store, p: p, size: 64)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(p.name).font(.largeTitle.bold())
-                Text(p.isDefault ? "Claude.app itself — the account you had before Tandem"
-                                 : "Profile id “\(p.id)” · handoff side \(app?.side(p) ?? p.id)")
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            status
-        }
-    }
-
-    @ViewBuilder var status: some View {
-        if p.stale {
-            Label("Reopen to update", systemImage: "arrow.clockwise").foregroundStyle(.orange)
-        } else if p.open {
-            Label("Open", systemImage: "circle.fill").foregroundStyle(.green)
-        } else {
-            Label("Closed", systemImage: "circle").foregroundStyle(.secondary)
-        }
-    }
-
-    var actions: some View {
-        HStack {
-            Button(p.open ? "Show Claude" : "Open Claude") { app?.openDesktop(p) }
-                .keyboardShortcut(.defaultAction)
-            Button("Open Claude Code") { app?.openCode(p.id, name: p.name) }
-            if p.stale {
-                Button("Quit and Reopen") { app?.cli(["quit", p.id]) { self.app?.cli(["desktop", p.id]) } }
-            } else if p.open {
-                Button("Quit Claude") { app?.cli(["quit", p.id]) }
-            }
-        }
-    }
-
     var accounts: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 8) {
+            GridRow {
+                Text("Profile").foregroundStyle(.secondary)
+                Text(p.isDefault ? "Claude.app itself — the account you had before Tandem"
+                                 : "id “\(p.id)” · handoff side \(app?.side(p) ?? p.id)")
+            }
             GridRow {
                 Text("Claude").foregroundStyle(.secondary)
                 if let a = p.desktopAccount {
@@ -401,11 +457,8 @@ struct GetStartedView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 14) {
                     Image(nsImage: tandemLogo(height: 44))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Get started").font(.largeTitle.bold())
-                        Text("A second Claude account beside your first, and a way to hand work between them.")
-                            .foregroundStyle(.secondary)
-                    }
+                    Text("A second Claude account beside your first, and a way to hand work between them.")
+                        .font(.title3).foregroundStyle(.secondary)
                 }
                 .padding(.bottom, 6)
 
@@ -679,78 +732,96 @@ struct CommitField: NSViewRepresentable {
     }
 }
 
-// MARK: settings
+// MARK: settings — its own window (App.showSettings), one form per tab
 
-struct SettingsView: View {
+/// An ⓘ that shows the longer explanation in a popover, so the form itself stays short.
+struct InfoButton: View {
+    let text: String
+    @ViewState private var shown = false
+    var body: some View {
+        Button { shown.toggle() } label: { Image(systemName: "info.circle") }
+            .buttonStyle(.borderless).foregroundStyle(.secondary)
+            .help(text).accessibilityLabel("About this setting")
+            .popover(isPresented: $shown, arrowEdge: .trailing) {
+                Text(text).fixedSize(horizontal: false, vertical: true).frame(width: 280).padding(14)
+            }
+    }
+}
+
+struct HandoffsSettings: View {
+    @ObservedObject var store: Store
+    var body: some View {
+        Form {
+            Section {
+                Picker(selection: Binding(get: { store.config["on-arrival"] ?? "ask" }, set: { store.setConfig("on-arrival", $0) })) {
+                    Text("Ask Me").tag("ask")
+                    Text("Receive Automatically").tag("auto")
+                    Text("Only Show It in Handoffs").tag("off")
+                } label: {
+                    HStack { Text("When a handoff arrives"); InfoButton(text: "Receiving verifies every file before it claims the project. If that profile’s Claude is open, the steps that need it closed wait until it quits, then finish on their own.") }
+                }
+                Picker(selection: Binding(get: { store.config["on-brief"] ?? "ask" }, set: { store.setConfig("on-brief", $0) })) {
+                    Text("Ask Before Sending").tag("ask")
+                    Text("Send Automatically").tag("auto")
+                } label: {
+                    HStack { Text("When /handoff writes a brief"); InfoButton(text: "/handoff leaves a note saying where the brief is going. Sending automatically only happens when that names a profile or Mac Tandem knows.") }
+                }
+            } footer: {
+                Text("The same settings tandem watch follows on a Mac without the app.").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped).frame(width: 520).fixedSize()
+        .onAppear { store.loadConfig() }
+    }
+}
+
+struct GeneralSettings: View {
     @ObservedObject var store: Store
     @AppStorage("terminal") private var terminal = ""
     @ViewState private var loginOn = SMAppService.mainApp.status == .enabled
-
     var body: some View {
         let ghostty = store.app?.ghosttyInstalled ?? false
         Form {
-            Section("Handoffs") {
-                Picker("When a handoff arrives for this Mac", selection: Binding(
-                    get: { store.config["on-arrival"] ?? "ask" }, set: { store.setConfig("on-arrival", $0) })) {
-                    Text("Ask me").tag("ask")
-                    Text("Receive it automatically").tag("auto")
-                    Text("Only show it in Handoffs").tag("off")
-                }
-                Text("Receiving verifies every file before it claims the project. If that profile’s Claude is open, the steps that need it closed wait until it quits, then finish on their own.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Picker("When /handoff writes a brief", selection: Binding(
-                    get: { store.config["on-brief"] ?? "ask" }, set: { store.setConfig("on-brief", $0) })) {
-                    Text("Ask me before sending").tag("ask")
-                    Text("Send it automatically").tag("auto")
-                }
-                Text("/handoff leaves a note saying where the brief is going. Sending automatically only happens when that names a profile or Mac Tandem knows.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Text("These are tandem config on-arrival and on-brief — the same settings tandem watch follows on a Mac without the app.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Toggle(isOn: Binding(get: { loginOn }, set: { _ in store.app?.toggleLogin(); loginOn = SMAppService.mainApp.status == .enabled })) {
+                HStack { Text("Open Claude Tandem at login"); InfoButton(text: "Leave it on: Tandem only hears about handoffs, and publishes the card that shows this Mac on your other Mac, while it runs.") }
             }
-            Section("General") {
-                Toggle("Open Claude Tandem at login", isOn: Binding(
-                    get: { loginOn },
-                    set: { _ in store.app?.toggleLogin(); loginOn = SMAppService.mainApp.status == .enabled }))
-                Text("Leave it on: Tandem only hears about handoffs, and tells your other Mac it’s awake, while it runs.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Picker("Open Claude Code in", selection: Binding(
-                    get: { store.app?.terminalApp ?? "Terminal" }, set: { terminal = $0 })) {
-                    Text("Terminal").tag("Terminal")
-                    if ghostty { Text("Ghostty").tag("Ghostty") }
-                }
-                Text(ghostty ? "Ghostty opens a new window in the Ghostty you already have open. The first time, macOS asks whether Claude Tandem may control it."
-                             : "Install Ghostty to use it here.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-            Section("Maintenance") {
-                maintenance("Check", "Shared drive, iCloud account and sync state, engine, folder links that would fail. Changes nothing.",
-                            "tandem check", ["check"])
-                maintenance("Run Doctor", "Re-checks what profiles rely on in Claude.app — worth running after Claude updates.",
-                            "tandem profile doctor", ["profile", "doctor"])
-                maintenance("Sync Claude Code sessions", "Copies every profile’s Claude Code sessions and plans to the others, so /resume finds them anywhere.",
-                            "tandem profile sync", ["profile", "sync"])
-                maintenance("Find conflict copies", "iCloud’s “name 2” copies in the shared tree. Reports only.",
-                            "tandem conflicts", ["conflicts"])
-                maintenance("Update the shared engine", "Puts this version’s engine on the shared drive, for every Mac.",
-                            "tandem deploy", ["deploy"])
+            Picker(selection: Binding(get: { store.app?.terminalApp ?? "Terminal" }, set: { terminal = $0 })) {
+                Text("Terminal").tag("Terminal")
+                if ghostty { Text("Ghostty").tag("Ghostty") }
+            } label: {
+                HStack { Text("Open Claude Code in")
+                    InfoButton(text: ghostty ? "Ghostty opens a new window in the Ghostty you already have open. The first time, macOS asks whether Claude Tandem may control it."
+                                             : "Install Ghostty to use it here.") }
             }
         }
-        .formStyle(.grouped)
-        .frame(maxWidth: 620)
-        .padding()
-        .navigationTitle("Settings")
-        .onAppear { store.loadConfig() }
+        .formStyle(.grouped).frame(width: 520).fixedSize()
+    }
+}
+
+struct MaintenanceSettings: View {
+    @ObservedObject var store: Store
+    var body: some View {
+        Form {
+            Section {
+                row("Check", "The shared drive, iCloud, the engine and folder links. Changes nothing.", ["check"], "tandem check")
+                row("Run Doctor", "Re-checks what profiles rely on in Claude.app — after Claude updates.", ["profile", "doctor"], "tandem profile doctor")
+                row("Sync Claude Code Sessions", "Copies sessions between profiles, so /resume finds them anywhere.", ["profile", "sync"], "tandem profile sync")
+                row("Find Conflict Copies", "iCloud’s “name 2” copies in the shared tree. Reports only.", ["conflicts"], "tandem conflicts")
+                row("Update the Shared Engine", "Puts this version’s engine on the shared drive, for every Mac.", ["deploy"], "tandem deploy")
+            }
+        }
+        .formStyle(.grouped).frame(width: 520).fixedSize()
+        .sheet(item: $store.settingsLogJob) { job in LogSheet(job: job) }
     }
 
-    func maintenance(_ title: String, _ help: String, _ cli: String, _ args: [String]) -> some View {
+    func row(_ title: String, _ help: String, _ args: [String], _ cli: String) -> some View {
         HStack {
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                Text(help + "  " + cli).font(.caption).foregroundStyle(.secondary)
+                Text(help).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Run") { store.runLog(title, args) }
+            Button("Run") { store.runLog(title, args, inSettings: true) }.help(cli)
         }
     }
 }
@@ -791,7 +862,7 @@ struct ProfileProjects: View {
         let away = all.filter { $0.state == "sent" && $0.last?.machine == side }
         VStack(alignment: .leading, spacing: 8) {
             if store.ledger == nil { Text("Reading the shared drive…").foregroundStyle(.secondary) }
-            else if held.isEmpty && coming.isEmpty && away.isEmpty {
+            else if held.isEmpty && coming.isEmpty && away.isEmpty && store.heldHere(side).isEmpty {
                 Text("Holds no shared project. Projects come here when they’re handed to \(p.name), and leave with Hand Off.")
                     .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }

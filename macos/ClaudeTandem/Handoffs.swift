@@ -219,6 +219,7 @@ extension Store {
             DispatchQueue.main.async {
                 self.ledgerLoading = false
                 guard let l else { return }
+                self.ledgerAt = Date()
                 if l != self.ledger { self.ledger = l }
                 self.react()
                 app.updateStatusIcon()
@@ -424,9 +425,11 @@ extension Store {
     }
 
     /// A step whose output is the point — doctor, check, a project's history — shown in a sheet.
-    func runLog(_ title: String, _ args: [String]) {
+    /// A CLI step whose output is shown in a sheet — over the Settings window when it was
+    /// started there, else over the main window.
+    func runLog(_ title: String, _ args: [String], inSettings: Bool = false) {
         let job = Job(kind: "log", title: title)
-        logJob = job
+        if inSettings { settingsLogJob = job } else { logJob = job }
         run(job, args)
     }
 
@@ -561,11 +564,6 @@ struct HandoffsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                HStack {
-                    Text("Handoffs").font(.largeTitle.bold())
-                    Spacer()
-                    Button { store.refreshLedger() } label: { Label("Check Now", systemImage: "arrow.clockwise") }
-                }
                 GroupBox("Waiting for you") { waiting.padding(6) }
                 if store.jobs.contains(where: { ["send", "receive", "settle", "ask"].contains($0.kind) }) || !store.outgoing.isEmpty {
                     GroupBox("In progress") { inProgress.frame(maxWidth: .infinity, alignment: .leading).padding(6) }
@@ -583,12 +581,21 @@ struct HandoffsView: View {
             .frame(maxWidth: 760, alignment: .leading)
         }
         .sheet(item: $store.sendDraft) { d in SendSheet(store: store, draft: d) }
+        .navigationSubtitle(subtitle)
+        .toolbar { ToolbarItem(placement: .primaryAction) { CheckNowButton(store: store) } }
+    }
+
+    /// "1 waiting · 3 shared", in the title bar.
+    var subtitle: String {
+        guard let l = store.ledger else { return "Reading the shared drive…" }
+        let n = store.inbox.filter { $0.kind != .settling }.count
+        return [n > 0 ? "\(n) waiting" : nil, "\(l.projects.count) shared"].compactMap { $0 }.joined(separator: " · ")
     }
 
     @ViewBuilder var waiting: some View {
         let items = store.inbox
         if items.isEmpty {
-            Text(store.ledger == nil ? "Reading the shared drive…" : "Nothing waiting. Handoffs addressed to this Mac, briefs ready to send and requests from your other Mac show up here — and as notifications.")
+            Text(store.ledger == nil ? "Reading the shared drive…" : "Nothing waiting.")
                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else {
@@ -664,8 +671,10 @@ struct HandoffsView: View {
                 Text(list.map(\.project).sorted().joined(separator: " · ")).font(.callout).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Text("These are defined in one profile’s Claude only. To hand one off, move its folder into the shared drive once (tandem migrate): the files are copied and md5-verified, and the original is kept aside, never deleted.")
-                .font(.caption).foregroundStyle(.secondary).padding(.top, 6)
+            HStack(spacing: 4) {
+                Text("Move one to the shared drive once to hand it off.").font(.caption).foregroundStyle(.secondary)
+                InfoButton(text: "These are defined in one profile’s Claude only. Moving one (tandem migrate) copies its files into the shared drive and md5-verifies them; the original is kept aside, never deleted.")
+            }.padding(.top, 6)
         }
     }
 }
@@ -838,7 +847,15 @@ struct ProjectRow: View {
                 }
             }
             Spacer()
-            Menu {
+            Menu { actions } label: { Image(systemName: "ellipsis.circle") }
+                .menuStyle(.borderlessButton).fixedSize()
+                .accessibilityLabel("Actions for \(p.name)")
+        }
+        .contentShape(Rectangle())
+        .contextMenu { actions }
+    }
+
+    @ViewBuilder var actions: some View {
                 if mine, let h = p.holder ?? store.sidesDefining(p.name).first(where: store.isMine) {
                     Button("Hand Off…") { store.draft(p.name, from: h) }
                 } else if !mine {
@@ -859,9 +876,6 @@ struct ProjectRow: View {
                         }
                     }
                 }
-            } label: { Image(systemName: "ellipsis.circle") }
-            .menuStyle(.borderlessButton).fixedSize()
-        }
     }
 
     var mine: Bool { store.isMine(p.holder) || (p.holder == nil && store.sidesDefining(p.name).contains(where: store.isMine)) }
@@ -892,9 +906,10 @@ struct MacsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text("Macs").font(.largeTitle.bold())
-                Text("Every Mac running Tandem publishes a card to the shared drive every few minutes: its profiles, their accounts, and what each one holds. The drive carries it, so a card is 1–3 minutes old at best.")
-                    .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 4) {
+                    Text("Each Mac running Tandem publishes a card every few minutes.").foregroundStyle(.secondary)
+                    InfoButton(text: "A card holds the Mac’s profiles, their accounts, and what each one holds. It travels on the shared drive, so it is 1–3 minutes old at best. A Mac whose newest card hasn’t downloaded yet keeps showing its last one.")
+                }
                 if let l = store.ledger {
                     ForEach(l.machines) { m in MacCard(store: store, m: m) }
                 } else {
@@ -904,6 +919,24 @@ struct MacsView: View {
             .padding(24)
             .frame(maxWidth: 760, alignment: .leading)
         }
+        .navigationSubtitle(subtitle)
+        .toolbar { ToolbarItem(placement: .primaryAction) { CheckNowButton(store: store) } }
+    }
+
+    var subtitle: String {
+        guard let l = store.ledger else { return "Reading the shared drive…" }
+        let others = l.machines.filter { $0.this != true }
+        let up = others.filter { $0.online }.count
+        return others.isEmpty ? "This Mac only" : "\(l.machines.count) Macs · \(up + 1) online"
+    }
+}
+
+/// Re-reads the shared drive now (⌘R in the Handoffs menu).
+struct CheckNowButton: View {
+    @ObservedObject var store: Store
+    var body: some View {
+        Button { store.refreshLedger() } label: { Label("Check Now", systemImage: "arrow.clockwise") }
+            .help(store.ledgerAt.map { "Check the shared drive now (⌘R) — last checked \(agoMinutes(Int(Date().timeIntervalSince($0) / 60)))" } ?? "Check the shared drive now (⌘R)")
     }
 }
 

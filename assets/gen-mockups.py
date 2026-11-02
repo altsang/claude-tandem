@@ -331,14 +331,16 @@ def menubar():
                 + t(dx + 46, y + 28, sub, 10.5, "#5F5F66")
                 + t(dx + 46 + len(sub) * 5.6, y + 28, sub2, 10.5, sub2c))
     py = dy + 62
-    base = (f'<rect x="{dx}" y="{dy}" width="{dw}" height="232" rx="10" fill="#FFFFFF" stroke="#D2D2D7"></rect>'
+    base = (f'<rect x="{dx}" y="{dy}" width="{dw}" height="262" rx="10" fill="#FFFFFF" stroke="#D2D2D7"></rect>'
             + head
             + f'<line x1="{dx+10}" y1="{dy+56}" x2="{dx+dw-10}" y2="{dy+56}" stroke="#E5E5EA"></line>'
             + t(dx + 14, py + 16, "Claude profiles on Madoka", 10.5, "#5F5F66", 600)
             + prow(py + 24, "A", GRAPH, "default", "you@personal.com · Max  ·  ", "Open", "#1F7A3A")
             + f'<line x1="{dx+10}" y1="{py+114}" x2="{dx+dw-10}" y2="{py+114}" stroke="#E5E5EA"></line>'
-            + t(dx + 14, py + 136, "Open Claude Tandem…", 12) + t(dx + dw - 16, py + 136, "⌘,", 12, "#8E8E93", anchor="end")
-            + t(dx + 14, py + 158, "Quit Claude Tandem", 12))
+            + t(dx + 14, py + 136, "Open Claude Tandem…", 12)
+            + t(dx + 14, py + 158, "Settings…", 12) + t(dx + dw - 16, py + 158, "⌘,", 12, "#8E8E93", anchor="end")
+            + f'<line x1="{dx+10}" y1="{py+168}" x2="{dx+dw-10}" y2="{py+168}" stroke="#E5E5EA"></line>'
+            + t(dx + 14, py + 188, "Quit Claude Tandem", 12) + t(dx + dw - 16, py + 188, "⌘Q", 12, "#8E8E93", anchor="end"))
     sc.add(base, 1.7, 6.2)
     work_row = (prow(py + 64, "W", TEAL, "work", "you@company.com · Team  ·  ", "4 earlier sessions", BLUE)
                 + t(dx + dw - 16, py + 86, "›", 14, "#8E8E93", anchor="end"))
@@ -352,7 +354,7 @@ def menubar():
     sx, sy, sw = 206, 132, 320
     items = ["Show Claude", "Open Claude Code in Terminal", "Quit Claude", None,
              "Receive Film Kit — from default on Ji-su", "Hand Off  ›", None,
-             "Bring In Earlier Sessions (4)…", "Settings…"]
+             "Bring In Earlier Sessions (4)…", "Show in Claude Tandem…"]
     s = [f'<rect x="{sx}" y="{sy}" width="{sw}" height="{28 + len(items) * 20}" rx="10" fill="#FFFFFF" stroke="#D2D2D7"></rect>',
          t(sx + 14, sy + 20, "Madoka@work — id work", 10.5, "#5F5F66", 600)]
     y = sy + 30
@@ -392,29 +394,39 @@ def menubar():
 
 
 # ============================================================ shared: Claude Tandem's own window
-def tandem_window(x, y, w, h, title, selected, side_w=128, badge_n=0, profiles=(("A", GRAPH, "default"), ("W", TEAL, "work"))):
-    """The app's window: a sidebar (Get Started, Handoffs, Macs, the profiles, Settings) and a content area."""
+def tandem_window(x, y, w, h, title, selected, side_w=128, badge_n=0, profiles=(("A", GRAPH, "default"), ("W", TEAL, "work")),
+                  subtitle="", refresh=True, setup_left=0):
+    """The app's window: a sidebar (Get Started while unfinished, Handoffs, Macs, the profiles) and a content
+    area whose title bar names the page, sums it up, and holds its ↻ Check Now. Settings is its own window."""
     s = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="#FFFFFF" stroke="#C9CBD1"></rect>',
          f'<path d="M{x} {y+10}a10 10 0 0 1 10-10h{side_w-10}v{h}h-{side_w-10}a10 10 0 0 1 -10-10Z" fill="#F1F2F5"></path>']
     for i, c in enumerate(("#FF5F57", "#FEBC2E", "#28C840")):
         s.append(f'<circle cx="{x+16+i*15}" cy="{y+16}" r="4.5" fill="{c}"></circle>')
-    s.append(t(x + side_w + 16, y + 21, title, 13, "#1D1D1F", 700))
-    rows = [("setup", "☑", "Get Started"), ("handoffs", "⇄", "Handoffs"), ("macs", "▭", "Macs")]
+    s.append(t(x + side_w + 16, y + (17 if subtitle else 21), title, 13, "#1D1D1F", 700))
+    if subtitle:
+        s.append(t(x + side_w + 16, y + 31, subtitle, 10, "#6E6E73"))
+    if refresh:
+        s.append(f'<circle cx="{x+w-22}" cy="{y+20}" r="11" fill="#EDEEF1"></circle>' + t(x + w - 22, y + 24.5, "↻", 12, "#3A3A40", 600, "middle"))
+    rows = ([("setup", "☑", "Get Started")] if setup_left else []) + [("handoffs", "⇄", "Handoffs"), ("macs", "▭", "Macs")]
     yy = y + 46
     for key, ic, label in rows:
         if key == selected:
             s.append(f'<rect x="{x+8}" y="{yy-14}" width="{side_w-16}" height="21" rx="6" fill="#DCDDE2"></rect>')
         s.append(t(x + 20, yy + 1, ic, 11, BLUE, 700, "middle") + t(x + 32, yy + 1, label, 11.5, "#1D1D1F", 600 if key == selected else 400))
+        if key == "setup":
+            s.append(t(x + side_w - 22, yy + 1, str(setup_left), 9.5, "#8E8E93", 600, "middle"))
         if key == "handoffs" and badge_n:
             s.append(f'<rect x="{x+side_w-34}" y="{yy-10}" width="18" height="14" rx="7" fill="#C7C8CE"></rect>'
                      + t(x + side_w - 25, yy + 1, str(badge_n), 9.5, "#1D1D1F", 700, "middle"))
         yy += 24
     s.append(t(x + 14, yy + 6, "Profiles", 9.5, "#8E8E93", 600)); yy += 26
+    plans = {"default": "Max", "work": "Team"}
     for letter, color, name in profiles:
-        s.append(badge(x + 24, yy - 4, 8, letter, color) + t(x + 38, yy, name, 11.5)
+        wide = side_w >= 180   # room for the status in words under the name
+        s.append(badge(x + 24, yy - (0 if wide else 4), 9 if wide else 8, letter, color) + t(x + 40, yy - (3 if wide else 0), name, 11.5, weight=600 if wide else 400)
+                 + (t(x + 40, yy + 10, plans.get(name, "Pro") + " · Claude open", 9.5, "#6E6E73") if wide else "")
                  + f'<circle cx="{x+side_w-16}" cy="{yy-4}" r="3" fill="#34C759"></circle>')
-        yy += 24
-    s.append(t(x + 20, yy + 8, "⚙", 11, BLUE, 700, "middle") + t(x + 32, yy + 8, "Settings", 11.5))
+        yy += 32 if wide else 24
     return "".join(s), (x + side_w + 16, y + 44)
 
 def step_icon(cx, cy, state):
@@ -501,9 +513,8 @@ def handoff_app():
     tw, (tx, ty) = tandem_window(14, 296, 424, 292, "Handoffs", "handoffs")
     sc.add(tw)
     idle = lambda x, y: (t(x, y + 8, "Waiting for you", 10, "#8E8E93", 600)
-                         + f'<rect x="{x-8}" y="{y+16}" width="266" height="46" rx="8" fill="#F6F6F8" stroke="#E2E3E8"></rect>'
-                         + t(x + 4, y + 36, "Nothing waiting. Handoffs for this Mac show", 10.5, "#5F5F66")
-                         + t(x + 4, y + 51, "up here — and as notifications.", 10.5, "#5F5F66"))
+                         + f'<rect x="{x-8}" y="{y+16}" width="266" height="30" rx="8" fill="#F6F6F8" stroke="#E2E3E8"></rect>'
+                         + t(x + 4, y + 35, "Nothing waiting.", 10.5, "#5F5F66"))
     sc.add(idle(tx + 8, ty), None, 6.1)
     job(sc, tx + 8, ty + 8, 266, "Hand off Film Kit → default on Ji-su", [
         ("Brief", "HANDOFF_film_kit.md", 6.5, "done"),
@@ -562,16 +573,16 @@ def window_tour():
     content_x = X + 190 + 20
     for sel, a, b in (("handoffs", 0, 7.4), ("macs", 7.4, None)):
         w_, _ = tandem_window(X, Y, Wd, Hd, "Handoffs" if sel == "handoffs" else "Macs", sel, side_w=190,
-                              badge_n=1 if sel == "handoffs" else 0)
+                              badge_n=1 if sel == "handoffs" else 0,
+                              subtitle="1 waiting · 3 shared" if sel == "handoffs" else "2 Macs · 2 online")
         sc.add(w_, a, b)
+    # once received: nothing waits, so the subtitle and the sidebar count change
+    sc.add(f'<rect x="{X+190+14}" y="{Y+23}" width="140" height="12" fill="#FFFFFF"></rect>' + t(X + 190 + 16, Y + 31, "3 shared", 10, "#6E6E73"), 3.6, 7.4)
     cx, cw = content_x, Wd - 190 - 40
 
     # ---- Handoffs
     def box(y, h): return f'<rect x="{cx}" y="{y}" width="{cw}" height="{h}" rx="9" fill="#F6F6F8" stroke="#E2E3E8"></rect>'
-    hp = (t(cx, Y + 66, "Handoffs", 22, weight=800)
-          + f'<rect x="{cx+cw-96}" y="{Y+50}" width="96" height="24" rx="7" fill="#EDEEF1"></rect>'
-          + t(cx + cw - 48, Y + 66, "↻ Check Now", 11, anchor="middle")
-          + t(cx + 8, Y + 98, "Waiting for you", 11, "#5F5F66", 600) + box(Y + 106, 54)
+    hp = (t(cx + 8, Y + 98, "Waiting for you", 11, "#5F5F66", 600) + box(Y + 106, 54)
           + f'<circle cx="{cx+16}" cy="{Y+126}" r="4" fill="#34C759"></circle>'
           + t(cx + 28, Y + 130, "Film Kit — from default on Ji-su", 12.5, weight=700)
           + t(cx + 28, Y + 148, "For work on this Mac · sent 2 minutes ago · brief HANDOFF_film_kit.md", 10.5, "#5F5F66")
@@ -590,7 +601,9 @@ def window_tour():
     hp += (box(Y + 380, 34) + t(cx + 14, Y + 402, "›  Only on one Mac — 4 projects a handoff can’t reach yet", 11.5, weight=600)
            + f'<rect x="{cx+cw-170}" y="{Y+386}" width="160" height="22" rx="6" fill="#EDEEF1"></rect>'
            + t(cx + cw - 90, Y + 401, "Move to the Shared Drive  ⌄", 10.5, anchor="middle"))
-    sc.add(hp, 0, 7.4)
+    UP = 30   # the page heading is the title bar's now: content starts higher
+    def lift(svg): return f'<g transform="translate(0,-{UP})">{svg}</g>'
+    sc.add(lift(hp), 0, 7.4)
     done = (f'<rect x="{cx}" y="{Y+88}" width="{cw}" height="74" fill="#FFFFFF"></rect>'
             + t(cx + 8, Y + 98, "In progress", 11, "#5F5F66", 600) + box(Y + 106, 54)
             + step_icon(cx + 16, Y + 126, "done")
@@ -601,8 +614,8 @@ def window_tour():
             + f'<rect x="{cx+30}" y="{Y+205}" width="{cw-80}" height="34" fill="#F6F6F8"></rect>'
             + t(cx + 36, Y + 216, "Film Kit", 12.5, "#1D1D1F", 700)
             + t(cx + 36, Y + 232, "With work on this Mac · since just now", 10.5, "#5F5F66"))
-    sc.add(done, 3.6, 7.4)
-    sc.add(f'<rect x="{X+190-36}" y="{Y+58}" width="22" height="18" fill="#DCDDE2"></rect>', 3.6, 7.4)   # the badge clears
+    sc.add(lift(done), 3.6, 7.4)
+    sc.add(f'<rect x="{X+190-36}" y="{Y+34}" width="22" height="18" fill="#DCDDE2"></rect>', 3.6, 7.4)   # the badge clears
 
     # ---- Macs
     def card(x, y, w, mac, status, dot, ver, drive, sides):
@@ -623,16 +636,16 @@ def window_tour():
                 s += t(x + 36, yy + 54, coming, 10.5, BLUE)
             yy += 62
         return s
-    mp = (t(cx, Y + 66, "Macs", 22, weight=800)
-          + t(cx, Y + 88, "Every Mac running Tandem publishes a card to the shared drive every few minutes.", 10.5, "#5F5F66")
+    mp = (t(cx, Y + 80, "Each Mac running Tandem publishes a card every few minutes.", 11, "#5F5F66")
+          + f'<circle cx="{cx+330}" cy="{Y+76}" r="5.5" fill="none" stroke="#8E8E93"></circle>' + t(cx + 330, Y + 79, "i", 8, "#8E8E93", 700, "middle")
           + card(cx, Y + 104, (cw - 14) / 2, "Madoka", "This Mac", "#34C759", "1.1.1", "In sync",
                  [("A", GRAPH, "default", "Madoka", "you@personal.com · Max", "Holds Adobe Stock Plan", None),
                   ("W", TEAL, "work", "Madoka@work", "you@company.com · Team", "Holds Film Kit", None)])
           + card(cx + (cw - 14) / 2 + 14, Y + 104, (cw - 14) / 2, "Ji-su", "Online · seen 1 min ago", "#34C759", "1.1.1", "In sync",
                  [("A", GRAPH, "default", "Ji-su", "you@personal.com · Max", "Holds Quicken Reconciliation", None)]))
-    sc.add(mp, 7.4)
-    sc.moving(POINTER, [(0.0, 600, 470), (2.0, cx + cw - 48, Y + 134), (3.4, cx + cw - 48, Y + 134), (4.8, cx + cw - 120, Y + 300),
-                        (6.6, X + 60, Y + 94), (7.6, X + 60, Y + 94), (10.0, cx + 300, Y + 400), (16.0, cx + 300, Y + 400)])
+    sc.add(lift(mp), 7.4)
+    sc.moving(POINTER, [(0.0, 600, 470), (2.0, cx + cw - 48, Y + 134 - UP), (3.4, cx + cw - 48, Y + 134 - UP), (4.8, cx + cw - 120, Y + 300 - UP),
+                        (6.6, X + 60, Y + 72), (7.6, X + 60, Y + 72), (10.0, cx + 300, Y + 400 - UP), (16.0, cx + 300, Y + 400 - UP)])
     sc.write("window-demo.svg")
 
 

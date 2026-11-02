@@ -172,18 +172,42 @@ def cmd_presence(root, mac, confdir, profiles_file, version, drive_line=""):
     print(path)
 
 
-def read_presence(root):
+def read_presence(root, confdir=None):
+    """Each Mac's newest card that parses. A Mac writes its new card and then deletes the old
+    one, so for a minute or two another Mac can list only a card iCloud hasn't delivered yet:
+    nothing readable, and the Mac would show as "No card". The last card read from each Mac is
+    kept in <confdir>/cards/ and stands in until the new one arrives; its age comes from its
+    own timestamp, so "seen N min ago" stays true."""
     out = {}
     base = os.path.join(root, "_handoff", "presence")
-    for m in touch_dir(base):
+    cache = os.path.join(confdir, "cards") if confdir else None
+    macs = set(touch_dir(base))
+    if cache:
+        macs |= {f[:-5] for f in touch_dir(cache) if f.endswith(".json")}
+    for m in macs:
         d = os.path.join(base, m)
         fs = sorted(f for f in touch_dir(d) if f.endswith(".json"))
+        card = None
         for f in reversed(fs):   # newest that parses
             card = read_json(os.path.join(d, f))
             if card:
-                card["age_minutes"] = int((time.time() - (ts_epoch(card.get("at", "")) or 0)) / 60)
-                out[m] = card
                 break
+        if cache:
+            kept = os.path.join(cache, m + ".json")
+            if card:
+                try:
+                    os.makedirs(cache, exist_ok=True)
+                    tmp = kept + ".tmp"
+                    with open(tmp, "w") as fh:
+                        json.dump(card, fh)
+                    os.rename(tmp, kept)
+                except OSError:
+                    pass
+            elif fs:   # the Mac still has a card on the drive, just not one readable here yet
+                card = read_json(kept)
+        if card:
+            card["age_minutes"] = int((time.time() - (ts_epoch(card.get("at", "")) or 0)) / 60)
+            out[m] = card
     return out
 
 
@@ -284,7 +308,7 @@ def cmd_where(root, mac, confdir, profiles_file="", drive_line=""):
     projects = [project(root, n, settling) for n in names]
     shared = set(names)
 
-    presence = read_presence(root)
+    presence = read_presence(root, confdir)
     me = {"mac": mac, "this": True, "at": now_ts(), "age_minutes": 0, "drive": drive(drive_line),
           "sides": my_sides(mac, profiles, confdir)}
     for s in me["sides"]:

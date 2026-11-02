@@ -100,7 +100,7 @@ brew install altsang/tap/claude-tandem
 tandem menubar        # builds and opens the app; needs the Command Line Tools
 ```
 
-Then, in the app's **Settings**, turn on **Open at Login**, and allow notifications when macOS asks. The app is what tells the other Mac a handoff is coming, and it publishes this Mac's card for the **Macs** page. A Mac without the app (a server, say) can run `tandem watch --install` instead.
+Then, in the app's **Settings** (⌘,) › General, turn on **Open at Login**, and allow notifications when macOS asks. The app is what tells the other Mac a handoff is coming, and it publishes this Mac's card for the **Macs** page. A Mac without the app (a server, say) can run `tandem watch --install` instead.
 
 To update later, run `brew upgrade claude-tandem && tandem menubar` on **each** Mac. The **Macs** page shows each Mac's Tandem version and flags an older one.
 
