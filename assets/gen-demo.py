@@ -149,15 +149,28 @@ def window(x, y, w, rows, title, cmd, cmd_t, lines):
                     f'style="animation-name:{a}">{html.escape(text)}</text>')
     return h
 
-Y0 = 8
-h1 = window(0.5, Y0, W - 1, MADOKA_ROWS, "Madoka — desktop", MADOKA_CMD, 0.4, madoka)
-GAP = 34
+# Each terminal sits on its own computer, so the picture can't be read as one screen:
+# Madoka's on a desktop monitor with a stand, Ji-su's on a laptop with its base.
+BZ, MX = 12, 34                      # bezel width; left margin of the screens
+SW = W - 2 * MX                      # screen (terminal) width
+DEV, FRAMES = "#1D1D1F", []
+
+Y0 = 8 + BZ
+h1 = window(MX, Y0, SW, MADOKA_ROWS, "Madoka — desktop", MADOKA_CMD, 0.4, madoka)
+FRAMES.append(f'<rect x="{MX-BZ}" y="{Y0-BZ}" width="{SW+2*BZ}" height="{h1+2*BZ}" rx="16" fill="{DEV}"/>'
+              f'<rect x="{W/2-22}" y="{Y0+h1+BZ}" width="44" height="30" fill="#B9BCC4"/>'
+              f'<rect x="{W/2-80}" y="{Y0+h1+BZ+28}" width="160" height="8" rx="4" fill="#A9ADB6"/>')
+GAP = 76
 y2 = Y0 + h1 + GAP
 a = anim(10.9)
-body.append(f'<text x="{W/2}" y="{y2-13}" text-anchor="middle" class="t" fill="{C["dim"]}" '
-            f'font-size="11.5" style="animation-name:{a}">⇣   shared drive   ⇣</text>')
-h2 = window(0.5, y2, W - 1, JISU_ROWS, "Ji-su — laptop", JISU_CMD, 11.2, jisu)
-H = y2 + h2 + 8
+body.append(f'<text x="{W/2+100}" y="{Y0+h1+BZ+26}" text-anchor="start" class="t" fill="{C["dim"]}" '
+            f'font-size="11.5" style="animation-name:{a}">⇣  shared drive  ⇣</text>')
+h2 = window(MX, y2, SW, JISU_ROWS, "Ji-su — laptop", JISU_CMD, 11.2, jisu)
+FRAMES.append(f'<rect x="{MX-BZ+4}" y="{y2-BZ+2}" width="{SW+2*BZ-8}" height="{h2+2*BZ-4}" rx="14" fill="{DEV}"/>'
+              f'<path d="M{MX-BZ-16} {y2+h2+BZ-2}h{SW+2*BZ+32}v7a8 8 0 0 1 -8 8h{-(SW+2*BZ+16)}a8 8 0 0 1 -8 -8Z" fill="#C3C6CD"/>'
+              f'<rect x="{W/2-34}" y="{y2+h2+BZ-2}" width="68" height="5" rx="2.5" fill="#A9ADB6"/>')
+body[:0] = FRAMES                    # behind the terminals
+H = y2 + h2 + BZ + 22
 
 svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W:.0f} {H:.0f}" width="{W:.0f}" height="{H:.0f}" font-size="{FS}">
 <style>

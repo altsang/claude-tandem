@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 928" width="900" height="928" font-size="12.5">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1008" width="900" height="1008" font-size="12.5">
 <style>
 .t{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
 white-space:pre;dominant-baseline:auto}
 text[style*="animation-name"]{opacity:0;animation-duration:32.0s;animation-iteration-count:infinite;animation-timing-function:linear}
 @keyframes a1{0%,1.25%{opacity:0}1.37%,100%{opacity:1}}
 @keyframes type2{0%,1.25%{width:0}7.50%,100%{width:647.4px}}
-@keyframes cm3{0%,1.25%{x:33.6px}7.50%,100%{x:680.9px}}
+@keyframes cm3{0%,1.25%{x:67.1px}7.50%,100%{x:714.4px}}
 @keyframes co3{0%,1.25%{opacity:0}1.35%,7.50%{opacity:.85}7.60%,100%{opacity:0}}
 @keyframes a4{0%,8.12%{opacity:0}8.24%,100%{opacity:1}}
 @keyframes a5{0%,9.06%{opacity:0}9.18%,100%{opacity:1}}
@@ -34,7 +34,7 @@ text[style*="animation-name"]{opacity:0;animation-duration:32.0s;animation-itera
 @keyframes a28{0%,34.06%{opacity:0}34.18%,100%{opacity:1}}
 @keyframes a29{0%,35.00%{opacity:0}35.12%,100%{opacity:1}}
 @keyframes type30{0%,35.00%{width:0}38.41%,100%{width:293.6px}}
-@keyframes cm31{0%,35.00%{x:33.6px}38.41%,100%{x:327.1px}}
+@keyframes cm31{0%,35.00%{x:67.1px}38.41%,100%{x:360.6px}}
 @keyframes co31{0%,35.00%{opacity:0}35.10%,38.41%{opacity:.85}38.51%,100%{opacity:0}}
 @keyframes a32{0%,41.25%{opacity:0}41.37%,100%{opacity:1}}
 @keyframes a33{0%,42.19%{opacity:0}42.31%,100%{opacity:1}}
@@ -61,72 +61,74 @@ text[style*="animation-name"]{opacity:0;animation-duration:32.0s;animation-itera
 @keyframes a54{0%,67.19%{opacity:0}67.31%,100%{opacity:1}}
 </style>
 <rect width="100%" height="100%" fill="none"/>
-<rect x="0.5" y="8" width="899.0" height="422.0" rx="9" fill="#0d1117" stroke="#30363d"/>
-<path d="M0.5 17a9 9 0 0 1 9-9h881.0a9 9 0 0 1 9 9v21.0H0.5Z" fill="#161b22"/>
-<circle cx="18.5" cy="23" r="5" fill="#ec6a5e"/>
-<circle cx="33.5" cy="23" r="5" fill="#f4bf4f"/>
-<circle cx="48.5" cy="23" r="5" fill="#61c454"/>
-<text x="450.0" y="27.5" text-anchor="middle" class="t" fill="#768390" font-size="11.5">Madoka — desktop</text>
-<text x="18.5" y="60.5" class="t" fill="#57ab5a" style="animation-name:a1">$</text>
-<clipPath id="clip1"><rect x="33.555" y="38.0" height="23.0" width="0" style="animation:type2 32.0s steps(86,end) infinite"/></clipPath>
-<text x="33.555" y="60.5" class="t" fill="#e6edf3" clip-path="url(#clip1)" style="animation-name:a1">tandem send &quot;Quicken Reconciliation&quot; --to Ji-su --note &quot;Amex feed short 2 txns&quot; --wait</text>
-<rect x="33.6" y="50.5" width="7.5" height="12.5" fill="#e6edf3" opacity="0" style="animation:cm3 32.0s steps(86,end) infinite,co3 32.0s linear infinite"/>
-<text x="18.5" y="77.5" class="t" fill="#e6edf3" style="animation-name:a4">sending &#x27;Quicken Reconciliation&#x27;: Madoka -&gt; Ji-su</text>
-<text x="18.5" y="94.5" class="t" fill="#768390" style="animation-name:a5">  document: HANDOFF_quicken_aug.md</text>
-<text x="18.5" y="111.5" class="t" fill="#e6edf3" style="animation-name:a6">materializing (so real bytes exist to upload):</text>
-<text x="18.5" y="128.5" class="t" fill="#768390" style="animation-name:a7">  2 dataless file(s) — forcing download</text>
-<text x="18.5" y="145.5" class="t" fill="#768390" style="animation-name:a8">  all materialized in 1s</text>
-<text x="18.5" y="162.5" class="t" fill="#768390" style="animation-name:a9">  exported &quot;Quicken Reconciliation&quot; -&gt; _handoff/projects/Quicken Reconciliation.20260822T171204Z.json</text>
-<text x="18.5" y="179.5" class="t" fill="#768390" style="animation-name:a10">  instructions: yes</text>
-<text x="18.5" y="196.5" class="t" fill="#768390" style="animation-name:a11">  manifest: 6 files, 21.6 KB</text>
-<text x="18.5" y="213.5" class="t" fill="#768390" style="animation-name:a12">  memory: 20 file(s), 42.1 KB -&gt; .handoff/memory/20260822T171204Z-Madoka/</text>
-<text x="18.5" y="230.5" class="t" fill="#a5d6ff" style="animation-name:a13">event: 20260822T171205Z-Madoka-handoff.json</text>
-<text x="18.5" y="247.5" class="t" fill="#e6edf3" style="animation-name:a14">verifying the upload (this is what &#x27;staged&#x27; never proved):</text>
-<text x="18.5" y="264.5" class="t" fill="#6cb6ff" style="animation-name:a15">  [██████░░░░░░░░░░░░░░]  33%  2/6 files uploaded   5s</text>
-<text x="18.5" y="264.5" class="t" fill="#6cb6ff" style="animation-name:a16">  [█████████████░░░░░░░]  66%  4/6 files uploaded   15s</text>
-<text x="18.5" y="264.5" class="t" fill="#6cb6ff" style="animation-name:a17">  [████████████████████] 100%  6/6 files uploaded   25s</text>
-<text x="18.5" y="281.5" class="t" fill="#57ab5a" style="animation-name:a18">  ✓ all 6 files uploaded to the drive in 25s</text>
-<text x="18.5" y="315.5" class="t" fill="#e6edf3" style="animation-name:a19">  UPLOADED. &#x27;Ji-su&#x27; can pull it now:</text>
-<text x="18.5" y="332.5" class="t" fill="#e6edf3" style="animation-name:a20">      tandem receive &quot;Quicken Reconciliation&quot;</text>
-<text x="18.5" y="349.5" class="t" fill="#daaa3f" style="animation-name:a21">  Do not edit &#x27;Quicken Reconciliation&#x27; on Madoka until it comes back.</text>
-<text x="18.5" y="383.5" class="t" fill="#e6edf3" style="animation-name:a22">waiting for Ji-su to claim it (Ctrl-C to stop)...</text>
-<text x="18.5" y="400.5" class="t" fill="#768390" style="animation-name:a23">  20s</text>
-<text x="18.5" y="400.5" class="t" fill="#768390" style="animation-name:a24">  70s</text>
-<text x="18.5" y="400.5" class="t" fill="#768390" style="animation-name:a25">  120s</text>
-<text x="18.5" y="400.5" class="t" fill="#768390" style="animation-name:a26">  130s</text>
-<text x="18.5" y="417.5" class="t" fill="#57ab5a" style="animation-name:a27">  ✓ DELIVERED — Ji-su claimed &#x27;Quicken Reconciliation&#x27; at 20260822T171417Z</text>
-<text x="450.0" y="451.0" text-anchor="middle" class="t" fill="#768390" font-size="11.5" style="animation-name:a28">⇣   shared drive   ⇣</text>
-<rect x="0.5" y="464.0" width="899.0" height="456.0" rx="9" fill="#0d1117" stroke="#30363d"/>
-<path d="M0.5 473.0a9 9 0 0 1 9-9h881.0a9 9 0 0 1 9 9v21.0H0.5Z" fill="#161b22"/>
-<circle cx="18.5" cy="479.0" r="5" fill="#ec6a5e"/>
-<circle cx="33.5" cy="479.0" r="5" fill="#f4bf4f"/>
-<circle cx="48.5" cy="479.0" r="5" fill="#61c454"/>
-<text x="450.0" y="483.5" text-anchor="middle" class="t" fill="#768390" font-size="11.5">Ji-su — laptop</text>
-<text x="18.5" y="516.5" class="t" fill="#57ab5a" style="animation-name:a29">$</text>
-<clipPath id="clip29"><rect x="33.555" y="494.0" height="23.0" width="0" style="animation:type30 32.0s steps(39,end) infinite"/></clipPath>
-<text x="33.555" y="516.5" class="t" fill="#e6edf3" clip-path="url(#clip29)" style="animation-name:a29">tandem receive &quot;Quicken Reconciliation&quot;</text>
-<rect x="33.6" y="506.5" width="7.5" height="12.5" fill="#e6edf3" opacity="0" style="animation:cm31 32.0s steps(39,end) infinite,co31 32.0s linear infinite"/>
-<text x="18.5" y="533.5" class="t" fill="#e6edf3" style="animation-name:a32">receiving &#x27;Quicken Reconciliation&#x27; on Ji-su</text>
-<text x="18.5" y="550.5" class="t" fill="#e6edf3" style="animation-name:a33">waiting for a handoff addressed to Ji-su...</text>
-<text x="18.5" y="567.5" class="t" fill="#768390" style="animation-name:a34">  6s</text>
-<text x="18.5" y="567.5" class="t" fill="#768390" style="animation-name:a35">  12s</text>
-<text x="18.5" y="567.5" class="t" fill="#768390" style="animation-name:a36">  18s</text>
-<text x="18.5" y="584.5" class="t" fill="#768390" style="animation-name:a37">  handed off by Madoka at 20260822T171205Z</text>
-<text x="18.5" y="601.5" class="t" fill="#e6edf3" style="animation-name:a38">waiting for the files:</text>
-<text x="18.5" y="618.5" class="t" fill="#6cb6ff" style="animation-name:a39">  [██████████░░░░░░░░░░]  50%  3/6 files materialized, 9/22 KB   12s</text>
-<text x="18.5" y="618.5" class="t" fill="#6cb6ff" style="animation-name:a40">  [████████████████████] 100%  6/6 files materialized, 22/22 KB   31s</text>
-<text x="18.5" y="635.5" class="t" fill="#57ab5a" style="animation-name:a41">  ✓ all 6 files delivered and verified by md5 in 31s</text>
-<text x="18.5" y="652.5" class="t" fill="#768390" style="animation-name:a42">  project already defined on this Mac</text>
-<text x="18.5" y="669.5" class="t" fill="#e6edf3" style="animation-name:a43">picking up &#x27;Quicken Reconciliation&#x27; on Ji-su</text>
-<text x="18.5" y="686.5" class="t" fill="#e6edf3" style="animation-name:a44">materializing:</text>
-<text x="18.5" y="703.5" class="t" fill="#768390" style="animation-name:a45">  all files materialized</text>
-<text x="18.5" y="720.5" class="t" fill="#a5d6ff" style="animation-name:a46">event: 20260822T171417Z-Ji-su-claim.json</text>
-<text x="18.5" y="737.5" class="t" fill="#adbac7" style="animation-name:a47">claimed by Ji-su (the other Mac sees this once iCloud carries the event over)</text>
-<text x="18.5" y="771.5" class="t" fill="#c9a4ff" style="animation-name:a48">================ HANDOFF_quicken_aug.md ================</text>
-<text x="18.5" y="805.5" class="t" fill="#adbac7" style="animation-name:a49">## Where I left off</text>
-<text x="18.5" y="822.5" class="t" fill="#adbac7" style="animation-name:a50">Aug statements reconciled through 8/19. Amex feed is short two</text>
-<text x="18.5" y="839.5" class="t" fill="#adbac7" style="animation-name:a51">transactions — see the note in accounts.md before you re-import.</text>
-<text x="18.5" y="856.5" class="t" fill="#768390" style="animation-name:a52">  ⋮</text>
-<text x="18.5" y="873.5" class="t" fill="#57ab5a" style="animation-name:a53">  installed 20 memory file(s) from Madoka (20260822T171204Z) — 42.1 KB</text>
-<text x="18.5" y="907.5" class="t" fill="#57ab5a" style="animation-name:a54">  ✓ HANDOFF_quicken_aug.md copied to the clipboard — open &#x27;Quicken Reconciliation&#x27; in Claude and paste it.</text>
+<rect x="22" y="8" width="856.0" height="446.0" rx="16" fill="#1D1D1F"/><rect x="428.0" y="454.0" width="44" height="30" fill="#B9BCC4"/><rect x="370.0" y="482.0" width="160" height="8" rx="4" fill="#A9ADB6"/>
+<rect x="26" y="508.0" width="848.0" height="476.0" rx="14" fill="#1D1D1F"/><path d="M6 984.0h888.0v7a8 8 0 0 1 -8 8h-872.0a8 8 0 0 1 -8 -8Z" fill="#C3C6CD"/><rect x="416.0" y="984.0" width="68" height="5" rx="2.5" fill="#A9ADB6"/>
+<rect x="34" y="20" width="832.0" height="422.0" rx="9" fill="#0d1117" stroke="#30363d"/>
+<path d="M34 29a9 9 0 0 1 9-9h814.0a9 9 0 0 1 9 9v21.0H34Z" fill="#161b22"/>
+<circle cx="52" cy="35" r="5" fill="#ec6a5e"/>
+<circle cx="67" cy="35" r="5" fill="#f4bf4f"/>
+<circle cx="82" cy="35" r="5" fill="#61c454"/>
+<text x="450.0" y="39.5" text-anchor="middle" class="t" fill="#768390" font-size="11.5">Madoka — desktop</text>
+<text x="52.0" y="72.5" class="t" fill="#57ab5a" style="animation-name:a1">$</text>
+<clipPath id="clip1"><rect x="67.055" y="50.0" height="23.0" width="0" style="animation:type2 32.0s steps(86,end) infinite"/></clipPath>
+<text x="67.055" y="72.5" class="t" fill="#e6edf3" clip-path="url(#clip1)" style="animation-name:a1">tandem send &quot;Quicken Reconciliation&quot; --to Ji-su --note &quot;Amex feed short 2 txns&quot; --wait</text>
+<rect x="67.1" y="62.5" width="7.5" height="12.5" fill="#e6edf3" opacity="0" style="animation:cm3 32.0s steps(86,end) infinite,co3 32.0s linear infinite"/>
+<text x="52.0" y="89.5" class="t" fill="#e6edf3" style="animation-name:a4">sending &#x27;Quicken Reconciliation&#x27;: Madoka -&gt; Ji-su</text>
+<text x="52.0" y="106.5" class="t" fill="#768390" style="animation-name:a5">  document: HANDOFF_quicken_aug.md</text>
+<text x="52.0" y="123.5" class="t" fill="#e6edf3" style="animation-name:a6">materializing (so real bytes exist to upload):</text>
+<text x="52.0" y="140.5" class="t" fill="#768390" style="animation-name:a7">  2 dataless file(s) — forcing download</text>
+<text x="52.0" y="157.5" class="t" fill="#768390" style="animation-name:a8">  all materialized in 1s</text>
+<text x="52.0" y="174.5" class="t" fill="#768390" style="animation-name:a9">  exported &quot;Quicken Reconciliation&quot; -&gt; _handoff/projects/Quicken Reconciliation.20260822T171204Z.json</text>
+<text x="52.0" y="191.5" class="t" fill="#768390" style="animation-name:a10">  instructions: yes</text>
+<text x="52.0" y="208.5" class="t" fill="#768390" style="animation-name:a11">  manifest: 6 files, 21.6 KB</text>
+<text x="52.0" y="225.5" class="t" fill="#768390" style="animation-name:a12">  memory: 20 file(s), 42.1 KB -&gt; .handoff/memory/20260822T171204Z-Madoka/</text>
+<text x="52.0" y="242.5" class="t" fill="#a5d6ff" style="animation-name:a13">event: 20260822T171205Z-Madoka-handoff.json</text>
+<text x="52.0" y="259.5" class="t" fill="#e6edf3" style="animation-name:a14">verifying the upload (this is what &#x27;staged&#x27; never proved):</text>
+<text x="52.0" y="276.5" class="t" fill="#6cb6ff" style="animation-name:a15">  [██████░░░░░░░░░░░░░░]  33%  2/6 files uploaded   5s</text>
+<text x="52.0" y="276.5" class="t" fill="#6cb6ff" style="animation-name:a16">  [█████████████░░░░░░░]  66%  4/6 files uploaded   15s</text>
+<text x="52.0" y="276.5" class="t" fill="#6cb6ff" style="animation-name:a17">  [████████████████████] 100%  6/6 files uploaded   25s</text>
+<text x="52.0" y="293.5" class="t" fill="#57ab5a" style="animation-name:a18">  ✓ all 6 files uploaded to the drive in 25s</text>
+<text x="52.0" y="327.5" class="t" fill="#e6edf3" style="animation-name:a19">  UPLOADED. &#x27;Ji-su&#x27; can pull it now:</text>
+<text x="52.0" y="344.5" class="t" fill="#e6edf3" style="animation-name:a20">      tandem receive &quot;Quicken Reconciliation&quot;</text>
+<text x="52.0" y="361.5" class="t" fill="#daaa3f" style="animation-name:a21">  Do not edit &#x27;Quicken Reconciliation&#x27; on Madoka until it comes back.</text>
+<text x="52.0" y="395.5" class="t" fill="#e6edf3" style="animation-name:a22">waiting for Ji-su to claim it (Ctrl-C to stop)...</text>
+<text x="52.0" y="412.5" class="t" fill="#768390" style="animation-name:a23">  20s</text>
+<text x="52.0" y="412.5" class="t" fill="#768390" style="animation-name:a24">  70s</text>
+<text x="52.0" y="412.5" class="t" fill="#768390" style="animation-name:a25">  120s</text>
+<text x="52.0" y="412.5" class="t" fill="#768390" style="animation-name:a26">  130s</text>
+<text x="52.0" y="429.5" class="t" fill="#57ab5a" style="animation-name:a27">  ✓ DELIVERED — Ji-su claimed &#x27;Quicken Reconciliation&#x27; at 20260822T171417Z</text>
+<text x="550.0" y="480.0" text-anchor="start" class="t" fill="#768390" font-size="11.5" style="animation-name:a28">⇣  shared drive  ⇣</text>
+<rect x="34" y="518.0" width="832.0" height="456.0" rx="9" fill="#0d1117" stroke="#30363d"/>
+<path d="M34 527.0a9 9 0 0 1 9-9h814.0a9 9 0 0 1 9 9v21.0H34Z" fill="#161b22"/>
+<circle cx="52" cy="533.0" r="5" fill="#ec6a5e"/>
+<circle cx="67" cy="533.0" r="5" fill="#f4bf4f"/>
+<circle cx="82" cy="533.0" r="5" fill="#61c454"/>
+<text x="450.0" y="537.5" text-anchor="middle" class="t" fill="#768390" font-size="11.5">Ji-su — laptop</text>
+<text x="52.0" y="570.5" class="t" fill="#57ab5a" style="animation-name:a29">$</text>
+<clipPath id="clip29"><rect x="67.055" y="548.0" height="23.0" width="0" style="animation:type30 32.0s steps(39,end) infinite"/></clipPath>
+<text x="67.055" y="570.5" class="t" fill="#e6edf3" clip-path="url(#clip29)" style="animation-name:a29">tandem receive &quot;Quicken Reconciliation&quot;</text>
+<rect x="67.1" y="560.5" width="7.5" height="12.5" fill="#e6edf3" opacity="0" style="animation:cm31 32.0s steps(39,end) infinite,co31 32.0s linear infinite"/>
+<text x="52.0" y="587.5" class="t" fill="#e6edf3" style="animation-name:a32">receiving &#x27;Quicken Reconciliation&#x27; on Ji-su</text>
+<text x="52.0" y="604.5" class="t" fill="#e6edf3" style="animation-name:a33">waiting for a handoff addressed to Ji-su...</text>
+<text x="52.0" y="621.5" class="t" fill="#768390" style="animation-name:a34">  6s</text>
+<text x="52.0" y="621.5" class="t" fill="#768390" style="animation-name:a35">  12s</text>
+<text x="52.0" y="621.5" class="t" fill="#768390" style="animation-name:a36">  18s</text>
+<text x="52.0" y="638.5" class="t" fill="#768390" style="animation-name:a37">  handed off by Madoka at 20260822T171205Z</text>
+<text x="52.0" y="655.5" class="t" fill="#e6edf3" style="animation-name:a38">waiting for the files:</text>
+<text x="52.0" y="672.5" class="t" fill="#6cb6ff" style="animation-name:a39">  [██████████░░░░░░░░░░]  50%  3/6 files materialized, 9/22 KB   12s</text>
+<text x="52.0" y="672.5" class="t" fill="#6cb6ff" style="animation-name:a40">  [████████████████████] 100%  6/6 files materialized, 22/22 KB   31s</text>
+<text x="52.0" y="689.5" class="t" fill="#57ab5a" style="animation-name:a41">  ✓ all 6 files delivered and verified by md5 in 31s</text>
+<text x="52.0" y="706.5" class="t" fill="#768390" style="animation-name:a42">  project already defined on this Mac</text>
+<text x="52.0" y="723.5" class="t" fill="#e6edf3" style="animation-name:a43">picking up &#x27;Quicken Reconciliation&#x27; on Ji-su</text>
+<text x="52.0" y="740.5" class="t" fill="#e6edf3" style="animation-name:a44">materializing:</text>
+<text x="52.0" y="757.5" class="t" fill="#768390" style="animation-name:a45">  all files materialized</text>
+<text x="52.0" y="774.5" class="t" fill="#a5d6ff" style="animation-name:a46">event: 20260822T171417Z-Ji-su-claim.json</text>
+<text x="52.0" y="791.5" class="t" fill="#adbac7" style="animation-name:a47">claimed by Ji-su (the other Mac sees this once iCloud carries the event over)</text>
+<text x="52.0" y="825.5" class="t" fill="#c9a4ff" style="animation-name:a48">================ HANDOFF_quicken_aug.md ================</text>
+<text x="52.0" y="859.5" class="t" fill="#adbac7" style="animation-name:a49">## Where I left off</text>
+<text x="52.0" y="876.5" class="t" fill="#adbac7" style="animation-name:a50">Aug statements reconciled through 8/19. Amex feed is short two</text>
+<text x="52.0" y="893.5" class="t" fill="#adbac7" style="animation-name:a51">transactions — see the note in accounts.md before you re-import.</text>
+<text x="52.0" y="910.5" class="t" fill="#768390" style="animation-name:a52">  ⋮</text>
+<text x="52.0" y="927.5" class="t" fill="#57ab5a" style="animation-name:a53">  installed 20 memory file(s) from Madoka (20260822T171204Z) — 42.1 KB</text>
+<text x="52.0" y="961.5" class="t" fill="#57ab5a" style="animation-name:a54">  ✓ HANDOFF_quicken_aug.md copied to the clipboard — open &#x27;Quicken Reconciliation&#x27; in Claude and paste it.</text>
 </svg>
