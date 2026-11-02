@@ -126,6 +126,7 @@ Under `--profile`, Tandem uses that profile's data folder, its project list and 
 | `tandem presence` | publish this Mac's card to the shared drive (the app does it every five minutes) |
 | `tandem status` | every shared project, who holds it, the last event and note |
 | `tandem log P` | a project's ownership history |
+| `tandem doctor` | everything at once, changing nothing: `tandem check`, then `tandem profile doctor`. Exits non-zero if the profile half fails. The app's Run Doctor |
 | `tandem check` | shared root, iCloud account and sync state, engine, folder links that would fail. Changes nothing |
 | `tandem conflicts` | iCloud conflict copies (`name 2.ext`). It reports only; remove them by exact path, never by pattern |
 | `tandem path P` | the project's shared path, also copied to the clipboard |
@@ -141,7 +142,7 @@ Under `--profile`, Tandem uses that profile's data folder, its project list and 
 |---|---|
 | `tandem project-export P` | write the project's definition into the shared tree |
 | `tandem project-import P [--wait]` | add an exported definition here (Claude quit); `--wait` waits for its files too |
-| `tandem project-repath P PATH` | point a project at a different folder (Claude quit) |
+| `tandem project-repath P PATH [--replace OLD]` | point a project at a different folder (Claude quit). With `--replace`, only that one folder is swapped and the project's others are kept |
 | `tandem wait P` | watch the drive deliver a project, with progress |
 | `tandem materialize [PATH]` | force the drive to download real contents |
 | `tandem handoff P --to SIDE` · `tandem pickup [P]` | the engine's raw handoff and claim, without `send`'s checks |
@@ -236,11 +237,11 @@ Both read the same inbox and settings. A send, receive or settle takes a per-pro
 | Check Now (↻ in the toolbar, Handoffs › Check Now ⌘R) | `tandem where` |
 | (every few minutes, while it runs) | `tandem presence` |
 | Settings (⌘,) › Handoffs | `tandem config set on-arrival …` · `tandem config set on-brief …` |
-| Settings › Maintenance: Check · Run Doctor · Sync Claude Code sessions · Find conflict copies · Update the shared engine | `tandem check` · `tandem profile doctor` · `tandem profile sync` · `tandem conflicts` · `tandem deploy` |
+| Settings › Maintenance: Run Doctor · Sync Claude Code sessions · Find conflict copies · Update the shared engine | `tandem doctor` · `tandem profile sync` · `tandem conflicts` · `tandem deploy` |
 | Notifications, and acting automatically, while it runs | `tandem watch [--notify]` |
 | Open Claude Tandem at login | `tandem watch --install`, the headless equivalent |
 
-Only the app has the terminal choice for Claude Code (Terminal or Ghostty) and the Get Started checklist (`tandem check` and `tandem profile doctor` cover what it checks). Only the CLI has the lower-level verbs below and `use-root`.
+Only the app has the terminal choice for Claude Code (Terminal or Ghostty) and the Get Started checklist (`tandem doctor` covers what it checks). Only the CLI has the lower-level verbs below and `use-root`.
 
 ---
 

@@ -348,7 +348,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
             menu.addItem(.separator())
         }
         header(menu, "Claude profiles on \(mac)")
-        if profiles.isEmpty { header(menu, "Could not read profiles — run Settings… › Maintenance › Check") }
+        if profiles.isEmpty { header(menu, "Could not read profiles — run Settings… › Maintenance › Run Doctor") }
         for p in profiles { menu.addItem(profileItem(p)) }
         menu.addItem(.separator())
         add(menu, "Open Claude Tandem…") { [unowned self] in self.showWindow() }

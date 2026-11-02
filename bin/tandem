@@ -75,6 +75,7 @@
 #                                    --wait blocks until the definition AND its files land
 #   tandem wait <Name>               watch the drive deliver a project, with progress
 #   tandem project-repath <Name> <p> repoint a project's folder
+#   tandem doctor                    everything at once: check, then profile doctor. Changes nothing
 #   tandem check                     report state, change nothing
 #
 #   tandem status                    who owns what
@@ -354,6 +355,16 @@ PY
   return 0   # a successful report must exit 0; the loop above can leave $? non-zero
 }
 
+# One health check for the whole Mac: the handoff side (check), then whether this Claude.app
+# still does what profiles rely on (profile doctor). Non-zero if the profile half fails.
+cmd_doctor(){
+  echo "── Handoffs"
+  cmd_check
+  echo
+  echo "── Profiles"
+  "$HERE/bin/tandem-profile" doctor "$@"
+}
+
 # Prints the shared path, and copies it, for the cases where a human still needs the
 # string: attaching a folder by hand in the picker, or checking what a project points at.
 # The normal path is that migrate/project-import/project-repath write it for you.
@@ -424,11 +435,11 @@ cmd_migrate(){
     echo "  ⚠ Claude is running, so the folder grant could not be updated automatically."
     echo "    '$name' still points at the path that was just moved, and will fail to read"
     echo "    its files until this is fixed. Quit Claude, then run:"
-    echo "        tandem project-repath \"$name\" \"$dst\""
+    echo "        tandem project-repath \"$name\" \"$dst\" --replace \"$src\""
   else
-    cmd_project_repath "$name" "$dst" >/dev/null 2>&1 \
-      && ok "folder grant repointed at the shared copy" \
-      || echo "  ! could not repoint the grant — run: tandem project-repath \"$name\" \"$dst\""
+    cmd_project_repath "$name" "$dst" --replace "$src" >/dev/null 2>&1 \
+      && ok "folder grant repointed at the shared copy (its other folders kept)" \
+      || echo "  ! could not repoint the grant — run: tandem project-repath \"$name\" \"$dst\" --replace \"$src\""
   fi
   echo
   echo "  NO symlink is created, deliberately. Cowork registers a symlinked folder as"
@@ -985,7 +996,7 @@ cmd_project_import(){
 import json,sys,os
 dst,src,projects=sys.argv[1],sys.argv[2],sys.argv[3]
 d=json.load(open(dst)); e=json.load(open(src))
-e.pop("_exported_from_paths",None)
+exported=e.pop("_exported_from_paths",None) or []
 import re
 _open,_close="<!-- mirror:hold -->","<!-- /mirror:hold -->"
 if e.get("instructions"):   # defensive: a definition exported by an older version
@@ -997,11 +1008,21 @@ if any(x.get("id")==e.get("id") or x.get("name")==name for x in d.get("spaces",[
 # always the shared path -- never ~/Documents, which is usually a symlink and
 # a symlinked grant registers as connected then fails every read.
 path = os.path.join(projects, name)
-e["folders"]=[{"path":path}]
+# The project's own folder becomes the shared copy. Its other folders (a Google Drive
+# folder, say) come along when the same path exists on this Mac and isn't a symlink;
+# the rest are listed so they can be added by hand.
+own_local = os.path.join(os.path.expanduser("~/Documents/Claude/Projects"), name)
+extra, missing = [], []
+for p in exported:
+    if not p or p in (path, own_local) or p.startswith(projects + os.sep): continue
+    (extra if os.path.isdir(p) and not os.path.islink(p) else missing).append(p)
+e["folders"]=[{"path":path}]+[{"path":p} for p in extra]
 d.setdefault("spaces",[]).insert(0,e)
 json.dump(d,open(dst,"w"),indent=2)
 print(f'  added "{name}"')
 print(f'  folder: {path}' + ('' if os.path.exists(path) else '   <-- not delivered yet; tandem receive will wait for it'))
+for p in extra: print(f'  also:   {p}')
+for p in missing: print(f'  ! not on this Mac, so left out: {p}')
 PY
   echo "  Relaunch Claude. The project appears with its name and instructions."
   echo "  Its chat history will be empty — that is expected; the handoff document carries"
@@ -1010,22 +1031,34 @@ PY
 
 cmd_project_repath(){
   require_claude_quit
-  local name="${1:-}" path="${2:-}"
-  [ -n "$name" ] && [ -n "$path" ] || die "usage: tandem project-repath <Name> <folder-path>"
+  local name="" path="" replace=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --replace) replace="${2:-}"; shift 2;;
+      *) if [ -z "$name" ]; then name="$1"; elif [ -z "$path" ]; then path="$1"; fi; shift;;
+    esac
+  done
+  [ -n "$name" ] && [ -n "$path" ] || die "usage: tandem project-repath <Name> <folder-path> [--replace <old-path>]"
   path="${path/#\~/$HOME}"
   [ -e "$path" ] || die "no such path: $path"
   local f; f="$(spaces_file)" || die "no spaces.json on this Mac"
   cp "$f" "$f.bak-$(date +%Y%m%d-%H%M%S)"
-  python3 - "$f" "$name" "$path" <<'PY'
+  python3 - "$f" "$name" "$path" "$replace" <<'PY'
 import json,sys
-dst,name,path=sys.argv[1],sys.argv[2],sys.argv[3]
+dst,name,path,replace=sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4]
 d=json.load(open(dst))
 e=next((x for x in d.get("spaces",[]) if x["name"]==name),None)
 if e is None: print(f'no local project named "{name}"',file=sys.stderr); sys.exit(1)
 old=[p.get("path") for p in (e.get("folders") or [])]
-e["folders"]=[{"path":path}]
+if replace:
+    # swap that one folder, keep the project's others (a Google Drive folder, say) — and
+    # the new one first, where Cowork looks for the project's own files
+    rest=[{"path":p} for p in old if p not in (replace, path)]
+    e["folders"]=[{"path":path}]+rest
+else:
+    e["folders"]=[{"path":path}]
 json.dump(d,open(dst,"w"),indent=2)
-print(f'  "{name}" folders: {old} -> [{path}]')
+print(f'  "{name}" folders: {old} -> {[x["path"] for x in e["folders"]]}')
 PY
   echo "  Relaunch Claude for it to take effect."
 }
@@ -1741,6 +1774,7 @@ case "${1:-help}" in
   use-root) shift; cmd_use_root "$@";;
   deploy)   shift; cmd_deploy "$@";;
   check)    shift; cmd_check "$@";;
+  doctor)   shift; cmd_doctor "$@";;
   link)     shift; cmd_link "$@";;
   path)     shift; cmd_path "$@";;
   migrate)  shift; cmd_migrate "$@";;

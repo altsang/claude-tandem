@@ -210,7 +210,7 @@ The same thing in a terminal, for scripts or a Mac without the app:
 | **Macs** | every Mac running Tandem: when it was last seen, its Tandem version and iCloud health, each profile on it with its account, and what each holds |
 | **A profile** | the projects it holds (Hand Off…) and the ones coming to it (Receive), its accounts, its name, badge and Dock launcher. Show Claude, Claude Code and Quit are in the toolbar; right-click it in the sidebar for those and Rename. The **+** beside *Profiles*, or File › New Profile…, makes a new one |
 
-**Settings** (⌘,) is a window of its own, with three tabs: **General** (Open at Login and your terminal), **Handoffs** (what happens when a handoff arrives or `/handoff` writes a brief) and **Maintenance** (Check, Doctor, Sync Claude Code Sessions, conflict copies and the shared engine, with their output in place).
+**Settings** (⌘,) is a window of its own, with three tabs: **General** (Open at Login and your terminal), **Handoffs** (what happens when a handoff arrives or `/handoff` writes a brief) and **Maintenance** (Run Doctor, Sync Claude Code Sessions, conflict copies and the shared engine, with their output in place).
 
 Leave **Open at Login** on, on every Mac. Tandem only notices handoffs, and publishes the card that puts this Mac on the other one's Macs page, while it runs.
 

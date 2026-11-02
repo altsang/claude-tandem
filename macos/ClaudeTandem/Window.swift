@@ -803,8 +803,7 @@ struct MaintenanceSettings: View {
     var body: some View {
         Form {
             Section {
-                row("Check", "The shared drive, iCloud, the engine and folder links. Changes nothing.", ["check"], "tandem check")
-                row("Run Doctor", "Re-checks what profiles rely on in Claude.app — after Claude updates.", ["profile", "doctor"], "tandem profile doctor")
+                row("Run Doctor", "The shared drive, iCloud, the engine, folder links, and whether this Claude still works with profiles. Changes nothing.", ["doctor"], "tandem doctor")
                 row("Sync Claude Code Sessions", "Copies sessions between profiles, so /resume finds them anywhere.", ["profile", "sync"], "tandem profile sync")
                 row("Find Conflict Copies", "iCloud’s “name 2” copies in the shared tree. Reports only.", ["conflicts"], "tandem conflicts")
                 row("Update the Shared Engine", "Puts this version’s engine on the shared drive, for every Mac.", ["deploy"], "tandem deploy")

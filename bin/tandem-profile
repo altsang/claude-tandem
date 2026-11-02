@@ -101,6 +101,14 @@ desktop_pid(){
 }
 desktop_running(){ desktop_pid "$1" >/dev/null; }
 
+# Activates one running Claude by pid, with its windows. By pid, not `open -a`: every copy of
+# Claude has the same bundle id, so `open -a` may bring the default account forward instead.
+bring_forward(){
+  osascript -l JavaScript -e 'ObjC.import("AppKit")' \
+    -e "\$.NSRunningApplication.runningApplicationWithProcessIdentifier($1).activateWithOptions(\$.NSApplicationActivateAllWindows)" \
+    >/dev/null 2>&1 || true
+}
+
 # Each profile's app updates itself (the updater's running-instance sentinel lives in
 # that profile's own config.json), but they all run the ONE /Applications/Claude.app.
 # When any of them installs an update, the others keep running the old code from a
@@ -146,12 +154,22 @@ cmd_desktop(){
   if [ "$p" = default ]; then open -a "$CLAUDE_APP"; return; fi
   local data; data="$(data_dir "$p")"
   [ -d "$data" ] || die "no profile '$p' — run: tandem profile create $p"
+  # Already open: bring that one forward. Never start a second — Claude has no lock of its
+  # own per data folder, and `open -n` below would run two instances on one folder, each
+  # overwriting the other's spaces.json and settings (seen 2026-11-02: the launcher, clicked
+  # while Junipera ran, started a second Junipera).
+  local pid; if pid="$(desktop_pid "$p")"; then
+    bring_forward "$pid"
+    ok "Claude as '$(label "$p")' is already open — brought it forward"
+    return
+  fi
   if [ "$(cat "$STAMP" 2>/dev/null)" != "$(app_version)" ]; then
     cmd_doctor >/dev/null || die "Claude.app $(app_version) changed something profiles rely on — run: tandem profile doctor"
   fi
   # Signed builds ignore CLAUDE_USER_DATA_DIR (the app logs "signed builds ignore it")
-  # but honor Chromium's --user-data-dir, and the single-instance lock is per data
-  # folder, so this is a second, independent app. CLAUDE_CONFIG_DIR makes its Code tab
+  # but honor Chromium's --user-data-dir, so this is a second, independent app. Claude
+  # keeps no lock per data folder (no SingletonLock there), so the check above is what
+  # stops a second instance on the same folder. CLAUDE_CONFIG_DIR makes its Code tab
   # use the same login as `claude @<p>` in a terminal.
   local app="$CLAUDE_APP"
   if dock_icon_on "$p"; then

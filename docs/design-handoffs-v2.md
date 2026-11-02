@@ -160,7 +160,7 @@ The **window** takes everything else, as a standard Mac sidebar window: the titl
 **Settings** (⌘,) is its own window, one tab each:
 - **General**: Open at Login, and which terminal opens Claude Code.
 - **Handoffs**: what happens when a handoff arrives, and when a brief is ready.
-- **Maintenance**: Check, Run Doctor, Sync Claude Code sessions, Find conflict copies, Update the shared engine. Each runs its CLI command and shows the output in place, not in a terminal.
+- **Maintenance**: Run Doctor (`tandem doctor`: the drive, iCloud, the engine, folder links and Claude.app's compatibility with profiles), Sync Claude Code sessions, Find conflict copies, Update the shared engine. Each runs its CLI command and shows the output in place, not in a terminal.
 
 ## One implementation, two front ends
 

@@ -747,6 +747,40 @@ picture, and it was the first thing the window showed.
 that Mac. Its age still comes from its own timestamp, so the page says *seen 6 min ago*, which
 is true. A Mac that never published a card still shows as *No card*.
 
+## 25. Claude keeps no lock per data folder — a second launch ran two instances on one
+
+**Seen 2026-11-02.** The Dock showed two lit *Claude (Junipera)* icons. `ps` had two Claude
+processes running the same badged copy with the same `--user-data-dir`: one started the day
+before, one at 08:46, about when the launcher was pinned. There is no `SingletonLock` in the profile's data folder: Electron's
+single-instance lock isn't in use, so nothing stops a second instance on the same folder. The
+code had assumed the opposite.
+
+`tandem profile desktop` starts Claude with `open -n` (it has to: without `-n`, macOS brings
+forward whichever Claude is already running, finding 20). So every launch while the profile was
+open — the launcher, the menu, the window — started another one. Two instances on one folder
+each keep their own copy of `spaces.json` and settings in memory and write them back, so each
+can undo the other's changes.
+
+**Fix (1.1.2):** `desktop` looks for the profile's running instance first (`desktop_pid`) and,
+if there is one, activates it by pid instead of launching. By pid, not `open -a`, since all
+copies share one bundle id.
+
+## 26. Migrate and receive dropped a project's other folders
+
+**Found 2026-11-02, before it did any harm.** A Cowork project can have several folders. Portfolio
+Management has its own folder plus two Google Drive folders, `My Drive/Finances/Portfolio
+Management` and `My Drive/Financial`, and those hold the real files. `migrate` re-pointed the
+project by setting its folders to the shared copy alone, and `project-import` (which `receive`
+runs) did the same on the other Mac. Moving that project would have quietly cut both Google
+Drive folders off it, on both Macs.
+
+**Fix (1.1.2):**
+
+- `migrate` now runs `project-repath … --replace <old>`, which swaps only the folder it moved.
+- `project-import` keeps the exporter's other folders when the same path exists on this Mac and
+  isn't a symlink. Google Drive mounts at the same path on both Macs when the same account is
+  signed in. Any folder that's missing is named, not silently dropped.
+
 ---
 
 ## Two commands that caused damage during development
