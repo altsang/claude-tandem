@@ -9,6 +9,23 @@ import SwiftUI
 
 // MARK: state
 
+/// `@State` without the macro. In the macOS 27 SDK `@State` is a SwiftUI macro whose plugin
+/// (libSwiftUIMacros) ships with Xcode only — the Command Line Tools that build this app don't
+/// have it, so `@State` fails there ("plugin for module 'SwiftUIMacros' not found"; Ji-su,
+/// 2026-11-02). Holding a SwiftUI.State as a plain stored property is what the macro expands
+/// to; SwiftUI finds it inside this DynamicProperty and keeps it across updates the same way.
+@propertyWrapper
+struct ViewState<Value>: DynamicProperty {
+    private let state: SwiftUI.State<Value>
+    init(wrappedValue: Value) { state = SwiftUI.State(initialValue: wrappedValue) }
+    var wrappedValue: Value {
+        get { state.wrappedValue }
+        nonmutating set { state.wrappedValue = newValue }
+    }
+    var projectedValue: Binding<Value> { state.projectedValue }
+}
+
+
 final class Store: ObservableObject {
     @Published var profiles: [Profile] = []
     @Published var selection: String? = "setup"
@@ -374,7 +391,7 @@ func validName(_ s: String) -> Bool {
 struct GetStartedView: View {
     @ObservedObject var store: Store
     @AppStorage("skillAdded") private var skillAdded = false
-    @State private var loginOn = SMAppService.mainApp.status == .enabled
+    @ViewState private var loginOn = SMAppService.mainApp.status == .enabled
 
     var app: App? { store.app }
 
@@ -470,9 +487,9 @@ struct Step<Actions: View>: View {
 struct NewProfileSheet: View {
     @ObservedObject var store: Store
     @Environment(\.dismiss) private var dismiss
-    @State private var name = ""
-    @State private var color = palette[0].1
-    @State private var working = false
+    @ViewState private var name = ""
+    @ViewState private var color = palette[0].1
+    @ViewState private var working = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -667,7 +684,7 @@ struct CommitField: NSViewRepresentable {
 struct SettingsView: View {
     @ObservedObject var store: Store
     @AppStorage("terminal") private var terminal = ""
-    @State private var loginOn = SMAppService.mainApp.status == .enabled
+    @ViewState private var loginOn = SMAppService.mainApp.status == .enabled
 
     var body: some View {
         let ghostty = store.app?.ghosttyInstalled ?? false

@@ -556,7 +556,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
 struct HandoffsView: View {
     @ObservedObject var store: Store
-    @State private var showUnshared = false
+    @ViewState private var showUnshared = false
 
     var body: some View {
         ScrollView {
@@ -769,7 +769,7 @@ struct InboxRow: View {
 struct JobRow: View {
     @ObservedObject var store: Store
     @ObservedObject var job: Job
-    @State private var showLog = false
+    @ViewState private var showLog = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -1015,7 +1015,7 @@ struct SendDraft: Identifiable, Equatable {
 
 struct SendSheet: View {
     @ObservedObject var store: Store
-    @State var draft: SendDraft
+    @ViewState var draft: SendDraft
     @Environment(\.dismiss) private var dismiss
 
     var p: LProject? { store.ledger?.projects.first { $0.name == draft.project } }
