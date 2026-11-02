@@ -18,6 +18,18 @@ final class Store: ObservableObject {
     private var timer: Timer?
     private var loading = false
 
+    // the ledger and its jobs: Handoffs.swift
+    @Published var ledger: Ledger?
+    @Published var jobs: [Job] = []
+    @Published var sendDraft: SendDraft?
+    @Published var logJob: Job?
+    @Published var config: [String: String] = [:]   // `tandem config`, shared with the CLI and tandem watch
+    var ledgerLoading = false
+    var ledgerTimer: Timer?
+    var ledgerTicks = 0
+    var windowOpen = false
+    let notifier = Notifier()
+
     func refresh() {
         guard !loading, let app else { return }
         loading = true
@@ -81,6 +93,11 @@ struct MainView: View {
             List(selection: $store.selection) {
                 Section {
                     Label("Get Started", systemImage: "checklist").tag("setup")
+                    // the tag goes last: a modifier after it wraps the row, and List then can't select it
+                    Label("Handoffs", systemImage: "arrow.left.arrow.right")
+                        .badge(store.inbox.filter { $0.kind != .settling }.count)
+                        .tag("handoffs")
+                    Label("Macs", systemImage: "laptopcomputer.and.iphone").tag("macs")
                 }
                 Section("Profiles") {
                     ForEach(store.profiles) { p in ProfileRow(store: store, p: p).tag(p.id) }
@@ -101,6 +118,10 @@ struct MainView: View {
                 GetStartedView(store: store)
             } else if store.selection == "settings" {
                 SettingsView(store: store)
+            } else if store.selection == "handoffs" {
+                HandoffsView(store: store).navigationTitle("Handoffs")
+            } else if store.selection == "macs" {
+                MacsView(store: store).navigationTitle("Macs")
             } else if let p = store.profiles.first(where: { $0.id == store.selection }) {
                 ProfileDetail(store: store, p: p).id(p.id)   // fresh fields per profile
             } else if store.loaded {
@@ -110,6 +131,7 @@ struct MainView: View {
             }
         }
         .sheet(isPresented: $store.showNewProfile) { NewProfileSheet(store: store) }
+        .sheet(item: $store.logJob) { job in LogSheet(job: job) }
     }
 }
 
@@ -163,6 +185,7 @@ struct ProfileDetail: View {
                 header
                 actions
                 GroupBox("Accounts") { accounts.padding(6) }
+                GroupBox("Projects") { ProfileProjects(store: store, p: p).padding(6) }
                 if let n = p.adoptable, n > 0 {
                     GroupBox("Earlier sessions") {
                         HStack {
@@ -649,21 +672,145 @@ struct SettingsView: View {
     var body: some View {
         let ghostty = store.app?.ghosttyInstalled ?? false
         Form {
-            Picker("Open Claude Code and handoffs in", selection: Binding(
-                get: { store.app?.terminalApp ?? "Terminal" }, set: { terminal = $0 })) {
-                Text("Terminal").tag("Terminal")
-                if ghostty { Text("Ghostty").tag("Ghostty") }
+            Section("Handoffs") {
+                Picker("When a handoff arrives for this Mac", selection: Binding(
+                    get: { store.config["on-arrival"] ?? "ask" }, set: { store.setConfig("on-arrival", $0) })) {
+                    Text("Ask me").tag("ask")
+                    Text("Receive it automatically").tag("auto")
+                    Text("Only show it in Handoffs").tag("off")
+                }
+                Text("Receiving verifies every file before it claims the project. If that profile’s Claude is open, the steps that need it closed wait until it quits, then finish on their own.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Picker("When /handoff writes a brief", selection: Binding(
+                    get: { store.config["on-brief"] ?? "ask" }, set: { store.setConfig("on-brief", $0) })) {
+                    Text("Ask me before sending").tag("ask")
+                    Text("Send it automatically").tag("auto")
+                }
+                Text("/handoff leaves a note saying where the brief is going. Sending automatically only happens when that names a profile or Mac Tandem knows.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text("These are tandem config on-arrival and on-brief — the same settings tandem watch follows on a Mac without the app.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-            Text(ghostty ? "Ghostty opens a new window in the Ghostty you already have open. The first time, macOS asks whether Claude Tandem may control it."
-                         : "Install Ghostty to use it here.")
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Toggle("Open Claude Tandem at login", isOn: Binding(
-                get: { loginOn },
-                set: { _ in store.app?.toggleLogin(); loginOn = SMAppService.mainApp.status == .enabled }))
+            Section("General") {
+                Toggle("Open Claude Tandem at login", isOn: Binding(
+                    get: { loginOn },
+                    set: { _ in store.app?.toggleLogin(); loginOn = SMAppService.mainApp.status == .enabled }))
+                Text("Leave it on: Tandem only hears about handoffs, and tells your other Mac it’s awake, while it runs.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Picker("Open Claude Code in", selection: Binding(
+                    get: { store.app?.terminalApp ?? "Terminal" }, set: { terminal = $0 })) {
+                    Text("Terminal").tag("Terminal")
+                    if ghostty { Text("Ghostty").tag("Ghostty") }
+                }
+                Text(ghostty ? "Ghostty opens a new window in the Ghostty you already have open. The first time, macOS asks whether Claude Tandem may control it."
+                             : "Install Ghostty to use it here.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Section("Maintenance") {
+                maintenance("Check", "Shared drive, iCloud account and sync state, engine, folder links that would fail. Changes nothing.",
+                            "tandem check", ["check"])
+                maintenance("Run Doctor", "Re-checks what profiles rely on in Claude.app — worth running after Claude updates.",
+                            "tandem profile doctor", ["profile", "doctor"])
+                maintenance("Sync Claude Code sessions", "Copies every profile’s Claude Code sessions and plans to the others, so /resume finds them anywhere.",
+                            "tandem profile sync", ["profile", "sync"])
+                maintenance("Find conflict copies", "iCloud’s “name 2” copies in the shared tree. Reports only.",
+                            "tandem conflicts", ["conflicts"])
+                maintenance("Update the shared engine", "Puts this version’s engine on the shared drive, for every Mac.",
+                            "tandem deploy", ["deploy"])
+            }
         }
         .formStyle(.grouped)
-        .frame(maxWidth: 560)
+        .frame(maxWidth: 620)
         .padding()
         .navigationTitle("Settings")
+        .onAppear { store.loadConfig() }
+    }
+
+    func maintenance(_ title: String, _ help: String, _ cli: String, _ args: [String]) -> some View {
+        HStack {
+            VStack(alignment: .leading) {
+                Text(title)
+                Text(help + "  " + cli).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Run") { store.runLog(title, args) }
+        }
+    }
+}
+
+/// Output of a maintenance step, in place of a terminal window.
+struct LogSheet: View {
+    @ObservedObject var job: Job
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                if job.running { ProgressView().controlSize(.small) }
+                else { Image(systemName: job.ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill").foregroundStyle(job.ok ? .green : .orange) }
+                Text(job.title).font(.title3.bold())
+            }
+            ScrollView {
+                Text(job.log.isEmpty ? "…" : job.log).font(.callout.monospaced()).textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(minHeight: 160, maxHeight: 360)
+            HStack { Spacer(); Button("Done") { dismiss() }.keyboardShortcut(.defaultAction).disabled(job.running) }
+        }
+        .padding(20)
+        .frame(width: 560)
+    }
+}
+
+/// A profile's shared projects: what it holds, what's coming to it, what's waiting.
+struct ProfileProjects: View {
+    @ObservedObject var store: Store
+    let p: Profile
+    var side: String { store.app?.side(p) ?? p.id }
+
+    var body: some View {
+        let all = store.ledger?.projects ?? []
+        let held = all.filter { $0.holder == side && $0.state == "held" }
+        let coming = all.filter { $0.holder == side && $0.state == "sent" }
+        let away = all.filter { $0.state == "sent" && $0.last?.machine == side }
+        VStack(alignment: .leading, spacing: 8) {
+            if store.ledger == nil { Text("Reading the shared drive…").foregroundStyle(.secondary) }
+            else if held.isEmpty && coming.isEmpty && away.isEmpty {
+                Text("Holds no shared project. Projects come here when they’re handed to \(p.name), and leave with Hand Off.")
+                    .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(coming) { x in
+                HStack {
+                    Label(x.name, systemImage: "arrow.down.circle.fill").foregroundStyle(.green)
+                    Text("from \(store.label(x.last?.machine ?? "")) · \(ago(x.last?.at))").foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Receive") { store.startReceive(x.name, as: side) }.disabled(store.running("receive", x.name))
+                }
+            }
+            ForEach(held) { x in
+                HStack {
+                    Label(x.name, systemImage: "folder.fill")
+                    if !x.intents.isEmpty { Text("brief ready").font(.caption).foregroundStyle(.blue) }
+                    if !x.requests.isEmpty { Text("asked for").font(.caption).foregroundStyle(.purple) }
+                    Spacer()
+                    Button("Hand Off…") { store.selection = "handoffs"; store.draft(x.name, from: side) }
+                }
+            }
+            ForEach(store.heldHere(side), id: \.self) { name in
+                HStack {
+                    Label(name, systemImage: "lock.fill").foregroundStyle(.secondary)
+                    Text("locked here since it was handed away").foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Unlock") { store.runLog("Unlock \(name) for \(p.name)", store.profileArgs(side) + ["release", name]) }
+                        .help(p.open ? "Quit \(p.name)’s Claude first — unlocking edits its project list" : "tandem release")
+                }
+            }
+            ForEach(away) { x in
+                HStack {
+                    Label(x.name, systemImage: "paperplane").foregroundStyle(.secondary)
+                    Text("sent to \(store.label(x.holder ?? "")) · not received yet").foregroundStyle(.secondary)
+                    Spacer()
+                }
+            }
+        }
     }
 }

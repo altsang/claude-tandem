@@ -5,7 +5,9 @@ A **handoff** moves a Cowork project from one place you work to another — to t
 - [When you need one](#when-you-need-one)
 - [How a handoff works](#how-a-handoff-works)
 - [Set up](#set-up) — [the shared drive](#1-the-shared-drive) · [the skill](#2-the-handoff-skill) · [each project](#3-each-project)
-- [The daily loop](#the-daily-loop)
+- [With the app](#with-the-app) — notifications, no terminal
+- [The daily loop](#the-daily-loop) — in a terminal
+- [What is where](#what-is-where)
 - [Between accounts on one Mac](#between-accounts-on-one-mac)
 - [Memory](#memory)
 - [Locking a Mac out](#locking-a-mac-out---hold)
@@ -129,6 +131,52 @@ tandem receive "Quicken Reconciliation"                    # on Ji-su, with Clau
 ```
 
 `receive` writes the other Mac's project definition **and** its folder link, so there's no folder picker. Relaunch Claude and the project is there.
+
+---
+
+## With the app
+
+With Claude Tandem running on both sides (Open at Login on), a handoff is clicks:
+
+| Where | What happens |
+|---|---|
+| Cowork, where you are | `/handoff` writes the brief, plus a small *send intent* saying where it goes (`.handoff/intents/`) |
+| This Mac, within a minute | a notification: **Send P to Ji-su?** Send… shows the brief and its age, the note, and whether Ji-su is awake. Send runs `tandem send` with its steps shown |
+| The other side, at drive speed (2–3 min) | a notification: **P arrived from Madoka — Receive.** Receiving verifies every file and claims it, even with Claude open |
+| Then | **Open in Claude** puts the brief on the clipboard and brings that profile's Claude forward: ⌘V |
+
+**Claude open on the receiving side?** It no longer stops the receive. Defining the project, merging memory and lifting a `--hold` all write `spaces.json`, which a running Claude overwrites. So they wait, shown as *almost done*, and finish by themselves when that profile's Claude quits. **Quit Claude and Finish** does it now. In a terminal that's `tandem receive P --defer`, then `tandem settle`.
+
+**Asking for a project.** On the Mac that doesn't hold it: Handoffs › the project's … menu › **Ask for It** (`tandem ask P`). The holder gets **Ji-su asks for P** with *Copy /handoff*. Only the session that did the work can write the brief.
+
+**Automatic.** In Settings, a Mac can **receive automatically** when a handoff arrives, and **send automatically** when `/handoff` names a profile or Mac Tandem knows. Both default to asking.
+
+**No app, or a Mac you script?** `tandem watch` is the same background half, headless. It notices handoffs, follows the same settings (`tandem config`), and reports events as text, JSON lines, notifications or a hook. `tandem watch --install` runs it at login. Every button in the app is a command; the full mapping is in [the reference](reference.md#automation).
+
+Nothing new goes into `.handoff/events/`. Intents, requests and the Macs' cards live beside it, where older Tandem versions never look, so a Mac that hasn't updated still sends and receives as before. It just isn't notified. The design is in [design-handoffs-v2.md](design-handoffs-v2.md).
+
+---
+
+## What is where
+
+```bash
+tandem where
+```
+
+`tandem where`, and the window's **Handoffs** and **Macs** pages, merge two sources:
+
+- every shared project's ownership log
+- a small card each Mac's Tandem publishes to the shared drive every five minutes: its profiles, their accounts, the projects each defines, its Tandem version and its iCloud state
+
+It shows:
+
+- **every Mac**, and when it was last seen. "Ji-su, seen 3 min ago" answers *will this arrive soon?* before you send.
+- **every profile** on each Mac, with its account and what it holds.
+- **every shared project**: held, or on its way, and by whom.
+- **what's pending**: briefs ready to send, requests, receives still settling.
+- **what isn't shared yet**: projects defined on only one side, which a handoff can't reach until `tandem migrate`.
+
+A Mac that appears in the ownership log but publishes no card is listed too, as *no card*. Its Tandem is older or not running.
 
 ---
 

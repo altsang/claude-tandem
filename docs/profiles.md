@@ -65,7 +65,7 @@ Your default sign-in is untouched by any of this: each profile's Claude Code log
 
 If you signed this account into your **regular** Claude before giving it a profile, its work is still there. The new profile is a fresh folder, so it starts empty, and it looks as if your sessions vanished. They haven't.
 
-**From the menu bar it's a setup step.** After *New Profile… → Open Claude* and you sign in, Claude Tandem checks whether your regular Claude holds anything from that account, and asks:
+**In the app it's a setup step.** After *New Profile (the + in the window) → Open Claude* and you sign in, Claude Tandem checks whether your regular Claude holds anything from that account, and asks:
 
 > *Bring Junipera's earlier work in?* Junipera is signed in as you@company.com. Before it had its own profile, this account was used in your regular Claude app, which still has 4 Claude Code sessions from it: AI Video Editing Kit for Chloe, … · **Copy Them** · **Not Now** · **Never for This Profile**
 

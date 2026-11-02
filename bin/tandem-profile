@@ -511,7 +511,16 @@ cmd_rename(){
 cmd_menubar(){
   local srcdir="$HERE/../macos/ClaudeTandem" app="$HOME/Applications/Claude Tandem.app" src f newer=0
   local bin="$app/Contents/MacOS/ClaudeTandem" force=0
-  [ "${1:-}" = --rebuild ] && force=1
+  case "${1:-}" in
+    --rebuild) force=1;;
+    "") ;;
+    -h|--help|help)
+      echo "usage: tandem menubar [--rebuild]"
+      echo "  builds ~/Applications/Claude Tandem.app when the version or sources changed (prints"
+      echo "  '✓ built' when it did), then opens it if it isn't running. --rebuild forces the build."
+      return 0;;
+    *) die "unknown option '$1' — usage: tandem menubar [--rebuild]";;
+  esac
   src="$srcdir/main.swift"
   [ -f "$src" ] || die "missing $src"
   command -v swiftc >/dev/null || die "swiftc not found — install the Command Line Tools: xcode-select --install"
@@ -531,7 +540,7 @@ cmd_menubar(){
     pkill -x ClaudeTandem 2>/dev/null; sleep 0.5
     rm -rf "$app"   # exact path: our own generated bundle
     mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-    swiftc -O -swift-version 5 -o "$bin" "$srcdir"/*.swift -framework AppKit -framework SwiftUI -framework ServiceManagement 2>&1 \
+    swiftc -O -swift-version 5 -o "$bin" "$srcdir"/*.swift -framework AppKit -framework SwiftUI -framework ServiceManagement -framework UserNotifications 2>&1 \
       | grep -v '^$' ; [ -x "$bin" ] || die "swiftc failed"
     local plist="$app/Contents/Info.plist" pb=/usr/libexec/PlistBuddy
     $pb -c "Add :CFBundleName string 'Claude Tandem'" \
@@ -560,7 +569,7 @@ cmd_menubar(){
     ok "built $app"
   fi
   pgrep -x ClaudeTandem >/dev/null || open "$app"
-  ok "Claude Tandem is in the menu bar (two Clawds on a bike). Turn on Open at Login from its menu."
+  ok "Claude Tandem is in the menu bar (two Clawds on a bike). Turn on Open at Login in its Settings, so it hears about handoffs."
 }
 
 cmd_code(){

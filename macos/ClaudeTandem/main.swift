@@ -1,11 +1,11 @@
 // Claude Tandem — a menu-bar front end for bin/tandem (and its `tandem profile` half),
 // with a window for the profiles and getting started (Window.swift).
 //
-// Every action is a call to `tandem`, so the CLI stays the single
-// implementation and this file only draws the menu and asks questions. Steps that take
-// a while or talk back (handoffs, receive, doctor, sync, Claude Code) open in Terminal
-// so their output is visible; quick ones (rename, badge, colour, quit) run here and
-// report failures in an alert.
+// Every action is a call to `tandem`, so the CLI stays the single implementation and
+// this file only draws the menu. The menu is for the profiles you have and what's waiting
+// (the inbox); everything else — new profiles, settings, handoffs, the Macs — is in the
+// window. Handoffs run inside the app with their steps shown (Handoffs.swift); only Claude
+// Code opens in a terminal.
 //
 // Built by `tandem menubar`, which writes the script path and the user's PATH
 // into Info.plist: an app started at login gets only /usr/bin:/bin.
@@ -85,7 +85,9 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
     lazy var tandem = info["TandemScript"] as? String ?? "tandem"
     lazy var repo = info["RepoDir"] as? String ?? NSHomeDirectory()
     lazy var path = info["UserPATH"] as? String ?? "/usr/bin:/bin:/usr/sbin:/sbin"
-    lazy var mac = runProcess("/usr/sbin/scutil", ["--get", "ComputerName"], path: path).out
+    // Read once, up front. A lazy var that runs a process can be re-entered — the window
+    // redraws while scutil runs, reads `mac` again, and Swift traps (crash, 2026-11-01).
+    let mac = runProcess("/usr/sbin/scutil", ["--get", "ComputerName"], path: "/usr/bin:/bin:/usr/sbin:/sbin").out
         .trimmingCharacters(in: .whitespacesAndNewlines)
     var status: NSStatusItem?
     var profiles: [Profile] = []
@@ -103,6 +105,16 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         menu.autoenablesItems = false
         s.menu = menu
         status = s
+        // the ledger runs whether or not the window is open: it is how handoffs get noticed
+        store.notifier.store = store
+        store.notifier.setup()
+        store.startLedger()
+        // `--show <page>` (handoffs, macs, settings, setup, or a profile id) opens the window there.
+        let argv = CommandLine.arguments
+        if let i = argv.firstIndex(of: "--show"), i + 1 < argv.count {
+            showWindow(select: argv[i + 1])
+            return
+        }
         // First run, or only Claude.app itself so far: start with Get Started.
         let seen = UserDefaults.standard.bool(forKey: "welcomed")
         if !seen || loadProfiles().count < 2 {
@@ -129,7 +141,9 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         if let select { store.selection = select }
         NSApp.applicationIconImage = tandemAppIcon()
         NSApp.setActivationPolicy(.regular)
+        store.windowOpen = true
         store.startPolling()
+        store.refreshLedger()
         activate()
         window?.makeKeyAndOrderFront(nil)
         if newProfile { store.showNewProfile = true }
@@ -138,6 +152,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
     func windowWillClose(_ n: Notification) {
         window?.makeFirstResponder(nil)   // a field still being edited saves as the window closes
         store.stopPolling()
+        store.windowOpen = false
         NSApp.setActivationPolicy(.accessory)
     }
 
@@ -147,18 +162,56 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
     func build(_ menu: NSMenu) {
         menu.removeAllItems()
         profiles = loadProfiles()
+        store.refreshLedger()
+        // the inbox first: what's waiting needs one click
+        let inbox = store.inbox
+        if !inbox.isEmpty {
+            header(menu, "Waiting for you")
+            for item in inbox { inboxItem(menu, item) }
+            menu.addItem(.separator())
+        }
         header(menu, "Claude profiles on \(mac)")
-        if profiles.isEmpty { header(menu, "Could not read profiles — try Run Doctor") }
+        if profiles.isEmpty { header(menu, "Could not read profiles — see Open Claude Tandem… › Settings") }
         for p in profiles { menu.addItem(profileItem(p)) }
         menu.addItem(.separator())
         add(menu, "Open Claude Tandem…", key: ",") { [unowned self] in self.showWindow() }
-        add(menu, "New Profile…") { [unowned self] in self.showWindow(newProfile: true) }
-        add(menu, "Sync Claude Code Sessions") { [unowned self] in self.terminal("\(q(self.tandem)) profile sync", title: "Sync sessions") }
-        add(menu, "Run Doctor") { [unowned self] in self.terminal("\(q(self.tandem)) profile doctor", title: "Doctor") }
-        menu.addItem(.separator())
-        let login = add(menu, "Open at Login") { [unowned self] in self.toggleLogin() }
-        login.state = SMAppService.mainApp.status == .enabled ? .on : .off
         add(menu, "Quit Claude Tandem", key: "q") { NSApp.terminate(nil) }
+    }
+
+    func inboxItem(_ menu: NSMenu, _ item: InboxItem) {
+        let p = item.project.name
+        let who = profiles.first { side($0) == item.side }?.name ?? item.side
+        switch item.kind {
+        case .arrival:
+            add(menu, "↓ Receive \(p) as \(who) — from \(store.label(item.other ?? "?"))") { [unowned self] in
+                self.store.startReceive(p, as: item.side)
+                self.showWindow(select: "handoffs")
+            }
+        case .brief:
+            add(menu, "↑ Send \(p)… — brief ready") { [unowned self] in
+                self.showWindow(select: "handoffs")
+                self.store.draft(p, from: item.side)
+            }
+        case .request:
+            add(menu, "? \(self.store.label(item.other ?? "?")) asks for \(p)…") { [unowned self] in
+                self.showWindow(select: "handoffs")
+                self.store.draft(p, from: item.side, to: item.other)
+            }
+        case .delivered:
+            break
+        case .settling:
+            let open = profiles.first { side($0) == item.side }?.open ?? false
+            add(menu, open ? "⏸ \(p): quit \(who)’s Claude to finish" : "⏸ Finish setting up \(p)") { [unowned self] in
+                if open { self.store.quitAndFinish(p, as: item.side) } else { self.store.startSettle(p, as: item.side) }
+            }
+        }
+    }
+
+    /// The menu-bar icon carries a dot while something is waiting.
+    func updateStatusIcon() {
+        let n = store.inbox.filter { $0.kind != .settling }.count
+        status?.button?.image = n > 0 ? Self.statusIconDot() : Self.statusIcon()
+        status?.button?.toolTip = n > 0 ? "Claude Tandem — \(n) waiting" : "Claude Tandem"
     }
 
     // MARK: profiles
@@ -207,115 +260,34 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         } else if p.open {
             add(m, "Quit Claude") { [unowned self] in self.cli(["quit", p.id]) }
         }
-        m.addItem(.separator())
-        add(m, "Hand Off a Project", nil).submenu = handoffMenu(from: p)
-        add(m, "Receive a Project", nil).submenu = receiveMenu(as: p)
+        let me = side(p)
+        let all = store.ledger?.projects ?? []
+        let held = all.filter { $0.holder == me && $0.state == "held" }
+        let coming = all.filter { $0.holder == me && $0.state == "sent" }
+        if !held.isEmpty || !coming.isEmpty { m.addItem(.separator()) }
+        for x in coming {
+            add(m, "Receive \(x.name) — from \(store.label(x.last?.machine ?? ""))") { [unowned self] in
+                self.store.startReceive(x.name, as: me)
+                self.showWindow(select: "handoffs")
+            }
+        }
+        if !held.isEmpty {
+            let sub = NSMenu()
+            sub.autoenablesItems = false
+            header(sub, "Projects \(p.name) holds")
+            for x in held {
+                add(sub, x.name + (x.intents.isEmpty ? "…" : " — brief ready…")) { [unowned self] in
+                    self.showWindow(select: "handoffs")
+                    self.store.draft(x.name, from: me)
+                }
+            }
+            add(m, "Hand Off", nil).submenu = sub
+        }
         m.addItem(.separator())
         if let n = p.adoptable, n > 0 {
             add(m, "Bring In Earlier Sessions (\(n))…") { [unowned self] in self.adoptWizard(p.id) }
-            m.addItem(.separator())
         }
         add(m, "Settings…") { [unowned self] in self.showWindow(select: p.id) }
-        add(m, "Rename…") { [unowned self] in self.rename(p) }
-        add(m, "Change Badge…") { [unowned self] in self.changeBadge(p) }
-        add(m, "Badge Colour", nil).submenu = colourMenu(p)
-        if !p.isDefault {
-            // runs this profile as its own badged copy of Claude, so the Dock can tell them apart
-            let on = p.dockIcon ?? false
-            let d = add(m, "Show Badge in the Dock") { [unowned self] in
-                self.cli(["app", p.id, on ? "--no-dock-icon" : "--dock-icon"]) {
-                    if !on && p.open {
-                        self.alert("Badge in the Dock: on", "It shows the next time \(p.name) opens — quit and reopen it.")
-                    }
-                }
-            }
-            d.state = on ? .on : .off
-        }
-        return m
-    }
-
-    // MARK: handoffs
-
-    func sharedRoot() -> String {
-        let conf = NSHomeDirectory() + "/.config/claude-tandem/root"
-        if let s = try? String(contentsOfFile: conf, encoding: .utf8),
-           let line = s.split(separator: "\n").first?.trimmingCharacters(in: .whitespaces), !line.isEmpty {
-            return line.hasPrefix("~") ? NSHomeDirectory() + line.dropFirst() : line
-        }
-        return NSHomeDirectory() + "/Library/Mobile Documents/com~apple~CloudDocs/Claude"
-    }
-
-    func dirs(_ path: String) -> [String] {
-        let fm = FileManager.default
-        return ((try? fm.contentsOfDirectory(atPath: path)) ?? []).filter { name in
-            var isDir: ObjCBool = false
-            return !name.hasPrefix(".") && fm.fileExists(atPath: path + "/" + name, isDirectory: &isDir) && isDir.boolValue
-        }.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-    }
-
-    func sharedProjects() -> [String] { dirs(sharedRoot() + "/Projects") }
-
-    /// Sides on other Macs, as named in ownership events ({ts}-{side}-{verb}.json) — the
-    /// only place this Mac learns the other one's name.
-    func otherSides() -> [String] {
-        var found = Set<String>()
-        let root = sharedRoot() + "/Projects"
-        for proj in sharedProjects() {
-            let files = (try? FileManager.default.contentsOfDirectory(atPath: "\(root)/\(proj)/.handoff/events")) ?? []
-            for f in files where f.hasSuffix(".json") {
-                let stem = f.dropLast(5)
-                guard let first = stem.firstIndex(of: "-"), let last = stem.lastIndex(of: "-"), first < last else { continue }
-                let who = String(stem[stem.index(after: first)..<last])
-                if who.split(separator: "@").first.map(String.init) != mac { found.insert(who) }
-            }
-        }
-        return found.sorted()
-    }
-
-    func handoffMenu(from p: Profile) -> NSMenu {
-        let m = NSMenu()
-        m.autoenablesItems = false
-        let projects = sharedProjects()
-        header(m, projects.isEmpty ? "No shared projects yet" : "Run /handoff in Cowork first — send needs its document")
-        var targets: [(side: String, label: String)] = profiles.filter { $0.id != p.id }.map {
-            (side($0), $0.isDefault ? "\(mac) — \($0.name)" : "\(side($0)) — \($0.name)")
-        }
-        targets += otherSides().map { ($0, "\($0) — other Mac") }
-        for proj in projects {
-            let sub = NSMenu()
-            sub.autoenablesItems = false
-            header(sub, targets.isEmpty ? "No other profile or Mac to send to" : "Send to")
-            for t in targets {
-                add(sub, t.label) { [unowned self] in
-                    let who = p.isDefault ? "" : " --profile \(q(p.id))"
-                    self.terminal("\(q(self.tandem))\(who) send \(q(proj)) --to \(q(t.side)) --wait",
-                                  title: "Hand off \(proj) → \(t.side)")
-                }
-            }
-            add(m, proj, nil).submenu = sub
-        }
-        return m
-    }
-
-    func receiveMenu(as p: Profile) -> NSMenu {
-        let m = NSMenu()
-        m.autoenablesItems = false
-        let projects = sharedProjects()
-        header(m, projects.isEmpty ? "No shared projects yet" : "Receive as \(p.name)")
-        for proj in projects {
-            add(m, proj) { [unowned self] in
-                var cmd = ""
-                if p.open {
-                    // receive adds a project to this profile's spaces.json, which a running
-                    // Claude rewrites from memory — so it must be quit for a project new to it
-                    cmd += "if read -q \(q("?Quit Claude (\(p.name)) first, so tandem can add the project if it is new here? [y/N] ")); "
-                    cmd += "then echo; \(q(self.tandem)) profile quit \(q(p.id)); else echo; fi\n"
-                }
-                let who = p.isDefault ? "" : " --profile \(q(p.id))"
-                cmd += "\(q(self.tandem))\(who) receive \(q(proj))"
-                self.terminal(cmd, title: "Receive \(proj) as \(p.name)")
-            }
-        }
         return m
     }
 
@@ -354,54 +326,6 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         let f = r.out.trimmingCharacters(in: .whitespacesAndNewlines)
         if r.code == 0, !f.isEmpty { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: f)]) }
         else { alert("Couldn’t find the /handoff skill", (r.err + r.out).trimmingCharacters(in: .whitespacesAndNewlines)) }
-    }
-
-    func rename(_ p: Profile) {
-        guard let new = prompt("Rename “\(p.name)”",
-            "The new name works everywhere: the launcher, claude @name, tandem --profile name. Its folders keep the id “\(p.id)”, so its logins and handoffs are untouched.",
-            initial: p.name, ok: "Rename"), !new.isEmpty, new != p.name else { return }
-        cli(["rename", p.id, new])
-    }
-
-    func changeBadge(_ p: Profile) {
-        activate()
-        let a = NSAlert()
-        a.messageText = "Badge for “\(p.name)”"
-        a.informativeText = "One or two letters in any script, or one emoji — or choose an image."
-        a.addButton(withTitle: "Save")
-        a.addButton(withTitle: "Choose Image…")
-        a.addButton(withTitle: "Use Initial")
-        a.addButton(withTitle: "Cancel")
-        let f = NSTextField(string: p.badgeImage == nil ? p.badge : "")
-        f.frame = NSRect(x: 0, y: 0, width: 120, height: 24)
-        a.accessoryView = f
-        a.window.initialFirstResponder = f
-        switch a.runModal() {
-        case .alertFirstButtonReturn:
-            let t = f.stringValue.trimmingCharacters(in: .whitespaces)
-            if !t.isEmpty { cli(["app", p.id, "--badge", t]) }
-        case .alertSecondButtonReturn:
-            let panel = NSOpenPanel()
-            panel.allowedContentTypes = [.image]
-            panel.message = "Choose an image for \(p.name)’s badge"
-            if panel.runModal() == .OK, let url = panel.url { cli(["app", p.id, "--badge-image", url.path]) }
-        case .alertThirdButtonReturn:
-            cli(["app", p.id, "--badge", "auto"])
-        default: break
-        }
-    }
-
-    func colourMenu(_ p: Profile) -> NSMenu {
-        let m = NSMenu()
-        m.autoenablesItems = false
-        for (name, hex) in palette {
-            let i = add(m, name) { [unowned self] in self.cli(["app", p.id, "--color", hex]) }
-            i.image = NSImage(size: NSSize(width: 14, height: 14), flipped: false) { r in
-                NSColor(hex: hex).setFill(); NSBezierPath(ovalIn: r.insetBy(dx: 1, dy: 1)).fill(); return true
-            }
-            if hex.caseInsensitiveCompare(p.color) == .orderedSame { i.state = .on }
-        }
-        return m
     }
 
     func toggleLogin() {
@@ -600,6 +524,28 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         return img
     }
 
+    /// The icon with a dot in its top-right corner: something is waiting. Not a template, so
+    /// the dot keeps its colour; the bike follows the menu bar's appearance by hand.
+    static func statusIconDot() -> NSImage {
+        let base = statusIcon()
+        let size = NSSize(width: base.size.width + 4, height: base.size.height)
+        let img = NSImage(size: size, flipped: false) { r in
+            let dark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            let tinted = NSImage(size: base.size, flipped: false) { rr in
+                base.draw(in: rr)
+                (dark ? NSColor.white : NSColor.black).set()
+                rr.fill(using: .sourceAtop)
+                return true
+            }
+            tinted.draw(in: NSRect(origin: .zero, size: base.size))
+            NSColor.systemOrange.setFill()
+            NSBezierPath(ovalIn: NSRect(x: r.maxX - 6, y: r.maxY - 6, width: 6, height: 6)).fill()
+            return true
+        }
+        img.isTemplate = false
+        return img
+    }
+
     func badgeImage(_ p: Profile, size: CGFloat) -> NSImage {
         let color = NSColor(hex: p.color)
         let pic = p.badgeImage.flatMap { NSImage(contentsOfFile: $0) }
@@ -633,6 +579,13 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
     // MARK: self-check
 
     func dumpMenu(into dir: String) {
+        // what the menu would show with the ledger read: synchronously, since nothing runs here
+        store.app = self
+        store.profiles = loadProfiles()
+        let r = runProcess("/bin/bash", [tandem, "where", "--json"], path: path)
+        store.ledger = try? JSONDecoder().decode(Ledger.self, from: Data(r.out.utf8))
+        if store.ledger == nil { print("(could not read the ledger: \(r.err.prefix(200)))") }
+        store.ledgerLoading = true   // build() must not start an async read
         let menu = NSMenu()
         build(menu)
         func walk(_ m: NSMenu, _ depth: Int) {

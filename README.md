@@ -30,7 +30,7 @@
 - [Several Claude accounts on one Mac](#several-claude-accounts-on-one-mac)
 - [Telling them apart](#telling-them-apart)
 - [Moving work between accounts and Macs](#moving-work-between-accounts-and-macs)
-- [The menu-bar app](#the-menu-bar-app)
+- [The app](#the-app)
 - [Install](#install)
 - [Documentation](#documentation)
 
@@ -104,7 +104,7 @@ Every profile runs the same Claude.app, so out of the box two open accounts look
 | **A badge** | one or two letters in any script, an emoji, or an image: `--badge W` · `--badge 지` · `--badge 💼` · `--badge-image logo.png` |
 | **A Dock launcher** | `tandem profile app work` — Claude's current icon, wearing the badge. Pin this one from `~/Applications`, not the running app: a pinned running icon opens your default account ([why](docs/troubleshooting.md#profiles)) |
 | **A badged Dock icon while it runs** | `--dock-icon` — the profile runs as its own copy of Claude.app (an APFS clone: no extra disk, still validly signed, no Keychain prompt — [finding 19](docs/findings.md)) |
-| **The menu bar** | every profile with its badge, account, plan and whether it's open — [below](#the-menu-bar-app) |
+| **The menu bar** | every profile with its badge, account, plan and whether it's open — [below](#the-app) |
 
 ---
 
@@ -134,6 +134,8 @@ tandem send "My Project" --to Madoka@work                # hand it to the other 
 tandem --profile work receive "My Project"               # take it as that account, then ⌘V
 ```
 
+**With the app on both ends, there's no terminal at all.** `/handoff` writes the brief and says where it's going. Tandem on this Mac asks **Send it?**, and Tandem on the other side announces **It arrived — Receive**. Receiving verifies every file and claims the project at once, even with Claude open. The steps that need that Claude closed finish by themselves when it quits. **Open in Claude** brings up the right profile with the brief on the clipboard. You can also **ask** for a project from the Mac that doesn't have it.
+
 <p align="center">
   <img src="assets/tandem-handoff-demo.svg" alt="Two terminals: tandem send on Madoka materializes, exports, snapshots memory and blocks until every file reports isUploaded; tandem receive on Ji-su md5-verifies every file, claims the project, installs the memory snapshot and copies the handoff document to the clipboard — and the sender's DELIVERED line only lands once the receiver has claimed it" width="880"/>
   <br/><sub>A handoff between Macs, both sides. Neither command returns until its half is provable — rendered from the tool's own output with measured timings; playback compressed.</sub>
@@ -145,16 +147,33 @@ tandem --profile work receive "My Project"               # take it as that accou
 
 ---
 
-## The menu-bar app
+## The app
 
-`tandem menubar` builds and opens **Claude Tandem**, a small native app with no Dock icon. It sits in the menu bar as the logo in miniature — two Clawds on a tandem — and follows the menu bar from light to dark. Every item runs the same CLI, so it holds no logic of its own.
+`tandem menubar` builds and opens **Claude Tandem**, a native app that lives in the menu bar as the logo in miniature: two Clawds on a tandem. Every action runs the same CLI, so it holds no logic of its own.
 
 <p align="center">
-  <img src="assets/menubar-demo.svg" alt="Clicking the two-Clawds tandem icon in the menu bar opens the Claude Tandem menu: every profile with its badge, account and plan; a profile's submenu with Show Claude, Hand Off a Project, Bring In Earlier Sessions and Show Badge in the Dock; choosing Bring In Earlier Sessions opens a question offering Copy Them, Not Now or Never for This Profile, and ends with a Done notice" width="880"/>
-  <br/><sub>Every profile at a glance, and the chores for each — here, bringing in an account's earlier sessions.</sub>
+  <img src="assets/menubar-demo.svg" alt="Clicking the two-Clawds tandem icon in the menu bar opens the Claude Tandem menu: every profile with its badge, account and plan, and each profile's submenu" width="880"/>
+  <br/><sub>Every profile at a glance.</sub>
 </p>
 
-It flags a profile that needs reopening after Claude updates itself, offers to quit an account's app before receiving into it, and lists your other Mac as a handoff target as soon as the two have exchanged a project.
+**The menu bar** is for the profiles you have, and for whatever is waiting:
+
+- Each profile: Show or Open Claude, Open Claude Code, Quit, Receive, Hand Off, and Settings.
+- When something is waiting, the icon gets a dot, and the top of the menu lists it: a project arriving for one of your profiles, a brief ready to send, or your other Mac asking for a project.
+
+**The window** (Open Claude Tandem…, or open the app from Finder) has the rest:
+
+| | |
+|---|---|
+| **Get Started** | a checklist from a second profile to the `/handoff` skill |
+| **Handoffs** | what's waiting for you, sends and receives running now (step by step), every shared project and who holds it, and the projects still only on one Mac |
+| **Macs** | every Mac running Tandem: when it was last seen, its Tandem version and iCloud health, each profile on it with its account, and what each holds |
+| **A profile** | its accounts, the projects it holds (Hand Off…) and the ones coming to it (Receive), its name, badge and Dock launcher |
+| **Settings** | what happens when a handoff arrives or `/handoff` writes a brief, Open at Login, your terminal, and Sync and Doctor with their output in place |
+
+Leave **Open at Login** on. Tandem only notices handoffs, and tells your other Mac it's awake, while it runs.
+
+**Everything in the app is a command too.** The app is a client of the CLI. `tandem inbox`, `tandem where --json` and `tandem config` show and set what it does. `tandem watch` is its background half without the app, for a server, a script or a LaunchAgent, with JSON events and hooks. See [Automation](docs/reference.md#automation).
 
 ---
 

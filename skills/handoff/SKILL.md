@@ -17,7 +17,7 @@ the manifest, recording ownership, and proving the bytes actually reached iCloud
 `tandem send`, which runs in a terminal. This session cannot do those things: it is sandboxed to
 the project folder and cannot see `fileproviderctl`, the shared `_handoff/` tree, or any CLI. Do
 not try, and do not write ownership events yourself; one implementation of the mechanics is the
-point.
+point. (The send *intent* in Step 4 is different: it only asks the app to run the send.)
 
 ## Why the document matters more than the bytes
 
@@ -100,20 +100,41 @@ cloud, and a read returns empty **with no error**. If you summarized a file you 
 read, the document is fiction. Read anything you cited, and if a file still reads empty after a
 retry, say so in the document rather than papering over it.
 
-## Step 4 — Hand it to the CLI
+## Step 4 — Leave a send intent for Tandem
 
-Tell the user the exact command, with the real project name and target substituted:
+Write one more small file, so the Claude Tandem app on this Mac can offer the transfer without
+anyone typing a command:
+
+```
+.handoff/intents/TOPIC.json        (inside the project folder, next to .handoff/events/)
+```
+
+```json
+{"to": "MACHINE", "note": "one line summary", "doc": "HANDOFF_TOPIC.md"}
+```
+
+- `to` is the receiving side exactly as in Step 1: `Ji-su`, `Madoka`, or `Madoka@work`.
+- This is a **request to the app**, not an ownership record. Never write anything into
+  `.handoff/events/` — those are the CLI's, and a wrong one there misstates who holds the project.
+- Create `.handoff/intents/` if it doesn't exist. If the write fails, skip it; the command below
+  still works.
+
+## Step 5 — Tell the user how it leaves
+
+Tandem notices the intent within a minute or two and asks **"Send PROJECT to MACHINE?"** (or sends
+on its own, if they set it to). Without the app, or to do it by hand, the command is:
 
 ```
 tandem send "PROJECT" --to MACHINE --note "one line summary" --wait
 ```
 
-Explain what it will do, because it is the half you cannot do: it materializes the folder, writes
-an md5 manifest, records the ownership event naming your document, then **waits until every file
-has actually uploaded** — and with `--wait`, until the other Mac claims it.
+Explain what the send does, because it is the half you cannot do: it materializes the folder,
+writes an md5 manifest, records the ownership event naming your document, then **waits until every
+file has actually uploaded**. The other Mac's Tandem then announces it there, and receiving it
+verifies every file before claiming the project.
 
 Then tell them not to edit the project here until it comes back. Two Macs editing one synced folder
 is what produces iCloud conflict copies, and the ownership record is what prevents it.
 
 Report honestly: at the moment you finish, the work is **written, not delivered**. Nothing has
-left this Mac until `tandem send` says so.
+left this Mac until the send says so.
