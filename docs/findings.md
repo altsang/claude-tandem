@@ -781,6 +781,26 @@ Drive folders off it, on both Macs.
   isn't a symlink. Google Drive mounts at the same path on both Macs when the same account is
   signed in. Any folder that's missing is named, not silently dropped.
 
+## 27. A send without a brief wrote no ownership event, and said UPLOADED
+
+**Seen 2026-11-02, sending Portfolio Management with `--no-doc`.** The send copied, exported and
+uploaded everything, printed *UPLOADED*, and wrote no ownership event, so the other Mac had nothing
+to receive. The engine call passed `"${docarg[@]}"`, an empty array with no brief, which macOS's
+bash 3.2 treats as an unbound variable under `set -u`. The error went into a pipe through `sed`,
+whose exit status nobody checked.
+
+**Fix (1.1.3):** the empty-array-safe form `${docarg[@]+"${docarg[@]}"}`. The engine's exit status
+is now checked, and the send stops with *the ownership event was not written* if it fails.
+
+## 28. A receive's paused steps stayed paused after they were done
+
+**Seen 2026-11-02 on Ji-su.** A receive with Claude open defers *Project defined here* and
+*Memory merged*. A separate settle finishes them once Claude quits, but the receive's row in
+Handoffs kept showing them paused after the work was done.
+
+**Fix (1.1.3):** `tandem settle` reports its steps. The app marks a receive's paused steps done
+once nothing for that project is left settling, whoever ran the settle.
+
 ---
 
 ## Two commands that caused damage during development

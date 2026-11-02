@@ -151,6 +151,7 @@ final class Job: ObservableObject, Identifiable {
         switch kind {
         case "send": order = ["brief", "prepare", "event", "upload"]
         case "receive": order = ["event", "files", "define", "claim", "memory", "unlock", "brief"]
+        case "settle": order = ["define", "memory", "unlock"]
         default: order = []
         }
     }
@@ -294,6 +295,15 @@ extension Store {
             }
         }
         d.set(Array(seen.suffix(400)), forKey: "notified")
+
+        // A receive's paused steps are finished by a settle — this app's, `tandem watch`'s or
+        // one run by hand. Once nothing for that project is left settling, show them done.
+        let settling = Set(inbox.filter { $0.kind == .settling }.map { "\($0.project.name)|\($0.side)" })
+        for job in jobs where job.kind == "receive" && job.waitingOnQuit {
+            guard let p = job.project, let s = job.side, !settling.contains("\(p)|\(s)"),
+                  !self.jobs.contains(where: { $0.running && $0.kind == "settle" && $0.project == p }) else { continue }
+            for (k, v) in job.steps where v.state == "wait" { job.steps[k] = StepState(state: "done", detail: "") }
+        }
 
         // a deferred receive finishes as soon as its profile's Claude is closed
         for item in inbox where item.kind == .settling {

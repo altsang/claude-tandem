@@ -1311,8 +1311,13 @@ PY
   # shells that do not word-split unquoted expansions, and this file gets sourced.
   local -a docarg=(); [ -n "$doc" ] && docarg=(--doc "$doc")
   step prepare done
-  bash "$e" handoff "$name" --to "$to" --note "$note" "${docarg[@]}" \
-    | sed -n '/^event:/p;/^  note:/p'
+  # ${a[@]+"${a[@]}"}: an empty array is "unbound" to macOS's bash 3.2 under set -u, and
+  # that failure used to vanish into the pipe — a --no-doc send uploaded everything,
+  # wrote no ownership event, and still said UPLOADED (2026-11-02).
+  local out
+  out="$(bash "$e" handoff "$name" --to "$to" --note "$note" ${docarg[@]+"${docarg[@]}"})" \
+    || { echo "$out" >&2; step event fail; die "the ownership event was not written — nothing was handed over. Fix the error above and send again."; }
+  echo "$out" | sed -n '/^event:/p;/^  note:/p'
   step event done "$to"
   echo "verifying the upload (this is what 'staged' never proved):"
   step upload start
@@ -1553,15 +1558,18 @@ cmd_settle(){
     if ! have_project "$name"; then
       if [ -n "$(find_definition "$name")" ]; then
         cmd_project_import "$name" | sed '/tandem pickup/d'
-        [ "${PIPESTATUS[0]}" -eq 0 ] || { echo "  ✗ could not add the project definition" >&2; rc=1; continue; }
+        [ "${PIPESTATUS[0]}" -eq 0 ] || { echo "  ✗ could not add the project definition" >&2; step define fail; rc=1; continue; }
+        step define done
       else
         echo "  ! no project definition on the drive — files only"
       fi
     fi
     if have_project "$name" && ls "$PROJECTS/$name/.handoff/memory/"*/snapshot.json >/dev/null 2>&1; then
-      cmd_memory_install "$name" --merge || rc=1
+      if cmd_memory_install "$name" --merge; then step memory done; else step memory fail; rc=1; fi
     fi
-    [ -f "$HOLDDIR/$name.json" ] && { cmd_release "$name" || rc=1; }
+    if [ -f "$HOLDDIR/$name.json" ]; then
+      if cmd_release "$name"; then step unlock done; else step unlock fail; rc=1; fi
+    fi
     [ "$rc" = 0 ] && rm -f "$f" && ok "'$name' settled — open Claude (${PROFILE:-default}) and it is there"
   done
   return "$rc"
