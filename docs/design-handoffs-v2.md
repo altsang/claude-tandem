@@ -1,6 +1,6 @@
 # Handoffs, rethought
 
-Status: **built** in 1.1.0 (2026-11-01). How to use it is in the [handoffs guide](handoffs.md#with-the-app). This page is the reasoning.
+Status: **built** in 1.1.0 (2026-11-01); since 1.1.1 the app also builds without Xcode. How to use it is in the [handoffs guide](handoffs.md#with-the-app). This page is the reasoning.
 
 ## What hurts today
 
@@ -144,18 +144,22 @@ The **Macs** page puts each Mac side by side, so keeping two (or more) in step i
 
 The **menu bar** is for the profiles you already have, and for the inbox:
 
-- **Inbox**: arrivals and ready briefs, one click each, shown when there is something.
-- **Each profile**: Open / Show Claude · Open Claude Code · Quit · Hand Off ▸ (only projects this profile holds) · Receive ▸ (only what is addressed to it) · Settings…
-- Open Claude Tandem… · Quit. Everything else, new profiles included, is in the window.
+- **Waiting for you**: arrivals, briefs ready to send and requests, one click each. Shown only when there is something.
+- **Each profile**: Show / Open Claude · Open Claude Code in Terminal · Quit Claude (Quit and Reopen after a Claude update) · Receive P (only what is addressed to it) · Hand Off ▸ (only projects this profile holds) · Bring In Earlier Sessions (when there are any) · Settings…, which opens its page in the window.
+- **Open Claude Tandem…** (⌘,) · **Quit Claude Tandem**.
 
-The **window** takes everything else:
+New profiles, Handoffs, Macs, renaming, badges and maintenance are all in the window. The menu is only for acting on what exists.
 
-- **Get Started**, then **Handoffs** (the ledger above), then each **profile**. A profile's page gains a Projects section: what it holds, with Hand Off…, and what is coming to it.
+The **window** takes everything else. Its sidebar:
+
+- **Get Started**: the setup checklist.
+- **Handoffs**: the ledger above, with Check Now.
+- **Macs**: one card per Mac.
+- **Profiles**: one page each, with its accounts, Projects (what it holds, what's coming, what's locked), earlier sessions, name, badge and Dock. The **+** in the toolbar makes a new one.
 - **Settings**:
-  - the terminal
-  - Open at Login
-  - what happens when a handoff arrives, or a brief is ready
-  - Sync Claude Code Sessions and Run Doctor, with their output shown in place and not in a terminal
+  - **Handoffs**: what happens when a handoff arrives, and when a brief is ready
+  - **General**: Open at Login, and which terminal opens Claude Code
+  - **Maintenance**: Check, Run Doctor, Sync Claude Code sessions, Find conflict copies, Update the shared engine. Each runs its CLI command and shows the output in place, not in a terminal.
 
 ## One implementation, two front ends
 

@@ -46,7 +46,7 @@
 #   SEVERAL ACCOUNTS ON ONE MAC — see `tandem profile help`:
 #
 #   tandem profile create|desktop|app|rename|code|quit|list|sync|doctor <p> ...
-#   tandem menubar                   the Claude Tandem menu-bar app
+#   tandem menubar                   build and open the Claude Tandem app (menu bar + window)
 #
 #   tandem skill                     show the /handoff skill to add in Claude › Settings › Skills
 #   tandem version                   print the installed version

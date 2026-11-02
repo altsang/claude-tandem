@@ -74,7 +74,12 @@ On **both** Macs, install Tandem first:
 
 ```bash
 brew install altsang/tap/claude-tandem
+tandem menubar        # builds and opens the app; needs the Command Line Tools
 ```
+
+Then, in the app's **Settings**, turn on **Open at Login**, and allow notifications when macOS asks. The app is what tells the other Mac a handoff is coming, and it publishes this Mac's card for the **Macs** page. A Mac without the app (a server, say) can run `tandem watch --install` instead.
+
+To update later, run `brew upgrade claude-tandem && tandem menubar` on **each** Mac. The **Macs** page shows each Mac's Tandem version and flags an older one.
 
 ### 1. The shared drive
 
@@ -111,7 +116,7 @@ Use the same Google account on both Macs, and set Drive to **mirror** files rath
 
 `tandem skill` shows the file in Finder, wherever Tandem is installed. Add it in Claude › **Settings › Skills › Add**. Skills sync by account, so add it once **per account** you'll hand work from, not once per Mac.
 
-It writes `HANDOFF_<topic>.md` into the project folder and stops. The transfer belongs to the terminal. `skills/pickup/SKILL.md` is in the repo but deliberately not installed: `receive` already claims the project and puts the document on your clipboard.
+It writes `HANDOFF_<topic>.md` into the project folder, plus a small *send intent* saying where it's going, and stops. The transfer belongs to Tandem: the app offers to send it, or you run `tandem send`. `skills/pickup/SKILL.md` is in the repo but deliberately not installed: `receive` already claims the project and puts the document on your clipboard.
 
 ### 3. Each project
 
@@ -191,6 +196,8 @@ A Mac that appears in the ownership log but publishes no card is listed too, as 
 
 `send` won't ship a project without a `HANDOFF*.md` (`--no-doc` overrides), and warns if the newest one predates the last handoff. `receive` won't claim a project that wasn't handed to it. Once it's handed over, don't edit the project where you left it; `tandem status` shows who holds what.
 
+**Worked on before anyone ran `receive`?** Then `receive` refuses: the files no longer match the manifest from the send, so it can't prove they're the ones that were sent. Nothing is lost. On the Mac that did the work, either send it on with a fresh manifest (`tandem send P --to …`), or, if it should stay there, record that with `tandem pickup P`, a plain claim with no file check ([finding 22](findings.md#22-a-handoff-nobody-received-sits-open-for-months--and-then-the-manifest-no-longer-fits)).
+
 ---
 
 ## Between accounts on one Mac
@@ -248,6 +255,7 @@ It doesn't cover anything outside Cowork, such as Finder, Excel or Quicken. Noth
 ## Proving it arrived
 
 ```bash
+tandem where        # every Mac, profile and project; what's on its way and what's waiting
 tandem status       # who holds what, and the last note
 tandem log "P"      # the project's ownership history
 tandem check        # shared root, account, drive sync state, broken folder links

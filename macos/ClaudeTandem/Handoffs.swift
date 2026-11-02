@@ -949,7 +949,7 @@ struct MacCard: View {
                 GridRow {
                     Text("Tandem").foregroundStyle(.secondary)
                     if m.this != true, !myVersion.isEmpty, v.compare(myVersion, options: .numeric) == .orderedAscending {
-                        Text("\(v) — older than this Mac’s \(myVersion). Update it there: brew upgrade claude-tandem").foregroundStyle(.orange)
+                        Text("\(v) — older than this Mac’s \(myVersion). Update it there: brew upgrade claude-tandem && tandem menubar").foregroundStyle(.orange)
                     } else { Text(v) }
                 }
             }

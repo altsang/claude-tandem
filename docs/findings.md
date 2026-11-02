@@ -29,6 +29,9 @@
 - [18. A stalled iCloud Drive on the RECEIVING Mac looks exactly like a missing handoff](#18-a-stalled-icloud-drive-on-the-receiving-mac-looks-exactly-like-a-missing-handoff)
 - [19. A running profile can carry its own Dock icon — through a clone, not an edit](#19-a-running-profile-can-carry-its-own-dock-icon--through-a-clone-not-an-edit)
 - [20. One Dock icon per profile is out of reach while Claude.app stays unmodified](#20-one-dock-icon-per-profile-is-out-of-reach-while-claudeapp-stays-unmodified)
+- [21. SwiftUI's `@State` needs Xcode on macOS 27 — the Command Line Tools can't expand it](#21-swiftuis-state-needs-xcode-on-macos-27--the-command-line-tools-cant-expand-it)
+- [22. A handoff nobody received sits open for months — and then the manifest no longer fits](#22-a-handoff-nobody-received-sits-open-for-months--and-then-the-manifest-no-longer-fits)
+- [23. A changed host key at boot was another device, not the Mac](#23-a-changed-host-key-at-boot-was-another-device-not-the-mac)
 - [Two commands that caused damage during development](#two-commands-that-caused-damage-during-development)
 
 </details>
@@ -665,6 +668,67 @@ signature and fail the same way.
 So the launcher in `~/Applications` stays: clicking it always opens the right profile, and a running
 profile shows a second, lit icon beside it. The experiment was undone by `tandem profile app
 Junipera --dock-icon`, which rebuilt a clone that passes `codesign --verify` again.
+
+---
+
+## 21. SwiftUI's `@State` needs Xcode on macOS 27 — the Command Line Tools can't expand it
+
+**Measured 2026-11-02, Ji-su (Command Line Tools 27.2 only) against Madoka (Xcode).** Tandem 1.1.0's
+app built on Madoka and failed on Ji-su with the same `swiftc` (Apple Swift 6.4.2):
+
+```
+error: external macro implementation type 'SwiftUIMacros.StateMacro' could not be found for macro 'State()';
+       plugin for module 'SwiftUIMacros' not found
+```
+
+In the macOS 27 SDK `@State` is a macro. Its plugin, `libSwiftUIMacros.dylib`, is under
+`Xcode.app/…/MacOSX.platform/Developer/usr/lib/swift/host/plugins/`; the Command Line Tools ship
+`libObservationMacros` and `libSwiftMacros` but not that one. 1.0.0 had no `@State`, so it never hit it.
+
+**Acted on in 1.1.1.** A small `@ViewState` property wrapper holds a `SwiftUI.State` directly, which is
+what the macro expands to, and builds with either toolchain. Checked by compiling on Ji-su before
+release, and by opening and closing a disclosure on Madoka. Rule for the app's sources: no SwiftUI
+macros (`@State`, `@Entry`, `#Preview`); test a build with
+`DEVELOPER_DIR=/Library/Developer/CommandLineTools`.
+
+---
+
+## 22. A handoff nobody received sits open for months — and then the manifest no longer fits
+
+**Seen 2026-11-01.** *Quicken Reconciliation* was handed off Madoka → Ji-su on Aug 19 and never
+received. Work carried on in it on Ji-su until Oct 23. Nothing recorded that: a Cowork session
+works on the files but never writes a claim. On Nov 1 the folder held 60 files against the
+manifest's 19, and 2 of the 19 had changed, so `receive` refused, correctly: *EDITED since it was
+handed over — nothing was claimed*. It was the second time for this project (finding 17).
+
+There are two honest ways out, and they mean different things:
+
+| | What it records |
+|---|---|
+| `tandem send P --to <other>` from the Mac that did the work | a new manifest from today's files, then a verified receive on the other side |
+| `tandem pickup P` on the Mac that did the work | a plain claim, with no file check — "it's here, and these files are the truth" |
+
+Here the work had happened on Ji-su and it was to stay there, so `pickup` was the right one.
+
+**Acted on in 1.1.0.** The ledger shows a send nobody has claimed in *In progress* as "never received
+there", and the receiving Mac gets a notification when the handoff lands, so this gap shows up in a
+day, not in months.
+
+---
+
+## 23. A changed host key at boot was another device, not the Mac
+
+**Seen 2026-11-01.** Right after Ji-su booted, `ssh Ji-su.local` failed with *REMOTE HOST
+IDENTIFICATION HAS CHANGED* and showed key `SHA256:GuRE…`. That key wasn't in `known_hosts` under
+any name. Minutes later every address for Ji-su answered with the key on record (`SHA256:0W0W…`),
+the one `/etc/ssh/ssh_host_ed25519_key.pub` on Ji-su has held since August 18. Before that, its
+ports had refused SSH, file sharing and screen sharing alike.
+
+So for a while a different device answered at Ji-su's address while Ji-su was coming up. Remote
+Login on Ji-su had never been off. This is a different case from the *changed key* in
+[troubleshooting](troubleshooting.md#reaching-your-other-mac): there a sleeping Mac's name resolved to
+**this** Mac, so the key shown was this Mac's own. Check which key you're shown before you
+conclude anything: `ssh-keygen -lf ~/.ssh/known_hosts | grep <fingerprint>`.
 
 ---
 

@@ -89,8 +89,9 @@ It **copies, never moves**: each Claude Code session's record and its full conve
 |---|---|
 | Open an account's desktop app | its Dock launcher · the menu bar · `tandem profile desktop work` |
 | Claude Code as an account | `claude @work` (zsh hook below) · `tandem profile code work` |
-| See every account, and which are open | the menu bar · `tandem profile list` |
+| See every account, and which are open | the menu bar · the app's sidebar · `tandem profile list` |
 | Quit one account's app, leaving the others | the menu bar · `tandem profile quit work` |
+| Rename, change the badge or colour | the profile's page in the app · `tandem profile rename` · `tandem profile app` |
 
 `quit` sends that one window's app the same quit event as ⌘Q, so it saves its state. Quitting "Claude" by name — from a script, say — would hit whichever instance macOS picks.
 
@@ -145,7 +146,7 @@ The launcher is Claude's own current icon with the badge in the corner. Badge an
 **A badged icon while it runs.** Normally every running profile shows Claude's own Dock and ⌘-Tab icon, because they all run the one Claude.app. Turn this on and the profile shows its badge while it's open:
 
 ```bash
-tandem profile app work --dock-icon        # or: menu bar › work › Show Badge in the Dock
+tandem profile app work --dock-icon        # or: Claude Tandem › work › Dock › Show the badge…
 tandem profile app work --no-dock-icon     # off again
 ```
 
@@ -206,7 +207,7 @@ tandem profile list
 work             you@company.com (team)             account d37cdc9d                   yes — QUIT+REOPEN (app updated since)
 ```
 
-Quit and reopen each open profile; the menu bar offers *Quit and Reopen*. Then:
+Quit and reopen each open profile; the menu bar and the profile's page in the app both offer *Quit and Reopen*. Then:
 
 ```bash
 tandem profile doctor

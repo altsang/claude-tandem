@@ -4,8 +4,8 @@
 white-space:pre;dominant-baseline:auto}
 text[style*="animation-name"]{opacity:0;animation-duration:32.0s;animation-iteration-count:infinite;animation-timing-function:linear}
 @keyframes a1{0%,1.25%{opacity:0}1.37%,100%{opacity:1}}
-@keyframes type2{0%,1.25%{width:0}7.50%,100%{width:692.5px}}
-@keyframes cm3{0%,1.25%{x:33.6px}7.50%,100%{x:726.1px}}
+@keyframes type2{0%,1.25%{width:0}7.50%,100%{width:647.4px}}
+@keyframes cm3{0%,1.25%{x:33.6px}7.50%,100%{x:680.9px}}
 @keyframes co3{0%,1.25%{opacity:0}1.35%,7.50%{opacity:.85}7.60%,100%{opacity:0}}
 @keyframes a4{0%,8.12%{opacity:0}8.24%,100%{opacity:1}}
 @keyframes a5{0%,9.06%{opacity:0}9.18%,100%{opacity:1}}
@@ -33,9 +33,9 @@ text[style*="animation-name"]{opacity:0;animation-duration:32.0s;animation-itera
 @keyframes a27{0%,60.00%{opacity:0}60.12%,100%{opacity:1}}
 @keyframes a28{0%,34.06%{opacity:0}34.18%,100%{opacity:1}}
 @keyframes a29{0%,35.00%{opacity:0}35.12%,100%{opacity:1}}
-@keyframes type30{0%,35.00%{width:0}38.94%,100%{width:338.7px}}
-@keyframes cm31{0%,35.00%{x:33.6px}38.94%,100%{x:372.3px}}
-@keyframes co31{0%,35.00%{opacity:0}35.10%,38.94%{opacity:.85}39.04%,100%{opacity:0}}
+@keyframes type30{0%,35.00%{width:0}38.41%,100%{width:293.6px}}
+@keyframes cm31{0%,35.00%{x:33.6px}38.41%,100%{x:327.1px}}
+@keyframes co31{0%,35.00%{opacity:0}35.10%,38.41%{opacity:.85}38.51%,100%{opacity:0}}
 @keyframes a32{0%,41.25%{opacity:0}41.37%,100%{opacity:1}}
 @keyframes a33{0%,42.19%{opacity:0}42.31%,100%{opacity:1}}
 @keyframes a34{0%,43.12%{opacity:0}43.24%,45.00%{opacity:1}45.12%,100%{opacity:0}}
@@ -68,9 +68,9 @@ text[style*="animation-name"]{opacity:0;animation-duration:32.0s;animation-itera
 <circle cx="48.5" cy="23" r="5" fill="#61c454"/>
 <text x="450.0" y="27.5" text-anchor="middle" class="t" fill="#768390" font-size="11.5">Madoka — desktop</text>
 <text x="18.5" y="60.5" class="t" fill="#57ab5a" style="animation-name:a1">$</text>
-<clipPath id="clip1"><rect x="33.555" y="38.0" height="23.0" width="0" style="animation:type2 32.0s steps(92,end) infinite"/></clipPath>
-<text x="33.555" y="60.5" class="t" fill="#e6edf3" clip-path="url(#clip1)" style="animation-name:a1">./bin/tandem send &quot;Quicken Reconciliation&quot; --to Ji-su --note &quot;Amex feed short 2 txns&quot; --wait</text>
-<rect x="33.6" y="50.5" width="7.5" height="12.5" fill="#e6edf3" opacity="0" style="animation:cm3 32.0s steps(92,end) infinite,co3 32.0s linear infinite"/>
+<clipPath id="clip1"><rect x="33.555" y="38.0" height="23.0" width="0" style="animation:type2 32.0s steps(86,end) infinite"/></clipPath>
+<text x="33.555" y="60.5" class="t" fill="#e6edf3" clip-path="url(#clip1)" style="animation-name:a1">tandem send &quot;Quicken Reconciliation&quot; --to Ji-su --note &quot;Amex feed short 2 txns&quot; --wait</text>
+<rect x="33.6" y="50.5" width="7.5" height="12.5" fill="#e6edf3" opacity="0" style="animation:cm3 32.0s steps(86,end) infinite,co3 32.0s linear infinite"/>
 <text x="18.5" y="77.5" class="t" fill="#e6edf3" style="animation-name:a4">sending &#x27;Quicken Reconciliation&#x27;: Madoka -&gt; Ji-su</text>
 <text x="18.5" y="94.5" class="t" fill="#768390" style="animation-name:a5">  document: HANDOFF_quicken_aug.md</text>
 <text x="18.5" y="111.5" class="t" fill="#e6edf3" style="animation-name:a6">materializing (so real bytes exist to upload):</text>
@@ -103,9 +103,9 @@ text[style*="animation-name"]{opacity:0;animation-duration:32.0s;animation-itera
 <circle cx="48.5" cy="479.0" r="5" fill="#61c454"/>
 <text x="450.0" y="483.5" text-anchor="middle" class="t" fill="#768390" font-size="11.5">Ji-su — laptop</text>
 <text x="18.5" y="516.5" class="t" fill="#57ab5a" style="animation-name:a29">$</text>
-<clipPath id="clip29"><rect x="33.555" y="494.0" height="23.0" width="0" style="animation:type30 32.0s steps(45,end) infinite"/></clipPath>
-<text x="33.555" y="516.5" class="t" fill="#e6edf3" clip-path="url(#clip29)" style="animation-name:a29">./bin/tandem receive &quot;Quicken Reconciliation&quot;</text>
-<rect x="33.6" y="506.5" width="7.5" height="12.5" fill="#e6edf3" opacity="0" style="animation:cm31 32.0s steps(45,end) infinite,co31 32.0s linear infinite"/>
+<clipPath id="clip29"><rect x="33.555" y="494.0" height="23.0" width="0" style="animation:type30 32.0s steps(39,end) infinite"/></clipPath>
+<text x="33.555" y="516.5" class="t" fill="#e6edf3" clip-path="url(#clip29)" style="animation-name:a29">tandem receive &quot;Quicken Reconciliation&quot;</text>
+<rect x="33.6" y="506.5" width="7.5" height="12.5" fill="#e6edf3" opacity="0" style="animation:cm31 32.0s steps(39,end) infinite,co31 32.0s linear infinite"/>
 <text x="18.5" y="533.5" class="t" fill="#e6edf3" style="animation-name:a32">receiving &#x27;Quicken Reconciliation&#x27; on Ji-su</text>
 <text x="18.5" y="550.5" class="t" fill="#e6edf3" style="animation-name:a33">waiting for a handoff addressed to Ji-su...</text>
 <text x="18.5" y="567.5" class="t" fill="#768390" style="animation-name:a34">  6s</text>

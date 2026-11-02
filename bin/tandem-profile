@@ -28,8 +28,8 @@
 #                                    Claude — from before the profile existed (see cmd_adopt)
 #   tandem profile list [--json]     each profile's account, plan and whether it is open
 #   tandem profile menubar [--rebuild]
-#                                    build and open "Claude Tandem", a menu-bar app:
-#                                    open, rename, re-badge, hand off and receive projects
+#                                    build and open the "Claude Tandem" app: a menu bar for
+#                                    your profiles and what's waiting, and a window for the rest
 #   tandem profile sync [--dry-run]  copy Claude Code sessions (projects/, plans/) between
 #                                    profiles, newest wins, so /resume works on any account
 #   tandem profile doctor            after a Claude upgrade: re-check what profiles rely on,

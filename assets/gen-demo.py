@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render the two-Mac handoff as an animated SVG terminal recording.
 
-Every printed line below is verbatim from bin/tandem + bin/coworkctl-v7.sh —
+Every printed line below is verbatim from bin/tandem + bin/coworkctl-v8.sh —
 only the project name, timestamps and byte counts are filled in.
 """
 import html
@@ -26,8 +26,8 @@ C = dict(
 # (row, t_on, t_off|None, text, color)  — same row + t_off = a line that
 # rewrites itself in place, the way the real progress bars do.
 
-MADOKA_CMD = './bin/tandem send "Quicken Reconciliation" --to Ji-su --note "Amex feed short 2 txns" --wait'
-JISU_CMD   = './bin/tandem receive "Quicken Reconciliation"'
+MADOKA_CMD = 'tandem send "Quicken Reconciliation" --to Ji-su --note "Amex feed short 2 txns" --wait'
+JISU_CMD   = 'tandem receive "Quicken Reconciliation"'
 
 madoka = [
     (1,  2.6, None, "sending 'Quicken Reconciliation': Madoka -> Ji-su", "head"),
