@@ -18,7 +18,7 @@
 | Use a second Claude account while the first is open | ❌ one account signed in at a time | ✅ both apps, both Claude Codes, at once |
 | Tell two open accounts apart | ❌ identical windows, identical Dock icons | ✅ names, badges, a badged Dock icon, a menu-bar switcher and a window |
 | Keep working when one account hits its limit | ❌ start over on the other account | ✅ hand the project across with its files, memory and a brief |
-| Pick up on your other Mac | ⚠️ files sync; local projects, their chats and memory don't | ✅ one click per side, or one command — every byte verified |
+| Pick up on your other Mac | ❌ files sync, but the session stays on the Mac it ran on: its chat, its project and its memory | ✅ one click per side, or one command — every byte verified |
 | Know what's where | ❌ nothing says which Mac or account has a project | ✅ every project, every Mac and account, in one view — `tandem where` |
 
 </div>
@@ -30,7 +30,7 @@
 - [Quick start](#quick-start)
 - [Several Claude accounts on one Mac](#several-claude-accounts-on-one-mac)
 - [Telling them apart](#telling-them-apart)
-- [Moving work between accounts and Macs](#moving-work-between-accounts-and-macs)
+- [Moving work between accounts and Macs](#moving-work-between-accounts-and-macs) — [why handoffs exist](#why-handoffs-exist)
 - [The app](#the-app)
 - [Install](#install)
 - [Documentation](#documentation)
@@ -117,6 +117,28 @@ Every profile runs the same Claude.app, so out of the box two open accounts look
 
 ## Moving work between accounts and Macs
 
+### Why handoffs exist
+
+**A Cowork session belongs to the Mac it started on.** The everyday kind, a *host-loop* session in a local project, which reads your folder with no setup, runs on this computer. Its chat, the project's definition and folder link, and what Claude learned while working all live on this Mac, under this account. iCloud can sync the project's files, but nothing that makes them a project Claude knows.
+
+So the moment you move, the thread breaks:
+
+- **To your laptop.** Claude on the other Mac has never heard of the project. The chat isn't there, nor the memory, and the files may have arrived as empty placeholders.
+- **To your other account**, because this one is near its usage limit. Accounts share nothing, so the second one starts cold too.
+- **Back and forth.** When both Macs can edit the same folder, nothing says which copy is current.
+
+Claude Tandem was built to overcome that: to move a Cowork project between Macs and accounts without losing the thread. A handoff carries everything that doesn't travel by itself:
+
+- the project's definition, written into the receiving Claude;
+- its memory, merged rather than overwritten;
+- a brief of where you were, written by the session itself, since its chat can't move;
+- every file, verified byte for byte;
+- a record of who holds it now, so only one place works on it at a time.
+
+*Remote* Cowork sessions do sync their chat, but only between Macs signed into the same account, and they reach your files only through folders granted to each session. Handoffs are for everything else ([finding 17](docs/findings.md#17-there-are-two-session-stores--and-only-one-of-them-syncs)).
+
+### How
+
 The same two commands move a Cowork project **to another account on this Mac** or **to your other Mac**, because to Tandem each profile is simply another side: `Madoka`, `Madoka@work`, `Ji-su`.
 
 <p align="center">
@@ -154,8 +176,6 @@ The same thing in a terminal, for scripts or a Mac without the app:
   <img src="assets/tandem-handoff-demo.svg" alt="Two terminals: tandem send on Madoka materializes, exports, snapshots memory and blocks until every file reports isUploaded; tandem receive on Ji-su md5-verifies every file, claims the project, installs the memory snapshot and copies the handoff document to the clipboard — and the sender's DELIVERED line only lands once the receiver has claimed it" width="880"/>
   <br/><sub>A handoff between Macs, both sides. Neither command returns until its half is provable — rendered from the tool's own output with measured timings; playback compressed.</sub>
 </p>
-
-**Do you need it?** Not for everything. A Cowork *remote* session's chat already appears on every Mac signed into that account; the everyday *host-loop* session in a local project — the kind that reads your files with no setup — never leaves its Mac, and that is the gap this fills ([finding 17](docs/findings.md)).
 
 **→ [The handoffs guide](docs/handoffs.md)** — setting up the shared drive and the skill, the daily loop, locking a Mac out, memory, and timings.
 

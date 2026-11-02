@@ -2,6 +2,7 @@
 
 A **handoff** moves a Cowork project from one place you work to another — to the account in your other profile, or to your other Mac — with its files, its definition, what Claude learned on it, and a brief of where you were. Every side has a name: `Madoka`, `Madoka@work`, `Ji-su`.
 
+- [Why it exists](#why-it-exists)
 - [When you need one](#when-you-need-one)
 - [How a handoff works](#how-a-handoff-works)
 - [Set up](#set-up) — [the shared drive](#1-the-shared-drive) · [the skill](#2-the-handoff-skill) · [each project](#3-each-project)
@@ -16,6 +17,28 @@ A **handoff** moves a Cowork project from one place you work to another — to t
 - [The folder link](#the-folder-link)
 
 ---
+
+## Why it exists
+
+Claude's Cowork sessions are tied to the computer they run on. A **host-loop** session in a local project is the everyday kind: it reads your folder directly, with no grants and no setup. It runs on this Mac, and everything that makes it useful stays here:
+
+- **the conversation:** `local_<uuid>.json` under `local-agent-mode-sessions/`, never synced;
+- **the project:** its definition and folder link, written into this Mac's `spaces.json` for one account;
+- **what Claude learned:** the project's memory, kept per Mac and per account.
+
+The files can sit on iCloud Drive and sync. Everything else stays put. Open the same folder on your laptop, or in your second account when the first runs low, and Claude starts from nothing. It doesn't know the project, what was decided, or what comes next. Worse, the files may have arrived *dataless*: listed, but empty until something forces the download. And with two Macs able to edit, nothing says which copy is current.
+
+Claude Tandem was built to overcome that, so that moving a Cowork project between Madoka and Ji-su, or between accounts, is as reliable as staying put. A handoff carries what doesn't travel by itself:
+
+| Doesn't travel by itself | A handoff carries it as |
+|---|---|
+| The chat | a **brief** written by the session itself (`/handoff`), pasted into the next one. The chat can't move, so what mattered in it does. |
+| The project's definition and folder link | an export, written into the receiving Mac's or account's Claude |
+| What Claude learned | a **memory snapshot**, merged into whatever the receiver already knows |
+| Real bytes on the other side | an upload checked file by file before `send` returns, and an **md5 check** of every file before `receive` claims it |
+| Knowing who works on it now | an append-only **ownership record**, so two places never edit it at once |
+
+If your work already runs as Cowork **remote** sessions, their chat syncs on its own to every Mac signed into the same account ([finding 17](findings.md#17-there-are-two-session-stores--and-only-one-of-them-syncs)). Even then, a handoff is how a project moves to a *different* account, and how you know the files arrived whole.
 
 ## When you need one
 
