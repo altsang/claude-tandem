@@ -801,6 +801,32 @@ Handoffs kept showing them paused after the work was done.
 **Fix (1.1.3):** `tandem settle` reports its steps. The app marks a receive's paused steps done
 once nothing for that project is left settling, whoever ran the settle.
 
+## 29. Claude's updater relaunched a Dock copy on the default account
+
+**Seen 2026-11-05 on Madoka, and earlier on 2026-11-03.** The badged *Claude (Junipera)* window
+showed the Personal account. Its process was the Junipera Dock copy
+(`~/.config/claude-tandem/runtimes/Junipera/Claude.app`) with no arguments at all. Without
+`--user-data-dir` it had opened the default data folder, the one the regular Claude.app had
+open too.
+
+Claude's updater (Squirrel's ShipIt) treats the copy as an ordinary install.
+`ShipItState.plist` named the copy as its `targetBundleURL`. The log showed it replacing the
+copy at 11:36:27 and launching it a second later, with no arguments, so with no
+`--user-data-dir` and no `CLAUDE_CONFIG_DIR`. The copy was then a newer Claude (4.23118) than
+`/Applications/Claude.app` (4.16336). Opening the profile from its launcher would have rebuilt
+the copy and deleted the bundle under the running process.
+
+Stopping the updater would mean a read-only copy. Claude would then report a failed update in
+that window over and over, so Tandem repairs the result instead.
+
+**Fix (1.1.5):**
+
+- `tandem profile repair` finds a copy running without `--user-data-dir`, quits it the way ⌘Q
+  does, and opens it again as its profile, which also rebuilds the copy from Claude.app.
+- The menu-bar app runs `repair` whenever a copy launches, and says so in a notification.
+- `desktop` repairs first, a copy is never rebuilt while anything runs from it, and
+  `tandem profile doctor` reports a stray copy.
+
 ---
 
 ## Two commands that caused damage during development

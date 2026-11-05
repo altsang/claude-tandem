@@ -23,6 +23,8 @@
 #                                    see "Names and ids" below
 #   tandem profile code <p> [args]   run Claude Code as <p>  (in zsh: claude @<p> [args])
 #   tandem profile quit <p>          quit <p>'s Claude desktop the way ⌘Q does
+#   tandem profile repair            a Dock copy Claude's updater relaunched on the default
+#                                    account: quit it and reopen it as its profile
 #   tandem profile adopt <p> [--dry-run] [--restart]
 #                                    bring in <p>'s account history left in the default
 #                                    Claude — from before the profile existed (see cmd_adopt)
@@ -151,6 +153,9 @@ cmd_create(){
 cmd_desktop(){
   local p="${1:-default}"; check_name "$p"; p="$(need "$p")" || exit 1
   [ -d "$CLAUDE_APP" ] || die "Claude desktop is not installed at $CLAUDE_APP"
+  # A Dock copy the updater relaunched is open on the default folder: put it back first,
+  # or opening anything here adds to the mess (two apps on one folder).
+  [ -z "$(stray_pids)" ] || cmd_repair
   if [ "$p" = default ]; then open -a "$CLAUDE_APP"; return; fi
   local data; data="$(data_dir "$p")"
   [ -d "$data" ] || die "no profile '$p' — run: tandem profile create $p"
@@ -274,10 +279,26 @@ runtime_current(){   # built, and from the Claude.app installed now
   local app; app="$(runtime_app "$1")"
   [ -d "$app" ] && [ "$(defaults read "$app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null)" = "$(app_version)" ]
 }
+# Anything running from this profile's copy, with or without its profile — its main
+# process or a helper under Contents/Frameworks. Rebuilding then would delete the bundle
+# out from under it.
+runtime_busy(){ ps -axo args= | awk -v d="$(runtime_app "$1")/" 'index($1, d) == 1 {f=1} END {exit !f}'; }
+# Claude's updater treats a copy as an ordinary install (ShipItState.plist names the copy
+# as its targetBundleURL): it updates the copy in place and relaunches it with NO
+# arguments, so without --user-data-dir or CLAUDE_CONFIG_DIR. The copy then opens the
+# DEFAULT folder: the badged window shows the default account, beside the real default
+# Claude on the same folder. Seen 2026-11-03 and 2026-11-05 (finding 29). Prints
+# "<pid> <id>" for each. Paths have no spaces (make_runtime refuses them), so $2 is argv[0].
+stray_pids(){
+  ps -axo pid=,args= | awk -v root="$CONFDIR/runtimes/" '
+    index($2, root) == 1 && $2 ~ /\/Claude\.app\/Contents\/MacOS\/Claude$/ && index($0, "--user-data-dir=") == 0 {
+      id = substr($2, length(root) + 1); sub(/\/.*/, "", id); print $1, id
+    }'
+}
 make_runtime(){   # <id> <icon file>
   local p="$1" icon="$2" app; app="$(runtime_app "$p")"
   case "$app" in *" "*) echo "  - dock icon: '$app' has a space in it; skipped"; return 1;; esac
-  if desktop_running "$p"; then echo "  - dock icon: '$(label "$p")' is open — it takes effect after you quit and reopen it"; return 1; fi
+  if desktop_running "$p" || runtime_busy "$p"; then echo "  - dock icon: '$(label "$p")' is open — it takes effect after you quit and reopen it"; return 1; fi
   rm -rf "$app"; mkdir -p "$(dirname "$app")"   # exact path: our own clone
   cp -Rc "$CLAUDE_APP" "$app" 2>/dev/null || cp -R "$CLAUDE_APP" "$app" || return 1   # -c: APFS clone
   osascript -l JavaScript -e "ObjC.import('AppKit'); \$.NSWorkspace.sharedWorkspace.setIconForFileOptions(\$.NSImage.alloc.initWithContentsOfFile('$icon'), '$app', 0)" >/dev/null 2>&1 \
@@ -395,6 +416,25 @@ cmd_quit(){
     sleep 1
   done
   die "'$(label "$p")' is still open after 15s — it may be asking something in its window"
+}
+
+# Put each stray copy (see stray_pids) back as its profile: quit it the way ⌘Q does, so
+# it saves state, wait until nothing runs from the copy, then open the profile again with
+# its own folder. That also rebuilds the copy from Claude.app, since the updater left it
+# on another version. The menu-bar app runs this whenever a copy launches.
+cmd_repair(){
+  local strays=() line pid id i
+  while read -r line; do [ -n "$line" ] && strays+=("$line"); done < <(stray_pids)
+  [ ${#strays[@]} -gt 0 ] || { ok "every Dock copy is running as its own profile"; return 0; }
+  for line in "${strays[@]}"; do
+    pid="${line%% *}"; id="${line#* }"
+    echo "  - Claude's updater reopened the Dock copy for '$(label "$id")' without its profile — it was showing your default account"
+    osascript -l JavaScript -e "ObjC.import('AppKit'); \$.NSRunningApplication.runningApplicationWithProcessIdentifier($pid).terminate" >/dev/null 2>&1 || true
+    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do runtime_busy "$id" || break; sleep 1; done
+    runtime_busy "$id" && die "it is still open after 15s — it may be asking something in its window. Quit it, then run: tandem profile desktop $(label "$id")"
+    if resolve "$id" >/dev/null 2>&1 && [ -d "$(data_dir "$id")" ]; then ( cmd_desktop "$id" )
+    else ok "quit it (no profile '$id' any more)"; fi
+  done
 }
 
 # --- adopt: history an account left in the default Claude, before it had a profile -----
@@ -740,6 +780,9 @@ cmd_doctor(){
     echo "  ⚠ claude:// links open $h — sign-in callbacks could reach the wrong account."
     echo "    Re-register Claude.app: /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f $CLAUDE_APP"
   fi
+  local line; while read -r line; do
+    [ -n "$line" ] && echo "  ⚠ the Dock copy for '$(label "${line#* }")' is running without its profile (Claude's updater relaunched it) — it has your default account open. Run: tandem profile repair"
+  done < <(stray_pids)
   local p; for p in $(profiles); do
     desktop_stale "$p" && { echo "  ⚠ '$p' is running code from before the update — quit and reopen it"; }
     if dock_icon_on "$p" && ! runtime_current "$p"; then
@@ -757,6 +800,7 @@ case "${1:-help}" in
   code)    shift; cmd_code "$@";;
   rename)  shift; cmd_rename "$@";;
   quit)    shift; cmd_quit "$@";;
+  repair)  shift; cmd_repair "$@";;
   adopt)   shift; cmd_adopt "$@";;
   menubar) shift; cmd_menubar "$@";;
   list)    shift; cmd_list "$@";;

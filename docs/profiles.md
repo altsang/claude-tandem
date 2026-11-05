@@ -157,7 +157,7 @@ It takes effect the next time the profile opens. The profile then runs from its 
 - `claude://` sign-in links still go to `/Applications/Claude.app`
 - every "is Claude running?" safety check sees it
 
-When Claude updates, the copy is remade the next time the profile opens.
+When Claude updates, the copy is remade the next time the profile opens. Claude's own updater can also update the copy while it runs, then restart it without its profile, so it opens your default account under the profile's badge. Claude Tandem notices, quits it, and opens it again as the profile ([finding 29](findings.md#29-claudes-updater-relaunched-a-dock-copy-on-the-default-account)). Without the app running, `tandem profile repair` does the same.
 
 **Pin the launcher, not the running icon.** Drag `~/Applications/Claude (work).app` to the Dock. In Finder that's your home folder's Applications, not the one in the sidebar: press ⌘⇧G and type `~/Applications`. Don't use *Options › Keep in Dock* on a running profile. That pins a copy of Claude that no longer knows which profile it is, and clicking it brings up your default account.
 

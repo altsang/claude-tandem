@@ -45,12 +45,13 @@ Anywhere a profile is named you can use its id or its name. `default` is the Cla
 | `tandem profile code P [args]` | Claude Code as that profile, passing `args` through (`--resume`, a prompt, …) |
 | `tandem profile list [--json]` | each profile's Code account and plan, desktop account, whether it's open, and whether it needs reopening after an update |
 | `tandem profile quit P` | quit that profile's app the way ⌘Q does, and wait up to 15 s for it to close |
+| `tandem profile repair` | a Dock copy Claude's updater relaunched without its profile, so it shows your default account: quit it and open it again as its profile. The menu-bar app runs this whenever a copy starts |
 | `tandem profile adopt P [--dry-run] [--restart] [--never]` | copy in Claude Code sessions this profile's account left in your regular Claude before it had a profile ([details](profiles.md#used-this-account-before-bring-its-history-in)) |
 | `tandem profile rename P NEW` | a new name everywhere; the id and folders stay ([why](profiles.md#names-and-ids)) |
 | `tandem profile app P [options]` | build its Dock launcher, `~/Applications/Claude (NAME).app` |
 | `tandem profile app --all` | rebuild every launcher, e.g. after Claude's icon changes |
 | `tandem profile sync [--dry-run]` | copy Claude Code sessions (`projects/`, `plans/`) between all profiles, newest wins |
-| `tandem profile doctor` | after a Claude update: check what profiles rely on, flag apps to reopen and stale Dock copies, check where `claude://` links go |
+| `tandem profile doctor` | after a Claude update: check what profiles rely on, flag apps to reopen, stale Dock copies and copies running without their profile, check where `claude://` links go |
 | `tandem menubar [--rebuild]` | build `~/Applications/Claude Tandem.app` (menu bar and window) when its sources, the version or the install changed, then open it if it isn't running. `--rebuild` forces the build; `--help` prints usage |
 
 `app` options, all remembered for next time:

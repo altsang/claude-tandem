@@ -113,6 +113,16 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         store.notifier.store = store
         store.notifier.setup()
         store.startLedger()
+        // Claude's updater relaunches a profile's Dock copy with no arguments, so it opens the
+        // default account under that profile's badge (finding 29). Whenever a copy starts,
+        // let `tandem profile repair` put it back; it does nothing when the copy is fine.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [unowned self] n in
+            guard let a = n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  a.bundleURL?.path.contains("/.config/claude-tandem/runtimes/") == true else { return }
+            self.repairStrays()
+        }
+        repairStrays()
         // `--show <page>` (handoffs, macs, settings, setup, or a profile id) opens the window there.
         let argv = CommandLine.arguments
         if let i = argv.firstIndex(of: "--show"), i + 1 < argv.count {
@@ -581,6 +591,31 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
                     self.alert("tandem profile \(args.first ?? "") didn’t work",
                                (r.err + r.out).trimmingCharacters(in: .whitespacesAndNewlines))
                 }
+                self.store.refresh()
+            }
+        }
+    }
+
+    /// Runs `tandem profile repair` and says what it did: nothing to say when every
+    /// Dock copy is running as its own profile.
+    func repairStrays() {
+        let tandem = self.tandem, path = self.path
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2) {
+            let r = runProcess("/bin/bash", [tandem, "profile", "repair"], path: path)
+            guard r.out.contains("updater reopened") else { return }
+            let names = r.out.components(separatedBy: "\n").compactMap { line -> String? in
+                guard line.contains("updater reopened"), let a = line.range(of: "for '"),
+                      let b = line.range(of: "'", range: a.upperBound..<line.endIndex) else { return nil }
+                return String(line[a.upperBound..<b.lowerBound])
+            }
+            let who = names.isEmpty ? "A profile" : names.joined(separator: ", ")
+            DispatchQueue.main.async {
+                let fixed = r.code == 0
+                self.store.notifier.post(id: "repair:\(Date().timeIntervalSince1970)",
+                    title: fixed ? "\(who) reopened on its own account" : "\(who) is showing your default account",
+                    body: fixed ? "Claude’s updater had restarted it on your default account. Claude Tandem quit it and opened it again as \(who)."
+                                : "Claude’s updater restarted it on your default account, and it didn’t quit. Quit it, then open it from its Claude (\(who)) launcher.",
+                    category: "INFO", info: [:])
                 self.store.refresh()
             }
         }
