@@ -19,8 +19,8 @@ What remains:
 
 1. ~~First real run with a second account~~ — done 2026-10-31 (profile `Junipera`); next is a real
    same-Mac project handoff (Remaining, step 5).
-2. Answer the two open questions about the desktop app (deep-link sign-in with two instances, and
-   update behaviour), ideally with a full `rea` analysis.
+2. ~~Update behaviour~~: answered 2026-11-05, see the note below. Still open: deep-link sign-in
+   with two instances running.
 3. `tandem deploy` to publish engine v8 to the iCloud shared tree — **ask first**; it writes to the
    shared tree and reaches Ji-su.
 
@@ -74,6 +74,23 @@ on iCloud. So same-Mac account handoff reuses send/receive unchanged:
 
 ## Status
 
+**Updated 2026-11-05.** Both Macs run **1.1.5**.
+
+- **Update behaviour, answered (finding 29).** Claude's updater (ShipIt) treats a profile's
+  `--dock-icon` copy as an ordinary install. It updates the copy in place and relaunches it with
+  no arguments, so the copy opens the default account under the profile's badge. That happened
+  on Madoka on 2026-11-03 and 2026-11-05. 1.1.5 adds `tandem profile repair`, and the menu-bar
+  app runs it whenever a copy launches.
+- **Profiles on each Mac.**
+  - Madoka has Personal (default) and Junipera, with the Junipera Dock badge on.
+  - Ji-su has Personal (default) and Junipera, created 2026-11-05, with the Dock badge off.
+  - Ji-su's Junipera launcher is not pinned in its Dock yet.
+- **Unexplained.** On 2026-11-05 Al saw a "Claude is damaged" dialog. Every Claude app and
+  launcher on both Macs passed `codesign --verify`, and none had quarantine. The likeliest
+  cause: a Dock tile that still pointed at the Junipera copy while it was being rebuilt.
+
+The tables below are the original record from 2026-10-29.
+
 **Done and verified on Madoka:**
 
 | What | Evidence |
@@ -98,7 +115,7 @@ on iCloud. So same-Mac account handoff reuses send/receive unchanged:
 | 5 | Real same-Mac handoff of a small project: `/handoff`, `tandem send P --to Madoka@b --wait`, quit b, `tandem --profile b receive P` | Install the `/handoff` skill in account b first (skills sync per account) |
 | 6 | `tandem deploy` (ask Al) — publishes v8; Ji-su picks it up; without `TANDEM_ME` it behaves exactly like v7 | |
 | 7 | ~~Commit both repos~~ | **Done** — merged to `main`, pushed, pulled on Ji-su |
-| 8 | Optional: full rea run for questions 3 and update behaviour | See Gotchas for how it failed |
+| 8 | Optional: full rea run for question 3 | Update behaviour is answered (finding 29). See Gotchas for how rea failed |
 
 ## Gotchas
 
@@ -117,8 +134,10 @@ Silent ones first.
 - **osacompile applets ship `Assets.car` + `CFBundleIconName`, which override `applet.icns`.**
   `cmd_app` deletes both and re-signs ad hoc. And macOS 26+ puts a non-full-bleed `.icns` on a grey
   plate — hence the crop-to-tile step.
-- **A running profile's Dock/⌘-Tab icon is always Claude's.** Only the launcher carries the badge.
-  Changing Claude.app's bundle would break its signature and updates — don't.
+- **A running profile's Dock/⌘-Tab icon is Claude's** unless `--dock-icon` is on. With it on,
+  the profile runs from a badged APFS clone (finding 19). Claude's updater updates that clone
+  and relaunches it without its profile (finding 29); `tandem profile repair` puts it back.
+  Never change Claude.app's own bundle: that breaks its signature and updates.
 - **`3p` is reserved:** Claude itself uses `Application Support/Claude-3p`.
 - **`npx rea` is the wrong package** (an old connect.router wrapper). The tool is `rea-agents`
   (binary `rea`). `analyze-javascript-application` on app.asar first fails
