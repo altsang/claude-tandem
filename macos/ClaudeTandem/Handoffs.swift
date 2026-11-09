@@ -40,7 +40,7 @@ struct LDoc: Decodable, Equatable { let name: String, modified: String?, stale: 
 struct Intent: Decodable, Equatable { let to: String?, note: String?, doc: String?, file: String, at: String? }
 struct Request: Decodable, Equatable { let from: String?, note: String?, file: String, at: String? }
 struct Settle: Decodable, Equatable { let project: String, side: String, profile: String, needs: [String] }
-struct Unshared: Decodable, Equatable { let project: String, side: String, mac: String, name: String? }
+struct Unshared: Decodable, Hashable { let project: String, side: String, mac: String, name: String? }
 
 struct LProject: Decodable, Equatable, Identifiable {
     let name: String
@@ -569,7 +569,6 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
 struct HandoffsView: View {
     @ObservedObject var store: Store
-    @ViewState private var showUnshared = false
 
     var body: some View {
         ScrollView {
@@ -578,14 +577,7 @@ struct HandoffsView: View {
                 if store.jobs.contains(where: { ["send", "receive", "settle", "ask"].contains($0.kind) }) || !store.outgoing.isEmpty {
                     GroupBox("In progress") { inProgress.frame(maxWidth: .infinity, alignment: .leading).padding(6) }
                 }
-                GroupBox("Shared projects") { projects.frame(maxWidth: .infinity, alignment: .leading).padding(6) }
-                if let u = store.ledger?.unshared, !u.isEmpty {
-                    GroupBox {
-                        DisclosureGroup("Only on one Mac — \(u.count) project\(u.count == 1 ? "" : "s") a handoff can’t reach yet", isExpanded: $showUnshared) {
-                            unshared(u).padding(.top, 6)
-                        }.padding(6)
-                    }
-                }
+                GroupBox("Projects") { projects.frame(maxWidth: .infinity, alignment: .leading).padding(6) }
             }
             .padding(24)
             .frame(maxWidth: 760, alignment: .leading)
@@ -599,7 +591,8 @@ struct HandoffsView: View {
     var subtitle: String {
         guard let l = store.ledger else { return "Reading the shared drive…" }
         let n = store.inbox.filter { $0.kind != .settling }.count
-        return [n > 0 ? "\(n) waiting" : nil, "\(l.projects.count) shared"].compactMap { $0 }.joined(separator: " · ")
+        let one = l.unshared.isEmpty ? nil : "\(l.unshared.count) on one Mac"
+        return [n > 0 ? "\(n) waiting" : nil, "\(l.projects.count) shared", one].compactMap { $0 }.joined(separator: " · ")
     }
 
     @ViewBuilder var waiting: some View {
@@ -651,40 +644,62 @@ struct HandoffsView: View {
         return store.ledger?.machines.first { $0.mac == mac }
     }
 
+    /// Every project Tandem can see, in one list: the shared ones first, then the ones defined
+    /// in one profile's Claude only. Hiding the second kind behind a disclosure made projects
+    /// look missing (2026-11-08).
     var projects: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if store.ledger?.projects.isEmpty ?? true {
-                Text("No shared projects yet. Move one into the shared drive with tandem migrate \"Project\".")
-                    .foregroundStyle(.secondary)
+        let shared = store.ledger?.projects ?? []
+        let local = (store.ledger?.unshared ?? []).sorted { ($0.project, $0.side) < ($1.project, $1.side) }
+        return VStack(alignment: .leading, spacing: 10) {
+            if store.ledger != nil && shared.isEmpty && local.isEmpty {
+                Text("No projects yet.").foregroundStyle(.secondary)
             }
-            ForEach(store.ledger?.projects ?? []) { p in
+            ForEach(shared) { p in
                 ProjectRow(store: store, p: p)
-                if p.id != store.ledger?.projects.last?.id { Divider() }
+                if p.id != shared.last?.id || !local.isEmpty { Divider() }
             }
-        }
-    }
-
-    func unshared(_ u: [Unshared]) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(Dictionary(grouping: u, by: \.side).sorted { $0.key < $1.key }, id: \.key) { side, list in
-                HStack {
-                    Text(store.label(side)).font(.callout.weight(.semibold))
-                    Spacer()
-                    if store.isMine(side) {
-                        Menu("Move to the Shared Drive") {
-                            ForEach(list.map(\.project).sorted(), id: \.self) { name in
-                                Button(name) { store.runLog("Move \(name) to the shared drive", store.profileArgs(side) + ["migrate", name]) }
-                            }
-                        }.fixedSize().controlSize(.small)
-                    }
-                }.padding(.top, 4)
-                Text(list.map(\.project).sorted().joined(separator: " · ")).font(.callout).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            ForEach(local, id: \.self) { u in
+                UnsharedRow(store: store, u: u)
+                if u != local.last { Divider() }
             }
             HStack(spacing: 4) {
-                Text("Move one to the shared drive once to hand it off.").font(.caption).foregroundStyle(.secondary)
-                InfoButton(text: "These are defined in one profile’s Claude only. Moving one (tandem migrate) copies its files into the shared drive and md5-verifies them; the original is kept aside, never deleted.")
-            }.padding(.top, 6)
+                Text("Projects that exist only on claude.ai aren’t listed: they’re already on every Mac signed in to that account.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                InfoButton(text: "Tandem lists the Claude projects stored on a Mac. A project made on claude.ai or in the Claude app on your phone lives on Anthropic’s servers, so Claude shows it on every Mac signed in to that account, with nothing to hand off.")
+            }.padding(.top, 4)
+        }
+    }
+}
+
+/// A project defined in one profile's Claude only, so not in the shared drive yet.
+struct UnsharedRow: View {
+    @ObservedObject var store: Store
+    let u: Unshared
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "desktopcomputer").foregroundStyle(.secondary).frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(u.project).fontWeight(.semibold)
+                Text("Only on \(u.mac)\(u.name.map { " · \($0)" } ?? "") · move it to the shared drive to hand it off")
+                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            if mine {
+                Menu { actions } label: { Image(systemName: "ellipsis.circle") }
+                    .menuStyle(.borderlessButton).fixedSize()
+                    .accessibilityLabel("Actions for \(u.project)")
+            }
+        }
+        .contentShape(Rectangle())
+        .contextMenu { if mine { actions } }
+    }
+
+    var mine: Bool { store.isMine(u.side) }
+
+    @ViewBuilder var actions: some View {
+        Button("Move to the Shared Drive") {
+            store.runLog("Move \(u.project) to the shared drive", store.profileArgs(u.side) + ["migrate", u.project])
         }
     }
 }
@@ -900,7 +915,7 @@ struct ProjectRow: View {
     var state: String {
         let who = store.label(p.holder ?? "")
         switch p.state {
-        case "held": return "With \(who) · since \(ago(p.last?.at))"
+        case "held": return "Shared · with \(who) · since \(ago(p.last?.at))"
         case "sent": return "On its way to \(who) · sent \(ago(p.last?.at)) by \(store.label(p.last?.machine ?? ""))"
         case "unreadable": return "Its newest ownership record is on the drive but hasn’t downloaded yet"
         default: return "Never handed off"

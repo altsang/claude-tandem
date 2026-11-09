@@ -234,7 +234,7 @@ Both read the same inbox and settings. A send, receive or settle takes a per-pro
 | History… | `tandem log "X"` |
 | Unlock | `tandem [--profile P] release "X"` |
 | Move to the Shared Drive | `tandem [--profile P] migrate "X"` |
-| Handoffs › Shared projects · Only on one Mac · the Macs page | `tandem where` |
+| Handoffs › Projects (shared, and only on one Mac) · the Macs page | `tandem where` |
 | Check Now (↻ in the toolbar, Handoffs › Check Now ⌘R) | `tandem where` |
 | (every few minutes, while it runs) | `tandem presence` |
 | Settings (⌘,) › Handoffs | `tandem config set on-arrival …` · `tandem config set on-brief …` |

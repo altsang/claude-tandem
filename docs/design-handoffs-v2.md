@@ -118,9 +118,8 @@ _handoff/presence/<Mac>/<ts>.json
 |---|---|
 | **Waiting for you** | handoffs addressed to a profile here · briefs ready to send · requests from the other Mac · receives still settling |
 | **In progress** | sends and receives running now, step by step; sent and not yet claimed |
-| **Every project** | each shared project: holder (Mac, profile, account), state, last move, note, brief |
+| **Projects** | one list. Shared projects first: holder (Mac, profile, account), state, last move, note, brief. Then each project defined on one Mac only, marked *Only on <Mac>*: the ones a handoff can't reach yet. A collapsed group for these made projects look missing (2026-11-08). Projects that exist only on claude.ai aren't listed, since they're on every Mac already |
 | **Macs** | each Mac: last seen, Tandem version, iCloud health; each profile on it, its account, whether Claude is open |
-| **Only on one Mac** | local projects not in the shared tree, per profile: the ones a handoff can't reach yet |
 
 "Last seen 3 minutes ago" answers the question you used to answer by walking over. Is Ji-su awake, and will this arrive?
 
