@@ -274,6 +274,13 @@ def project(root, name, settling):
             # (the doc field then holds the event count the same read shifted along)
             if (not doc or doc.isdigit()) and note.startswith("HANDOFF") and note.endswith(".md"):
                 note, doc = "", note
+            # A claim copies its handoff's note and brief, so read them from the handoff: with
+            # neither, the same shift recorded the event count as the note (VLOG Research's "1",
+            # 2026-11-09). Engine v9 joins on 0x1f, so new claims are right; old ones stay.
+            if verb == "claim" and len(evs) > 1:
+                prev = read_json(os.path.join(ev_dir, evs[-2]))
+                if prev and prev.get("verb") == "handoff":
+                    note, doc = prev.get("note") or "", prev.get("handoff_doc") or ""
             p["last"] = {"verb": verb, "machine": e.get("machine"), "to": e.get("to"), "at": e.get("at"),
                          "note": note, "doc": doc, "file": evs[-1]}
             since = ts_epoch(e.get("at", ""))

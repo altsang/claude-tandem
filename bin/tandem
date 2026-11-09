@@ -901,6 +901,8 @@ PY
 # Those are different problems and must not report as the same one: "none" sent a
 # 15-minute receive at the wrong Mac on 2026-09-06 when the event was sitting in the
 # folder the whole time, dataless.
+# Fields joined with US (0x1f), not a tab: `IFS=$'\t' read` collapses an empty field
+# and shifts the rest along. See coworkctl-v9's state().
 newest_event(){
   python3 - "$PROJECTS/$1/.handoff/events" <<'PY'
 import os,sys,json,glob
@@ -920,7 +922,7 @@ try:
 except OSError: pass
 try: e=json.load(open(f))
 except Exception: sys.exit(2)
-print("\t".join([e.get("verb",""),e.get("machine",""),e.get("to","") or "",
+print("\x1f".join([e.get("verb",""),e.get("machine",""),e.get("to","") or "",
                  e.get("at",""),e.get("handoff_doc","") or ""]))
 PY
 }
@@ -1308,7 +1310,7 @@ cmd_send(){
   # re-sent from under the Mac that already claimed it -- both Macs then believe they own
   # it, which is precisely how iCloud conflict copies get made.
   if [ "$force" = 0 ] && ev="$(newest_event "$name")"; then
-    IFS=$'\t' read -r verb machine evto at _doc <<< "$ev"
+    IFS=$'\x1f' read -r verb machine evto at _doc <<< "$ev"
     local owner="$machine"; [ "$verb" = "handoff" ] && owner="$evto"
     if [ "$owner" != "$ME" ]; then
       if [ "$verb" = "handoff" ] && [ "$machine" = "$ME" ]; then
@@ -1336,7 +1338,7 @@ cmd_send(){
     # A document older than the last handoff event is almost certainly the previous
     # topic's, left in the folder. Warn -- the user may genuinely be resending.
     if ev="$(newest_event "$name")"; then
-      IFS=$'\t' read -r _v _m _t at _d <<< "$ev"
+      IFS=$'\x1f' read -r _v _m _t at _d <<< "$ev"
       python3 - "$PROJECTS/$name/$doc" "$at" <<'PY' || true
 import os,sys,datetime
 p,at=sys.argv[1],sys.argv[2]
@@ -1411,7 +1413,7 @@ PY
     while [ $((SECONDS-start)) -lt "$timeout" ]; do
       ls "$PROJECTS/$name/.handoff/events" >/dev/null 2>&1
       if ev="$(newest_event "$name")"; then
-        IFS=$'\t' read -r verb machine _to at _doc <<< "$ev"
+        IFS=$'\x1f' read -r verb machine _to at _doc <<< "$ev"
         [ "$verb" = "claim" ] && [ "$machine" = "$to" ] && {
           step deliver done "$at"
           echo "  ✓ DELIVERED — $to claimed '$name' at $at"; return 0; }
@@ -1445,7 +1447,7 @@ cmd_receive(){
   echo "receiving '$name' on $ME"
   local ev verb machine to at doc ready=0 evrc=0
   if ev="$(newest_event "$name")"; then
-    IFS=$'\t' read -r verb machine to at doc <<< "$ev"
+    IFS=$'\x1f' read -r verb machine to at doc <<< "$ev"
     { [ "$verb" = "handoff" ] && [ "$to" = "$ME" ]; } && ready=1
     { [ "$verb" = "claim" ] && [ "$machine" = "$ME" ]; } && ready=2
   else evrc=$?; fi
@@ -1461,7 +1463,7 @@ cmd_receive(){
       ls "$PROJECTS/$name" >/dev/null 2>&1; ls "$PROJECTS/$name/.handoff/events" >/dev/null 2>&1
       if ev="$(newest_event "$name")"; then
         evrc=0
-        IFS=$'\t' read -r verb machine to at doc <<< "$ev"
+        IFS=$'\x1f' read -r verb machine to at doc <<< "$ev"
         { [ "$verb" = "handoff" ] && [ "$to" = "$ME" ]; } && { ready=1; break; }
         { [ "$verb" = "claim" ] && [ "$machine" = "$ME" ]; } && { ready=2; break; }
       else evrc=$?; fi
@@ -1770,7 +1772,7 @@ cmd_brief(){
   [ -n "$name" ] || die "usage: tandem brief <Project> [--path|--copy] [--open]"
   [ -d "$PROJECTS/$name" ] || die "'$name' is not in the shared tree"
   local doc="" ev
-  if ev="$(newest_event "$name")"; then IFS=$'\t' read -r _v _m _t _a doc <<< "$ev"; fi
+  if ev="$(newest_event "$name")"; then IFS=$'\x1f' read -r _v _m _t _a doc <<< "$ev"; fi
   # engines ≤ v8 can shift the doc into the note on a claim; the newest file is the fallback
   [ -n "$doc" ] && [ -f "$PROJECTS/$name/$doc" ] || doc="$(cd "$PROJECTS/$name" && ls -t HANDOFF*.md 2>/dev/null | head -1)"
   [ -n "$doc" ] || die "'$name' has no HANDOFF*.md — run /handoff in its Claude session"
