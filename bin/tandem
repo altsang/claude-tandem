@@ -992,6 +992,9 @@ if out.get("instructions"):
 # folder paths are per-machine; the importer sets its own
 out["folders"]=[]
 out["_exported_from_paths"]=[p.get("path") for p in (e.get("folders") or [])]
+# which account and org it came from: spaces.json sits in local-agent-mode-sessions/<account>/<org>/
+out["_exported_account"]=os.path.basename(os.path.dirname(os.path.dirname(src)))
+out["_exported_org"]=os.path.basename(os.path.dirname(src))
 # NEW file each time, never an overwrite: the drive does not reliably propagate an
 # in-place modification of a file the other Mac has already read. Same reason the
 # engine filename carries a version and the event log is append-only.
@@ -1057,6 +1060,17 @@ import json,sys,os
 dst,src,projects=sys.argv[1],sys.argv[2],sys.argv[3]
 d=json.load(open(dst)); e=json.load(open(src))
 exported=e.pop("_exported_from_paths",None) or []
+# Claude migrates each local project into a claude.ai project of the account that owns
+# it, and records that as migration: {stage, projectUuid}. The UUID is only good in that
+# account. Brought into another account (Personal -> Junipera, 2026-11-09) the record says
+# "complete" for a project this account can't see, so Claude never migrates it and it
+# never appears under Projects. Drop it there; Claude then migrates it into this account.
+from_acct,from_org=e.pop("_exported_account",None),e.pop("_exported_org",None)
+here_acct=os.path.basename(os.path.dirname(os.path.dirname(dst)))
+here_org=os.path.basename(os.path.dirname(dst))
+foreign=from_acct is not None and (from_acct,from_org)!=(here_acct,here_org)
+if foreign and e.pop("migration",None) is not None:
+    print("  from another account: Claude makes it a project in this one when it opens")
 import re
 _open,_close="<!-- mirror:hold -->","<!-- /mirror:hold -->"
 if e.get("instructions"):   # defensive: a definition exported by an older version
