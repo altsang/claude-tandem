@@ -207,7 +207,7 @@ The same thing in a terminal, for scripts or a Mac without the app:
 |---|---|
 | **Get Started** | a checklist from a second profile to the `/handoff` skill. Once every step is done the window opens on the Inbox when something is waiting, else on Projects, and the checklist is under Help |
 | **Inbox** | what's waiting for you, and sends and receives running now, step by step |
-| **Projects** | a grid of every project against every place it can be: each profile on each Mac. A dot shows who has it, a ring an old copy, a square a project on one Mac only. Select one for where it is, its history and its next step (*Hand Off…*, *Bring to Madoka · Personal*, *Receive*, *Share*); drag its dot to another place to hand it off or ask for it. Right-click for Open in Claude, History, the newest brief and Unlock |
+| **Projects** | a grid of every project against every place it can be: each profile on each Mac. A dot shows who has it, a ring an old copy, a square a project on one Mac only. Drag a project's mark to another place to move it there: it's handed off, asked for, or shared first when it's only on one Mac. Select one for where it is and its history. Right-click for Move To (the same moves without dragging), Open in Claude, History, the newest brief and Unlock |
 | **Macs** | every Mac running Tandem: when it was last seen, its Tandem version and iCloud health, each profile on it with its account, and what each holds |
 | **A profile** | the projects it holds (Hand Off…) and the ones coming to it (Receive), its accounts, its name, badge and Dock launcher. Show Claude, Claude Code and Quit are in the toolbar; right-click it in the sidebar for those and Rename. The **+** beside *Profiles*, or File › New Profile…, makes a new one |
 

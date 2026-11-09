@@ -496,14 +496,21 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         guard p.open, let pid = p.pid, let running = NSRunningApplication(processIdentifier: pid),
               let url = running.bundleURL else { cli(["desktop", p.id]); return }
         let shared = url.standardizedFileURL.path == "/Applications/Claude.app"
+        // Activate from here, by pid. Since macOS 14 only the active app can hand activation
+        // on, so the osascript in `tandem profile desktop` was ignored: Open in Claude left
+        // Junipera's Claude behind Personal's on Ji-su (2026-11-09) and seemed to do nothing.
+        let bring = {
+            if #available(macOS 14, *) { NSApp.yieldActivation(to: running) }
+            running.activate(options: [.activateAllWindows])
+        }
         if p.isDefault || !shared {
             let path = self.path
             DispatchQueue.global(qos: .userInitiated).async {
                 _ = runProcess("/usr/bin/open", ["-a", url.path], path: path)
-                DispatchQueue.main.async { running.activate(options: [.activateAllWindows]) }
+                DispatchQueue.main.async { bring() }
             }
         } else {
-            cli(["desktop", p.id])
+            bring()   // not `open -a`: every profile shares this bundle, so it may pick another
         }
     }
 

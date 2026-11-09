@@ -100,14 +100,6 @@ extension Store {
         return "\(pl.mac) · \(pl.name)"
     }
 
-    /// The place on this Mac a project should come to: the profile with the same name as
-    /// where it is now, else the default profile.
-    func bringTarget(_ r: PRow) -> String? {
-        let from = place(home(r))?.name
-        let mine = places.filter(\.here)
-        return (mine.first { $0.name == from } ?? mine.first { !$0.side.contains("@") } ?? mine.first)?.side
-    }
-
     /// Dropping a project's dot on another place: hand it off from here, or ask for it.
     /// A project only on this Mac is shared first, then handed off.
     func move(_ r: PRow, to side: String) {
@@ -388,17 +380,18 @@ extension Store {
     /// One line on where a project is, from this Mac's point of view.
     func status(_ r: PRow) -> String {
         guard r.shared else {
-            return isMine(r.side) ? "Only in \(placeLabel(r.side)). Share it to hand it off: its folder moves to the shared drive, checked file by file, and the original is kept aside."
-                                  : "Only in \(placeLabel(r.side)). Share it from \(place(r.side)?.mac ?? "that Mac") to hand it off."
+            return isMine(r.side) ? "Only in \(placeLabel(r.side)). Drag its mark to another place to move it: it’s shared first, its folder copied to the shared drive and checked file by file."
+                                  : "Only in \(placeLabel(r.side)). It can be moved from \(place(r.side)?.mac ?? "that Mac")."
         }
         guard let p = shared(r) else { return "" }
         let at = ago(p.last?.at)
         switch p.state {
-        case "held": return isMine(p.holder) ? "\(placeLabel(p.holder)) has it, since \(at)." : "\(placeLabel(p.holder)) has it, since \(at). Bringing it here asks that Mac to send it."
+        case "held": return isMine(p.holder) ? "\(placeLabel(p.holder)) has it, since \(at). Drag its mark to another place to hand it off."
+                                             : "\(placeLabel(p.holder)) has it, since \(at). Drag its mark to a place on this Mac to ask for it."
         case "sent": return "On its way to \(placeLabel(p.holder)), sent \(at)."
         case "unreadable": return "Its newest ownership record is on the drive but hasn’t downloaded yet."
         default:
-            if let h = home(r) { return "Shared from \(placeLabel(h)). Hand it off to move it to another Mac or account." }
+            if let h = home(r) { return "Shared from \(placeLabel(h)). Drag its mark to another place to hand it off." }
             return "No handoff recorded yet."
         }
     }
@@ -446,26 +439,23 @@ struct ProjectActions: View {
     let r: PRow
     let menu: Bool
 
+    /// Moving is by drag; the menu's Move To is the same thing for the keyboard and VoiceOver.
+    /// Only Receive gets a button, since finishing an arrival isn't a move.
     var body: some View {
         let p = store.shared(r)
-        let home = store.home(r)
-        let mine = store.places.filter(\.here)
-        if r.shared {
-            if let h = home, store.isMine(h), p?.state == "sent" {
-                Button("Receive") { store.selection = "handoffs"; store.startReceive(r.name, as: h) }
-            } else if let h = home ?? store.definers(r.name).first(where: store.isMine), store.isMine(h) {
-                Button("Hand Off…") { store.draft(r.name, from: h) }
-            } else if let t = store.bringTarget(r) {
-                Button("Bring to \(store.placeLabel(t))") { store.ask(r.name, as: t) }
-                ForEach(mine.filter { $0.side != t }) { pl in
-                    Button("Bring to \(pl.mac) · \(pl.name)") { store.ask(r.name, as: pl.side) }
-                        .help("Another profile, so another account: the project moves to it")
-                }
-            }
-        } else if let s = r.side, store.isMine(s) {
-            Button("Share") { store.share(r.name, as: s) }
+        if r.shared, let h = store.home(r), store.isMine(h), p?.state == "sent" {
+            Button("Receive") { store.selection = "handoffs"; store.startReceive(r.name, as: h) }
         }
         if menu {
+            let targets = store.places.filter { store.canMove(r, to: $0.side) }
+            if !targets.isEmpty {
+                Menu("Move To") {
+                    ForEach(targets) { pl in Button("\(pl.mac) · \(pl.name)") { store.move(r, to: pl.side) } }
+                }
+            }
+            if !r.shared, let s = r.side, store.isMine(s) {
+                Button("Share Without Moving") { store.share(r.name, as: s) }
+            }
             Divider()
             secondary(p)
         }
@@ -510,10 +500,9 @@ struct ProjectInspector: View {
                 }
                 section("Where it is") { miniGrid }
                 Text(store.status(r)).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                VStack(alignment: .leading, spacing: 6) {
-                    ProjectActions(store: store, r: r, menu: false)
+                if r.shared, let h = store.home(r), store.isMine(h), p?.state == "sent" {   // the one button: Receive
+                    ProjectActions(store: store, r: r, menu: false).buttonStyle(.bordered).controlSize(.regular)
                 }
-                .buttonStyle(.bordered).controlSize(.regular)
                 if let n = p?.last?.note, !n.isEmpty {
                     Text("“\(n)”").font(.callout).italic().fixedSize(horizontal: false, vertical: true)
                 }

@@ -474,8 +474,19 @@ extension Store {
         guard let app else { return }
         let tandem = app.tandem, path = app.path, args = profileArgs(side) + ["brief", project, "--copy"]
         DispatchQueue.global(qos: .userInitiated).async {
-            _ = runProcess("/bin/bash", [tandem] + args, path: path)
-            DispatchQueue.main.async { if let p = self.profile(forSide: side) { app.openDesktop(p) } }
+            let copied = runProcess("/bin/bash", [tandem] + args, path: path).code == 0
+            DispatchQueue.main.async {
+                guard let p = self.profile(forSide: side) else { return }
+                app.openDesktop(p)
+                // Claude has no link that opens a local project, so say where it is: without
+                // this the button only brought Claude forward, and with no brief it looked
+                // like nothing happened.
+                self.notifier.post(id: "open:\(project):\(Date().timeIntervalSince1970)",
+                                   title: "\(project) is in Claude (\(p.name))",
+                                   body: copied ? "Open it from Projects in Claude’s sidebar, start a task, and paste: the brief is on the clipboard."
+                                                : "Open it from Projects in Claude’s sidebar. No brief came with it, so start a task as usual.",
+                                   category: "INFO", info: [:])
+            }
         }
     }
 
@@ -753,7 +764,7 @@ struct JobRow: View {
                 Spacer()
                 if job.ok, job.kind == "receive", let p = job.project, let s = job.side {
                     Button("Open in Claude") { store.openInClaude(p, as: s) }
-                        .help("Puts the brief on the clipboard and brings this profile’s Claude forward — paste it into the project’s Claude session")
+                        .help("Brings this profile’s Claude forward and puts the brief, if one came, on the clipboard. Then open the project from Projects in Claude’s sidebar")
                 }
                 if !job.running { Button { store.jobs.removeAll { $0.id == job.id } } label: { Image(systemName: "xmark") }.buttonStyle(.borderless) }
             }
