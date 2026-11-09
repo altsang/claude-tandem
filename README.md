@@ -201,12 +201,13 @@ The same thing in a terminal, for scripts or a Mac without the app:
   <br/><sub>The window: what's waiting, who holds what, and every Mac.</sub>
 </p>
 
-**The window** (Open Claude Tandem…, or open the app from Finder) has the rest. Its title bar names the page and sums it up (*1 waiting · 3 shared*), and it has a menu bar like any Mac app's: ⌘1–⌘3 for the pages, ⌘R to check the shared drive now, ⌘N for a new profile, ⇧⌘H to hand off a project, and a Handoffs menu with what you can receive or ask for.
+**The window** (Open Claude Tandem…, or open the app from Finder) has the rest. Its title bar names the page and sums it up (*14 projects · 4 shared · 10 on one Mac*), and it has a menu bar like any Mac app's: ⌘1–⌘4 for the pages, ⌘R to check the shared drive now, ⌘N for a new profile, ⇧⌘H to hand off a project, and a Handoffs menu with what you can receive or ask for.
 
 | | |
 |---|---|
-| **Get Started** | a checklist from a second profile to the `/handoff` skill. Once every step is done the window opens on Handoffs instead, and the checklist is under Help |
-| **Handoffs** | what's waiting for you, sends and receives running now (step by step), every shared project and who holds it, and the projects still only on one Mac. Right-click a project, or use its ⋯, for Hand Off, Ask for It, History, Unlock and Show in Finder |
+| **Get Started** | a checklist from a second profile to the `/handoff` skill. Once every step is done the window opens on the Inbox when something is waiting, else on Projects, and the checklist is under Help |
+| **Inbox** | what's waiting for you, and sends and receives running now, step by step |
+| **Projects** | a grid of every project against every place it can be: each profile on each Mac. A dot shows who has it, a ring an old copy, a square a project on one Mac only. Select one for where it is, its history and its next step (*Hand Off…*, *Bring to Madoka · Personal*, *Receive*, *Share*); drag its dot to another place to hand it off or ask for it. Right-click for Open in Claude, History, the newest brief and Unlock |
 | **Macs** | every Mac running Tandem: when it was last seen, its Tandem version and iCloud health, each profile on it with its account, and what each holds |
 | **A profile** | the projects it holds (Hand Off…) and the ones coming to it (Receive), its accounts, its name, badge and Dock launcher. Show Claude, Claude Code and Quit are in the toolbar; right-click it in the sidebar for those and Rename. The **+** beside *Profiles*, or File › New Profile…, makes a new one |
 

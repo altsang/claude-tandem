@@ -118,7 +118,7 @@ _handoff/presence/<Mac>/<ts>.json
 |---|---|
 | **Waiting for you** | handoffs addressed to a profile here · briefs ready to send · requests from the other Mac · receives still settling |
 | **In progress** | sends and receives running now, step by step; sent and not yet claimed |
-| **Projects** | one list. Shared projects first: holder (Mac, profile, account), state, last move, note, brief. Then each project defined on one Mac only, marked *Only on <Mac>*: the ones a handoff can't reach yet. A collapsed group for these made projects look missing (2026-11-08). Projects that exist only on claude.ai aren't listed, since they're on every Mac already |
+| **Projects** (its own page) | a grid. Rows are projects; columns are places, one per profile on each Mac, grouped by profile with this Mac first. A cell shows whether that place has the project, has an old locked copy, has it on its way, or is its only home. Group by kind, by where it is, or by profile. Selecting a row opens an inspector: where it is, one next step named by its destination (*Hand Off…*, *Bring to Madoka · Personal*, *Receive*, *Share*), the note and the history. Dragging a dot to another cell hands the project off or asks for it. Projects that exist only on claude.ai aren't listed: Tandem can't read them, and they're on every Mac already |
 | **Macs** | each Mac: last seen, Tandem version, iCloud health; each profile on it, its account, whether Claude is open |
 
 "Last seen 3 minutes ago" answers the question you used to answer by walking over. Is Ji-su awake, and will this arrive?

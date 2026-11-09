@@ -143,15 +143,13 @@ It writes `HANDOFF_<topic>.md` into the project folder, plus a small *send inten
 
 ### 3. Each project
 
-Move the project's folder into the shared tree, once, on the Mac that has it:
+Move the project's folder into the shared tree, once, on the Mac that has it, with Claude quit (or press Share on the project in the app, which quits and reopens Claude for you):
 
 ```bash
-ls ~/Documents/Claude/Projects/                     # the folder name is often NOT the project name
-tandem rename "Finances" "Quicken Reconciliation"   # if they differ, align them first
 tandem migrate "Quicken Reconciliation"
 ```
 
-`migrate` copies into the shared tree and md5-verifies every file. Only then does it move the original aside, as `.PROJECT.pre-icloud-<time>`; it never deletes it. Then the first move to the other side, with no document yet:
+`migrate` reads the project's folder from Claude's own list, so the folder's name doesn't matter (it's often not the project's name). It copies the folder into the shared tree as `Projects/<project name>`, md5-verifies every file, and switches the project to the copy, keeping its other folders. A folder Claude made under `~/Documents/Claude/Projects` is then set aside as `.FOLDER.pre-icloud-<time>`, never deleted; a folder you attached from elsewhere stays where it is. A project with no folder gets an empty one in the shared tree. Then the first move to the other side, with no document yet:
 
 ```bash
 tandem send "Quicken Reconciliation" --to Ji-su --no-doc   # on Madoka

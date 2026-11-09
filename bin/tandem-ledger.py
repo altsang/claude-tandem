@@ -175,7 +175,8 @@ def cmd_presence(root, mac, confdir, profiles_file, version, drive_line=""):
 def read_presence(root, confdir=None):
     """Each Mac's newest card that parses. A Mac writes its new card and then deletes the old
     one, so for a minute or two another Mac can list only a card iCloud hasn't delivered yet:
-    nothing readable, and the Mac would show as "No card". The last card read from each Mac is
+    nothing readable, or nothing at all (2026-11-08: Ji-su's profiles vanished from the
+    Projects grid for a minute), and the Mac would show as "No card". The last card read from each Mac is
     kept in <confdir>/cards/ and stands in until the new one arrives; its age comes from its
     own timestamp, so "seen N min ago" stays true."""
     out = {}
@@ -203,7 +204,8 @@ def read_presence(root, confdir=None):
                     os.rename(tmp, kept)
                 except OSError:
                     pass
-            elif fs:   # the Mac still has a card on the drive, just not one readable here yet
+            else:   # between the old card's delete and the new one's arrival, the drive
+                    # lists none, or one not readable here yet: the last card stands in
                 card = read_json(kept)
         if card:
             card["age_minutes"] = int((time.time() - (ts_epoch(card.get("at", "")) or 0)) / 60)

@@ -133,9 +133,11 @@ struct MainView: View {
                             .tag("setup")
                     }
                     // the tag goes last: a modifier after it wraps the row, and List then can't select it
-                    Label("Handoffs", systemImage: "arrow.left.arrow.right")
+                    // the Inbox keeps the "handoffs" tag: notifications and menus open it by that name
+                    Label("Inbox", systemImage: "tray")
                         .badge(store.inbox.filter { $0.kind != .settling }.count)
                         .tag("handoffs")
+                    Label("Projects", systemImage: "square.grid.3x3").tag("projects")
                     Label("Macs", systemImage: "laptopcomputer.and.iphone").tag("macs")
                 }
                 Section {
@@ -167,7 +169,9 @@ struct MainView: View {
                     .navigationTitle("Get Started")
                     .navigationSubtitle(store.setupLeft == 0 ? "All set" : "\(store.setupLeft) step\(store.setupLeft == 1 ? "" : "s") left")
             } else if store.selection == "handoffs" {
-                HandoffsView(store: store).navigationTitle("Handoffs")
+                HandoffsView(store: store).navigationTitle("Inbox")
+            } else if store.selection == "projects" {
+                ProjectsView(store: store).navigationTitle("Projects")
             } else if store.selection == "macs" {
                 MacsView(store: store).navigationTitle("Macs")
             } else if let p = store.profiles.first(where: { $0.id == store.selection }) {
@@ -182,6 +186,7 @@ struct MainView: View {
         }
         .sheet(isPresented: $store.showNewProfile) { NewProfileSheet(store: store) }
         .sheet(item: $store.logJob) { job in LogSheet(job: job) }
+        .sheet(item: $store.sendDraft) { d in SendSheet(store: store, draft: d) }
     }
 }
 

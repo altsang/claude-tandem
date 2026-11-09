@@ -101,7 +101,7 @@ Setting up:
 |---|---|
 | `tandem deploy` | install or refresh the engine in the shared tree (once; the drive carries it to the other Mac) |
 | `tandem use-root PATH` | use a shared drive other than iCloud, for this Mac |
-| `tandem migrate P` | move a local project's folder into the shared tree, md5-verified, keeping the original aside |
+| `tandem migrate P` | copy a local project's folder (whatever it's called, wherever it is) into the shared tree, md5-verified, and switch the project to the copy. A folder Claude made is set aside; one you attached elsewhere stays put. A project with no folder gets an empty one. Claude quit first |
 | `tandem rename OLD NEW` | rename a shared project: folder and project together |
 
 ---
@@ -234,7 +234,7 @@ Both read the same inbox and settings. A send, receive or settle takes a per-pro
 | History… | `tandem log "X"` |
 | Unlock | `tandem [--profile P] release "X"` |
 | Move to the Shared Drive | `tandem [--profile P] migrate "X"` |
-| Handoffs › Projects (shared, and only on one Mac) · the Macs page | `tandem where` |
+| Inbox · Projects (the grid) · the Macs page | `tandem where` |
 | Check Now (↻ in the toolbar, Handoffs › Check Now ⌘R) | `tandem where` |
 | (every few minutes, while it runs) | `tandem presence` |
 | Settings (⌘,) › Handoffs | `tandem config set on-arrival …` · `tandem config set on-brief …` |

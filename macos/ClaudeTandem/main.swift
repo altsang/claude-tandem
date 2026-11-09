@@ -154,8 +154,11 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         }
         if store.profiles.isEmpty { store.profiles = loadProfiles() }
         if let select { store.selection = select }
-        // Get Started is the first page only until it's done; then the window opens on Handoffs.
-        else if store.selection == "setup" || store.selection == nil, store.setupLeft == 0 { store.selection = "handoffs" }
+        // Get Started is the first page only until it's done; then the window opens on the
+        // Inbox when something is waiting, else on Projects.
+        else if store.selection == "setup" || store.selection == nil, store.setupLeft == 0 {
+            store.selection = store.inbox.contains { $0.kind != .settling } ? "handoffs" : "projects"
+        }
         NSApp.applicationIconImage = tandemAppIcon()
         NSApp.setActivationPolicy(.regular)
         store.windowOpen = true
@@ -270,8 +273,9 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         std(view, "Show Sidebar", #selector(NSSplitViewController.toggleSidebar(_:)), "s", [.command, .control])
         view.addItem(.separator())
         go(view, "Get Started", "1", "setup")
-        go(view, "Handoffs", "2", "handoffs")
-        go(view, "Macs", "3", "macs")
+        go(view, "Inbox", "2", "handoffs")
+        go(view, "Projects", "3", "projects")
+        go(view, "Macs", "4", "macs")
         view.addItem(.separator())
         std(view, "Enter Full Screen", #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control])
         top("View", view)

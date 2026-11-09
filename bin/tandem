@@ -53,7 +53,7 @@
 #
 #   tandem use-root <path>           set the shared drive root for THIS Mac
 #   tandem deploy                    install/refresh tooling into the shared tree
-#   tandem migrate <Project>         move a local project INTO the shared tree
+#   tandem migrate <Project>         copy a local project's folder INTO the shared tree
 #   tandem path <Project>            print the shared folder path (also copies it)
 #   tandem link <Project>            DEPRECATED — symlinks break Claude folder grants
 #   tandem rename <Old> <New>        rename a shared project everywhere
@@ -399,17 +399,54 @@ cmd_link(){
   echo "It is the same path on both Macs, so there is nothing to link."
 }
 
+# The project's own folder (the first one; Claude reads the project's files from it),
+# from this profile's spaces.json -- not assumed from the name. Claude names a new
+# project's folder after the project, but people attach folders from anywhere, and a
+# project renamed in Claude keeps its old folder. Prints nothing for a project with no
+# folder; fails for a name that is not a project here.
+project_folder(){
+  local f; f="$(spaces_file)" || return 2
+  python3 - "$f" "$1" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1]))
+e=next((x for x in d.get("spaces",[]) if x.get("name")==sys.argv[2]),None)
+if e is None: sys.exit(1)
+paths=[p.get("path") for p in (e.get("folders") or []) if p.get("path")]
+if paths: print(paths[0])
+PY
+}
+
 cmd_migrate(){
   local name="${1:-}"; [ -n "$name" ] || die "usage: tandem migrate <Project>"
-  local src="$HOME/Documents/Claude/Projects/$name"
-  local dst="$PROJECTS/$name"
-  [ -e "$src" ] || die "no such project: $src"
-  [ -L "$src" ] && { ok "'$name' is already a symlink into the shared tree"; return 0; }
-  [ -d "$src" ] || die "$src is not a directory"
+  local dst="$PROJECTS/$name" src rc=0
+  src="$(project_folder "$name")" || rc=$?
+  if [ $rc -ne 0 ]; then
+    # not a project in this profile: the old layout, a folder named after it, still moves
+    src="$HOME/Documents/Claude/Projects/$name"
+    [ -d "$src" ] || die "no project named '$name'${PROFILE:+ in profile $PROFILE}"
+  fi
+  case "$src/" in "$PROJECTS"/*) ok "'$name' already uses a folder in the shared tree"; return 0;; esac
+  [ -L "$src" ] && die "$src is a symlink — Claude can't read through one. Point the project at the real folder first."
+  [ -n "$src" ] && { [ -e "$src" ] || die "'$name' uses a folder that isn't on this Mac:
+     $src"; }
+  [ -z "$src" ] || [ -d "$src" ] || die "$src is not a folder"
   [ -e "$dst" ] && die "'$name' already exists in the shared tree.
      This Mac picks it up instead of migrating:  tandem receive \"$name\""
+  # Switching the folder edits spaces.json, which a running Claude rewrites from memory.
+  # Check before copying anything, so a refusal leaves nothing half done.
+  [ $rc -ne 0 ] || require_claude_quit
 
-  echo "migrating '$name' into the shared tree"
+  if [ -z "$src" ]; then
+    mkdir -p "$dst" || die "could not create $dst"
+    ok "'$name' had no folder: made an empty one in the shared tree"
+    cmd_project_repath "$name" "$dst" >/dev/null || die "could not attach $dst to '$name'"
+    ok "attached it to the project"
+    echo; echo "  Relaunch Claude. Files you add to the project now land in the shared copy:"
+    echo "      $dst"
+    return 0
+  fi
+
+  echo "sharing '$name' from $src"
   mkdir -p "$dst"
   rsync -a --exclude '.DS_Store' "$src/" "$dst/" || die "copy failed"
   ok "copied"
@@ -422,37 +459,33 @@ cmd_migrate(){
     die "refusing to move the original"
   fi
   ok "verified $(echo "$a" | grep -c .) files identical by md5"
-  local bak="$HOME/Documents/Claude/Projects/.$name.pre-icloud-$(date +%Y%m%d-%H%M%S)"
-  mv "$src" "$bak" || die "could not move original aside"
-  ok "original preserved at $bak"
 
-  # Moving the original breaks this project's folder link, which still points at the
-  # old path. Repair it here rather than leaving the user with a project that silently
-  # cannot read its own files. Writing spaces.json IS the grant -- verified 2026-08-20,
-  # a project linked this way and never touched in the picker reads fine.
-  if claude_running; then
-    echo
-    echo "  ⚠ Claude is running, so the folder grant could not be updated automatically."
-    echo "    '$name' still points at the path that was just moved, and will fail to read"
-    echo "    its files until this is fixed. Quit Claude, then run:"
-    echo "        tandem project-repath \"$name\" \"$dst\" --replace \"$src\""
-  else
-    cmd_project_repath "$name" "$dst" --replace "$src" >/dev/null 2>&1 \
-      && ok "folder grant repointed at the shared copy (its other folders kept)" \
-      || echo "  ! could not repoint the grant — run: tandem project-repath \"$name\" \"$dst\" --replace \"$src\""
+  # A folder Claude made for the project is set aside, so nothing keeps writing to a
+  # copy the project no longer reads. One the user attached from elsewhere is theirs:
+  # it stays where it is.
+  case "$src/" in
+    "$HOME/Documents/Claude/Projects/"*)
+      local bak; bak="$(dirname "$src")/.$(basename "$src").pre-icloud-$(date +%Y%m%d-%H%M%S)"
+      mv "$src" "$bak" || die "could not move original aside"
+      ok "original kept at $bak";;
+    *) ok "your folder stays where it was: $src";;
+  esac
+
+  if [ $rc -ne 0 ]; then
+    echo "  (no project named '$name' here, so there was no folder link to switch)"
+    return 0
   fi
+  # Writing spaces.json IS the grant -- verified 2026-08-20, a project linked this way
+  # and never touched in the picker reads fine. Its other folders are kept.
+  cmd_project_repath "$name" "$dst" --replace "$src" >/dev/null \
+    || die "copied, but could not switch '$name' to the shared copy. Run:
+     tandem project-repath \"$name\" \"$dst\" --replace \"$src\""
+  ok "the project now uses the shared copy (its other folders kept)"
   echo
-  echo "  NO symlink is created, deliberately. Claude registers a symlinked folder as"
-  echo "  \"connected\" but then refuses every read inside it, because the resolved real"
-  echo "  path is outside the connected scope. Verified 2026-08-19."
-  echo
-  echo "  If the folder was repointed above, just relaunch Claude — macOS may prompt once"
-  echo "  for access to this location. No folder picker step: the project already points"
-  echo "  at the shared copy."
+  echo "  Relaunch Claude — macOS may ask once for access to the new location."
   echo "      $dst"
-  echo
-  echo "  That path is identical on both Macs. Keep the backup until Claude reads the"
-  echo "  project successfully."
+  echo "  That path is the same on both Macs. Keep the original until Claude reads the"
+  echo "  project fine. No symlink is made: Claude refuses reads through one."
 }
 
 # Rename a shared project everywhere: the folder, its ownership history, and this
@@ -800,6 +833,27 @@ print(f)
 PY
 }
 
+# A profile that has never had a project has no spaces.json: Claude writes it with the
+# first one. Junipera on both Macs was in that state on 2026-11-09, so a project handed to
+# it verified every file and then failed to define. Once the profile has signed in, its
+# account and org folders exist, so start the file there. Prints the path; exit 1 unless
+# there is exactly one org folder to put it in. Callers must have checked Claude is quit.
+spaces_file_new(){
+  python3 - "$USERDATA" <<'PY'
+import json,os,sys
+ud=sys.argv[1]; base=os.path.join(ud,"local-agent-mode-sessions")
+try: acct=json.load(open(os.path.join(ud,"config.json"))).get("lastKnownAccountUuid")
+except Exception: acct=None
+d=os.path.join(base,acct) if acct else ""
+orgs=[o for o in os.listdir(d) if os.path.isdir(os.path.join(d,o))] if d and os.path.isdir(d) else []
+if len(orgs)!=1: sys.exit(1)
+f=os.path.join(d,orgs[0],"spaces.json")
+if os.path.exists(f): sys.exit(1)
+json.dump({"spaces":[]},open(f,"w"),indent=2)
+print(f)
+PY
+}
+
 # Is THIS profile's Claude running? Other profiles' windows do not rewrite our
 # spaces.json, so they must not block us. The main process is the one whose argv[0]
 # is .../Contents/MacOS/Claude; helpers live under Frameworks/.
@@ -990,8 +1044,12 @@ cmd_project_import(){
   fi
   [ -n "$src" ] && [ -f "$src" ] || die "no exported definition for \"$name\" in $HANDOFF/projects
      Run 'tandem project-export \"$name\"' on the other Mac first, and give the drive time to sync."
-  local f; f="$(spaces_file)" || die "no spaces.json on this Mac (open Claude once to create it)"
-  cp "$f" "$f.bak-$(date +%Y%m%d-%H%M%S)"
+  local f
+  if f="$(spaces_file)"; then cp "$f" "$f.bak-$(date +%Y%m%d-%H%M%S)"
+  else f="$(spaces_file_new)" || die "this profile has no projects list yet, and no account folder to start one in.
+     Open Claude${PROFILE:+ ($PROFILE)}, start any task so it sets up the account, quit it, and run this again."
+    echo "  first project in this profile — started its projects list"
+  fi
   python3 - "$f" "$src" "$PROJECTS" <<'PY'
 import json,sys,os
 dst,src,projects=sys.argv[1],sys.argv[2],sys.argv[3]

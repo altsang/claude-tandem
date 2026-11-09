@@ -577,22 +577,20 @@ struct HandoffsView: View {
                 if store.jobs.contains(where: { ["send", "receive", "settle", "ask"].contains($0.kind) }) || !store.outgoing.isEmpty {
                     GroupBox("In progress") { inProgress.frame(maxWidth: .infinity, alignment: .leading).padding(6) }
                 }
-                GroupBox("Projects") { projects.frame(maxWidth: .infinity, alignment: .leading).padding(6) }
             }
             .padding(24)
             .frame(maxWidth: 760, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)   // the scroll view spans the page, not just the column
         }
-        .sheet(item: $store.sendDraft) { d in SendSheet(store: store, draft: d) }
         .navigationSubtitle(subtitle)
         .toolbar { ToolbarItem(placement: .primaryAction) { CheckNowButton(store: store) } }
     }
 
-    /// "1 waiting · 3 shared", in the title bar.
+    /// "1 waiting", in the title bar.
     var subtitle: String {
-        guard let l = store.ledger else { return "Reading the shared drive…" }
+        guard store.ledger != nil else { return "Reading the shared drive…" }
         let n = store.inbox.filter { $0.kind != .settling }.count
-        let one = l.unshared.isEmpty ? nil : "\(l.unshared.count) on one Mac"
-        return [n > 0 ? "\(n) waiting" : nil, "\(l.projects.count) shared", one].compactMap { $0 }.joined(separator: " · ")
+        return n == 0 ? "Nothing waiting" : "\(n) waiting"
     }
 
     @ViewBuilder var waiting: some View {
@@ -642,65 +640,6 @@ struct HandoffsView: View {
     func otherMac(_ side: String?) -> Machine? {
         guard let mac = side?.split(separator: "@").first.map(String.init) else { return nil }
         return store.ledger?.machines.first { $0.mac == mac }
-    }
-
-    /// Every project Tandem can see, in one list: the shared ones first, then the ones defined
-    /// in one profile's Claude only. Hiding the second kind behind a disclosure made projects
-    /// look missing (2026-11-08).
-    var projects: some View {
-        let shared = store.ledger?.projects ?? []
-        let local = (store.ledger?.unshared ?? []).sorted { ($0.project, $0.side) < ($1.project, $1.side) }
-        return VStack(alignment: .leading, spacing: 10) {
-            if store.ledger != nil && shared.isEmpty && local.isEmpty {
-                Text("No projects yet.").foregroundStyle(.secondary)
-            }
-            ForEach(shared) { p in
-                ProjectRow(store: store, p: p)
-                if p.id != shared.last?.id || !local.isEmpty { Divider() }
-            }
-            ForEach(local, id: \.self) { u in
-                UnsharedRow(store: store, u: u)
-                if u != local.last { Divider() }
-            }
-            HStack(spacing: 4) {
-                Text("Projects that exist only on claude.ai aren’t listed: they’re already on every Mac signed in to that account.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                InfoButton(text: "Tandem lists the Claude projects stored on a Mac. A project made on claude.ai or in the Claude app on your phone lives on Anthropic’s servers, so Claude shows it on every Mac signed in to that account, with nothing to hand off.")
-            }.padding(.top, 4)
-        }
-    }
-}
-
-/// A project defined in one profile's Claude only, so not in the shared drive yet.
-struct UnsharedRow: View {
-    @ObservedObject var store: Store
-    let u: Unshared
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "desktopcomputer").foregroundStyle(.secondary).frame(width: 22)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(u.project).fontWeight(.semibold)
-                Text("Only on \(u.mac)\(u.name.map { " · \($0)" } ?? "") · move it to the shared drive to hand it off")
-                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer()
-            if mine {
-                Menu { actions } label: { Image(systemName: "ellipsis.circle") }
-                    .menuStyle(.borderlessButton).fixedSize()
-                    .accessibilityLabel("Actions for \(u.project)")
-            }
-        }
-        .contentShape(Rectangle())
-        .contextMenu { if mine { actions } }
-    }
-
-    var mine: Bool { store.isMine(u.side) }
-
-    @ViewBuilder var actions: some View {
-        Button("Move to the Shared Drive") {
-            store.runLog("Move \(u.project) to the shared drive", store.profileArgs(u.side) + ["migrate", u.project])
-        }
     }
 }
 
@@ -854,72 +793,6 @@ struct JobRow: View {
         if s.state == "wait" && name == "event" { return "— waiting for it to arrive" }
         if s.state == "skip" { return !s.detail.isEmpty ? "— \(s.detail)" : (name == "brief" ? "— none" : "— not needed") }
         return s.detail.isEmpty ? "" : "— \(s.detail)"
-    }
-}
-
-struct ProjectRow: View {
-    @ObservedObject var store: Store
-    let p: LProject
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon).foregroundStyle(mine ? Color.accentColor : .secondary).frame(width: 22)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(p.name).fontWeight(.semibold)
-                Text(state).font(.callout).foregroundStyle(.secondary)
-                if let n = p.last?.note, !n.isEmpty {
-                    Text("“\(n)”").font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                }
-            }
-            Spacer()
-            Menu { actions } label: { Image(systemName: "ellipsis.circle") }
-                .menuStyle(.borderlessButton).fixedSize()
-                .accessibilityLabel("Actions for \(p.name)")
-        }
-        .contentShape(Rectangle())
-        .contextMenu { actions }
-    }
-
-    @ViewBuilder var actions: some View {
-                if mine, let h = p.holder ?? store.sidesDefining(p.name).first(where: store.isMine) {
-                    Button("Hand Off…") { store.draft(p.name, from: h) }
-                } else if !mine {
-                    ForEach(store.profiles) { pr in
-                        Button("Ask for It as \(pr.name)") { store.ask(p.name, as: store.app?.side(pr) ?? pr.id) }
-                    }
-                }
-                Divider()
-                Button("History…") { store.runLog("History of \(p.name)", ["log", p.name]) }
-                ForEach(store.mySides.filter { store.heldHere($0).contains(p.name) }, id: \.self) { side in
-                    Button("Unlock It for \(store.label(side))") { store.runLog("Unlock \(p.name)", store.profileArgs(side) + ["release", p.name]) }
-                }
-                Button("Show in Finder") { store.showInFinder(p.name) }
-                if p.doc != nil {
-                    Button("Open the Newest Brief") {
-                        if let root = store.ledger?.root, let d = p.doc?.name {
-                            NSWorkspace.shared.open(URL(fileURLWithPath: "\(root)/Projects/\(p.name)/\(d)"))
-                        }
-                    }
-                }
-    }
-
-    var mine: Bool { store.isMine(p.holder) || (p.holder == nil && store.sidesDefining(p.name).contains(where: store.isMine)) }
-    var icon: String {
-        switch p.state {
-        case "sent": return "paperplane"
-        case "held": return mine ? "folder.fill" : "folder"
-        case "unreadable": return "exclamationmark.icloud"
-        default: return "folder.badge.questionmark"
-        }
-    }
-    var state: String {
-        let who = store.label(p.holder ?? "")
-        switch p.state {
-        case "held": return "Shared · with \(who) · since \(ago(p.last?.at))"
-        case "sent": return "On its way to \(who) · sent \(ago(p.last?.at)) by \(store.label(p.last?.machine ?? ""))"
-        case "unreadable": return "Its newest ownership record is on the drive but hasn’t downloaded yet"
-        default: return "Never handed off"
-        }
     }
 }
 
