@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render the two-Mac handoff as an animated SVG terminal recording.
 
-Every printed line below is verbatim from bin/tandem + bin/coworkctl-v8.sh —
+Every printed line below is verbatim from bin/tandem + bin/coworkctl-v9.sh —
 only the project name, timestamps and byte counts are filled in.
 """
 import html

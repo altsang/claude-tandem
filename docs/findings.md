@@ -32,6 +32,16 @@
 - [21. SwiftUI's `@State` needs Xcode on macOS 27 — the Command Line Tools can't expand it](#21-swiftuis-state-needs-xcode-on-macos-27--the-command-line-tools-cant-expand-it)
 - [22. A handoff nobody received sits open for months — and then the manifest no longer fits](#22-a-handoff-nobody-received-sits-open-for-months--and-then-the-manifest-no-longer-fits)
 - [23. A changed host key at boot was another device, not the Mac](#23-a-changed-host-key-at-boot-was-another-device-not-the-mac)
+- [24. A Mac's card can be on the drive and still unreadable — keep the last one](#24-a-macs-card-can-be-on-the-drive-and-still-unreadable--keep-the-last-one)
+- [25. Claude keeps no lock per data folder — a second launch ran two instances on one](#25-claude-keeps-no-lock-per-data-folder--a-second-launch-ran-two-instances-on-one)
+- [26. Migrate and receive dropped a project's other folders](#26-migrate-and-receive-dropped-a-projects-other-folders)
+- [27. A send without a brief wrote no ownership event, and said UPLOADED](#27-a-send-without-a-brief-wrote-no-ownership-event-and-said-uploaded)
+- [28. A receive's paused steps stayed paused after they were done](#28-a-receives-paused-steps-stayed-paused-after-they-were-done)
+- [29. Claude's updater relaunched a Dock copy on the default account](#29-claudes-updater-relaunched-a-dock-copy-on-the-default-account)
+- [30. A profile has no projects list until its first project](#30-a-profile-has-no-projects-list-until-its-first-project)
+- [31. A project carries a link to claude.ai — in the account that made it](#31-a-project-carries-a-link-to-claudeai--in-the-account-that-made-it)
+- [32. Only the active app can hand over activation — and nothing opens a local project](#32-only-the-active-app-can-hand-over-activation--and-nothing-opens-a-local-project)
+- [33. `IFS=$'\t' read` collapses empty fields](#33-ifst-read-collapses-empty-fields)
 - [Two commands that caused damage during development](#two-commands-that-caused-damage-during-development)
 
 </details>
@@ -826,6 +836,71 @@ that window over and over, so Tandem repairs the result instead.
 - The menu-bar app runs `repair` whenever a copy launches, and says so in a notification.
 - `desktop` repairs first, a copy is never rebuilt while anything runs from it, and
   `tandem profile doctor` reports a stray copy.
+
+---
+
+## 30. A profile has no projects list until its first project
+
+**Seen 2026-11-09, moving VLOG Research to Junipera on Ji-su.** The receive verified every file and
+then stopped: Junipera had no `spaces.json` to add the project to. Claude writes that file, in
+`local-agent-mode-sessions/<account>/<org>/`, only when the profile makes its first project, so a
+new profile that has only chatted has the account folder and nothing in it. Junipera on Madoka was
+the same.
+
+**Fix (1.1.6):** `project-import` starts the list, `{"spaces":[]}`, in the account's one org folder
+and says *first project in this profile — started its projects list*. With no org folder yet (the
+profile was never signed in to a task) it stops and asks you to start one task in that Claude first.
+
+---
+
+## 31. A project carries a link to claude.ai — in the account that made it
+
+**Seen 2026-11-09 on Ji-su.** VLOG Research arrived in Junipera verified and claimed, and the Macs
+page said Junipera held it, but Junipera's Claude didn't list it under **Projects**. Its entry in
+`spaces.json` was intact except for one field the export had copied as it was: `migration`, with
+`stage: complete` and the `projectUuid` of a project on claude.ai in the **Personal** account.
+
+Claude's renderer links each local project to a project on claude.ai in its own account and records
+how far it got (`not_started` through `complete`). A record pointing into another account isn't
+redone, and the project stays out of the list. Removing the record, with that profile's Claude quit,
+was enough: within a minute of opening, Claude made a project in Junipera's account and wrote a new
+record with its own `projectUuid`, at `complete`.
+
+**Fix (1.2.2):** `project-export` records the account and org it came from; `project-import` drops
+the `migration` record when they differ from the receiving profile's, and says *from another
+account: Claude makes it a project in this one when it opens*. Between profiles on the same account
+(Personal on Madoka and Personal on Ji-su) the record is kept, since it already points at the right
+place.
+
+---
+
+## 32. Only the active app can hand over activation — and nothing opens a local project
+
+**Seen 2026-11-09.** *Open in Claude* on Ji-su did nothing visible for Junipera: Claude stayed
+behind. Since macOS 14, activation is cooperative. An app can bring another forward only while it is
+itself active, by yielding to it first. The app had asked a helper process to do it, and macOS
+ignored the helper. Every profile runs the same `/Applications/Claude.app`, so `open -a` could pick
+the wrong one.
+
+Claude's URL scheme has no way to open a local project: `claude://` takes `cowork/new` with a
+folder, a shared artifact, `code/…` and `claude.ai/new`, and nothing else.
+
+**Fix (1.2.0):** the app yields to the profile's own running process (`NSApp.yieldActivation(to:)`,
+then `activate`), and posts a notification saying where the project is: under **Projects** in
+Claude's sidebar, with the brief on the clipboard.
+
+---
+
+## 33. `IFS=$'\t' read` collapses empty fields
+
+**Seen 2026-11-09:** a claim's note read **1** in the history. The engine printed a project's state
+as tab-separated fields and read them back with `IFS=$'\t' read`. Tab is whitespace to `read`, so a
+run of tabs counts as one: with an empty note, every later field moved left, and the event count
+landed in the note. `tandem status` showed *( events)* for the same reason.
+
+**Fix (1.2.1, engine v9):** fields are joined with the unit separator `\x1f`, which isn't whitespace,
+in the engine and in `bin/tandem`. The ledger also reads a claim's note and brief from the handoff it
+answers, so claims recorded by v8 show correctly too.
 
 ---
 

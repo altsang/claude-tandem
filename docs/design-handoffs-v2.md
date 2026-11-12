@@ -1,6 +1,6 @@
 # Handoffs, rethought
 
-Status: **built** in 1.1.0 (2026-11-01); since 1.1.1 the app also builds without Xcode. How to use it is in the [handoffs guide](handoffs.md#with-the-app). This page is the reasoning.
+Status: **built** in 1.1.0 (2026-11-01); since 1.1.1 the app also builds without Xcode. The Projects grid came in 1.1.6 and moves by drag alone since 1.2.0. How to use it is in the [handoffs guide](handoffs.md#with-the-app). This page is the reasoning.
 
 ## What hurts today
 

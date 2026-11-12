@@ -179,6 +179,9 @@ tandem --profile work receive "My Project"         # then ⌘V into a session on
 - **Only the receiving account's app needs to be closed,** and only when the project is new to that account. `receive` adds it to that account's project list, which the app would otherwise overwrite from memory. Account A can stay open.
 - **The `/handoff` skill installs per account,** since skills sync by account. Add it in every account you hand work *from*; `tandem skill` shows you the file.
 - **Memory comes across and merges** into whatever the receiving account already knows on that project.
+- **The receiving account makes its own claude.ai project.** Claude links each local project to a project on claude.ai in its own account. `receive` leaves the sending account's link behind, and the receiving Claude makes a new one within a minute of opening, so the project appears under its **Projects** (from 1.2.2).
+- **A brand-new profile works too.** If the account has never had a project, the first `receive` starts its projects list. If it has never run a task at all, open it and start one first.
+- **In the app, drag instead.** On the Projects page, drag the project's mark from account A's column to the other account's, then Send.
 
 The full mechanics are in the [handoffs guide](handoffs.md).
 

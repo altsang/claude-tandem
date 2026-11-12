@@ -224,16 +224,16 @@ Both read the same inbox and settings. A send, receive or settle takes a per-pro
 | New Profile (the **+** in the toolbar) | `tandem profile create P` then `tandem profile app P --color …` |
 | Name · Badge · colour · Dock | `tandem profile rename` · `tandem profile app P --badge/--badge-image/--color/--dock-icon` |
 | Bring In Earlier Sessions | `tandem profile adopt P` |
-| Handoffs › Waiting for you | `tandem inbox` |
+| Inbox › Waiting for you | `tandem inbox` |
 | Receive | `tandem [--profile P] receive "X" --defer` |
-| Send… | `tandem [--profile P] send "X" --to SIDE --note … [--hold]` |
+| Send… · Projects: drag a mark to another place, or Move To | `tandem [--profile P] send "X" --to SIDE --note … [--hold]` |
 | Not Now | `tandem inbox dismiss KEY` |
 | Quit Claude and Finish · Finish Now | `tandem profile quit P` then `tandem [--profile P] settle` |
-| Ask for It · Handoffs › Ask for a Project | `tandem [--profile P] ask "X"` |
+| Projects: drag the other Mac's mark to a place here · Handoffs › Ask for a Project | `tandem [--profile P] ask "X"` |
 | Open in Claude | `tandem [--profile P] brief "X" --open` |
 | History… | `tandem log "X"` |
-| Unlock | `tandem [--profile P] release "X"` |
-| Move to the Shared Drive | `tandem [--profile P] migrate "X"` |
+| Unlock It for … | `tandem [--profile P] release "X"` |
+| Share Without Moving · dragging a project that's only on this Mac | `tandem [--profile P] migrate "X"` (then `send`, for a drag) |
 | Inbox · Projects (the grid) · the Macs page | `tandem where` |
 | Check Now (↻ in the toolbar, Handoffs › Check Now ⌘R) | `tandem where` |
 | (every few minutes, while it runs) | `tandem presence` |

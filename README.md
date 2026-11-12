@@ -142,7 +142,7 @@ Claude Tandem was built to overcome that: to move a Claude project between Macs 
 The same two commands move a Claude project **to another account on this Mac** or **to your other Mac**, because to Tandem each profile is simply another side: `Madoka`, `Madoka@work`, `Ji-su`.
 
 <p align="center">
-  <img src="assets/accounts-handoff-demo.svg" alt="Two Claude windows side by side. The personal account warns it is approaching its usage limit; /handoff writes a brief; in the terminal tandem send hands the project to Madoka@work and tandem --profile work receive verifies every file and merges memory; the work account's window then picks up from the pasted brief" width="880"/>
+  <img src="assets/accounts-handoff-demo.svg" alt="Two Claude windows side by side. The personal account warns it is approaching its usage limit; /handoff writes a brief; in the terminal tandem send hands the project to Madoka@work and tandem --profile work receive verifies every file, leaves the personal account's claude.ai link behind so the work account's Claude makes its own, and merges memory; the work account's window then picks up from the pasted brief" width="880"/>
   <br/><sub>Handing a project to your other account, before the first one runs out — terminal output from the tool itself, shortened.</sub>
 </p>
 
@@ -163,10 +163,10 @@ tandem send "My Project" --to Madoka@work                # hand it to the other 
 tandem --profile work receive "My Project"               # take it as that account, then ⌘V
 ```
 
-**With the app on both ends, there's no terminal at all.** `/handoff` writes the brief and says where it's going. Tandem on this Mac asks **Send it?**, and Tandem on the other side announces **It arrived — Receive**. Receiving verifies every file and claims the project at once, even with Claude open. The steps that need that Claude closed finish by themselves when it quits. **Open in Claude** brings up the right profile with the brief on the clipboard. You can also **ask** for a project from the Mac that doesn't have it.
+**With the app on both ends, there's no terminal at all.** `/handoff` writes the brief and says where it's going. Tandem on this Mac asks **Send it?**, and Tandem on the other side announces **It arrived — Receive**. Receiving verifies every file and claims the project at once, even with Claude open. The steps that need that Claude closed finish by themselves when it quits. **Open in Claude** brings up the right profile with the brief on the clipboard, and says where to find the project in it. You can also **ask** for a project from the Mac that doesn't have it.
 
 <p align="center">
-  <img src="assets/handoff-app-demo.svg" alt="Two Macs side by side, no terminal. On Madoka, /handoff writes the brief; a Claude Tandem notification asks to send Film Kit to Ji-su; the send sheet confirms; the Handoffs page ticks off brief, files and memory snapshot, ownership event, and the upload. On Ji-su a notification says Film Kit arrived; one click on Receive verifies every file by md5, claims it, leaves the memory merge for when Claude quits, and Open in Claude shows the pasted brief. Madoka is then told it was received" width="880"/>
+  <img src="assets/handoff-app-demo.svg" alt="Two Macs side by side, no terminal. On Madoka, /handoff writes the brief; a Claude Tandem notification asks to send Film Kit to Ji-su; the send sheet confirms; the Inbox ticks off brief, files and memory snapshot, ownership event, and the upload. On Ji-su a notification says Film Kit arrived; one click on Receive verifies every file by md5, claims it, leaves the memory merge for when Claude quits, and Open in Claude brings Claude forward with a notification saying the project is under Projects and the brief is on the clipboard; pasted, Claude picks up. Madoka is then told it was received" width="880"/>
   <br/><sub>The same handoff through the app — a notification on each Mac, each step as the CLI reports it.</sub>
 </p>
 
@@ -197,8 +197,8 @@ The same thing in a terminal, for scripts or a Mac without the app:
 - **Open Claude Tandem…** opens the window, and **Settings…** (⌘,) its settings. Everything else is there.
 
 <p align="center">
-  <img src="assets/window-demo.svg" alt="The Claude Tandem window. The Handoffs page shows Film Kit waiting for the work profile; one click on Receive turns it into a finished receive with Open in Claude, and the shared projects list who holds each one. The Macs page shows Madoka and Ji-su side by side: online, Tandem version, iCloud Drive in sync, and each profile's account and what it holds" width="880"/>
-  <br/><sub>The window: what's waiting, who holds what, and every Mac.</sub>
+  <img src="assets/window-demo.svg" alt="The Claude Tandem window. The Inbox shows Film Kit waiting for the work profile; one click on Receive turns it into a finished receive, and Open in Claude says where the project is in Claude. The Projects page is a grid of every project against each profile on each Mac; dragging Adobe Stock Plan's mark from default on Madoka to default on Ji-su lights up the target, opens the send sheet, and after Send the mark shows it on its way. The Macs page shows Madoka and Ji-su side by side: online, Tandem 1.3.0, iCloud Drive in sync, and each profile's account, what it holds and what is on its way" width="880"/>
+  <br/><sub>The window: what's waiting, every project in every place — drag a mark to move it — and every Mac.</sub>
 </p>
 
 **The window** (Open Claude Tandem…, or open the app from Finder) has the rest. Its title bar names the page and sums it up (*14 projects · 4 shared · 10 on one Mac*), and it has a menu bar like any Mac app's: ⌘1–⌘4 for the pages, ⌘R to check the shared drive now, ⌘N for a new profile, ⇧⌘H to hand off a project, and a Handoffs menu with what you can receive or ask for.
@@ -207,9 +207,14 @@ The same thing in a terminal, for scripts or a Mac without the app:
 |---|---|
 | **Get Started** | a checklist from a second profile to the `/handoff` skill. Once every step is done the window opens on the Inbox when something is waiting, else on Projects, and the checklist is under Help |
 | **Inbox** | what's waiting for you, and sends and receives running now, step by step |
-| **Projects** | a grid of every project against every place it can be: each profile on each Mac. A dot shows who has it, a ring an old copy, a square a project on one Mac only. Drag a project's mark to another place to move it there: it's handed off, asked for, or shared first when it's only on one Mac. Select one for where it is and its history. Right-click for Move To (the same moves without dragging), Open in Claude, History, the newest brief and Unlock |
+| **Projects** | a grid of every project against every place it can be: each profile on each Mac. A dot shows who has it, an arrow a project on its way, a ring an old copy, a square a project on one Mac only. Drag a project's mark to another place to move it there: it's handed off, asked for, or shared first when it's only on one Mac. Select one for where it is and its history. Right-click for Move To (the same moves without dragging), Open in Claude, History, the newest brief and Unlock |
 | **Macs** | every Mac running Tandem: when it was last seen, its Tandem version and iCloud health, each profile on it with its account, and what each holds |
 | **A profile** | the projects it holds (Hand Off…) and the ones coming to it (Receive), its accounts, its name, badge and Dock launcher. Show Claude, Claude Code and Quit are in the toolbar; right-click it in the sidebar for those and Rename. The **+** beside *Profiles*, or File › New Profile…, makes a new one |
+
+<p align="center">
+  <img src="assets/projects-demo.svg" alt="The Projects page. Columns for the default and work profiles, each on Madoka and Ji-su, with this Mac's columns tinted; rows for three shared projects and two that are only on one Mac, each with a dot, an arrow, a ring or a square where it is; the legend below. Adobe Stock Plan is selected: the inspector beside the grid shows where it is (an old copy on Madoka, on its way to Ji-su), its status and note, and its history" width="880"/>
+  <br/><sub>The Projects page, with a project selected: where it is, its note and its history.</sub>
+</p>
 
 **Settings** (⌘,) is a window of its own, with three tabs: **General** (Open at Login and your terminal), **Handoffs** (what happens when a handoff arrives or `/handoff` writes a brief) and **Maintenance** (Run Doctor, Sync Claude Code Sessions, conflict copies and the shared engine, with their output in place).
 

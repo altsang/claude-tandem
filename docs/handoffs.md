@@ -143,7 +143,7 @@ It writes `HANDOFF_<topic>.md` into the project folder, plus a small *send inten
 
 ### 3. Each project
 
-Move the project's folder into the shared tree, once, on the Mac that has it, with Claude quit (or press Share on the project in the app, which quits and reopens Claude for you):
+Move the project's folder into the shared tree, once, on the Mac that has it, with Claude quit. In the app, dragging a project that's only on this Mac to another place does this first, quitting and reopening Claude for you; right-click › **Share Without Moving** shares it and stops there:
 
 ```bash
 tandem migrate "Quicken Reconciliation"
@@ -169,11 +169,17 @@ With Claude Tandem running on both sides (Open at Login on), a handoff is clicks
 | Claude, where you are | `/handoff` writes the brief, plus a small *send intent* saying where it goes (`.handoff/intents/`) |
 | This Mac, within a minute | a notification: **Send P to Ji-su?** Send… shows the brief and its age, the note, and whether Ji-su is awake. Send runs `tandem send` with its steps shown |
 | The other side, at drive speed (2–3 min) | a notification: **P arrived from Madoka — Receive.** Receiving verifies every file and claims it, even with Claude open |
-| Then | **Open in Claude** puts the brief on the clipboard and brings that profile's Claude forward: ⌘V |
+| Then | **Open in Claude** puts the brief on the clipboard, brings that profile's Claude forward, and a notification says where the project is: under **Projects** in Claude's sidebar. Start a task there and ⌘V. Claude has no link that opens a local project, so this is as far as a click can take you |
 
 **Claude open on the receiving side?** It no longer stops the receive. Defining the project, merging memory and lifting a `--hold` all write `spaces.json`, which a running Claude overwrites. So they wait, shown as *almost done*, and finish by themselves when that profile's Claude quits. **Quit Claude and Finish** does it now. In a terminal that's `tandem receive P --defer`, then `tandem settle`.
 
-**Asking for a project.** On the Mac that doesn't hold it: Handoffs › the project's … menu › **Ask for It** (`tandem ask P`). The holder gets **Ji-su asks for P** with *Copy /handoff*. Only the session that did the work can write the brief.
+**Moving from the Projects page.** The window's **Projects** page is a grid: a row per project, a column per place (each profile on each Mac). Drag a project's mark to another place to move it there. From a place on this Mac that opens the send sheet; a project only on this Mac is shared first. Right-click › **Move To** does the same without dragging.
+
+<p align="center">
+  <img src="../assets/projects-demo.svg" alt="The Projects page: a row per project, a column per profile on each Mac, and the legend. Adobe Stock Plan is selected; the inspector shows an old copy on Madoka, the project on its way to Ji-su, the note sent with it, and its history" width="880"/>
+</p>
+
+**Asking for a project.** On the Mac that doesn't hold it, drag the project's mark from the other Mac to a place on this one, or use the menu bar's Handoffs › **Ask for a Project** (`tandem ask P`). The holder gets **Ji-su asks for P** with *Copy /handoff*. Only the session that did the work can write the brief.
 
 **Automatic.** In Settings, a Mac can **receive automatically** when a handoff arrives, and **send automatically** when `/handoff` names a profile or Mac Tandem knows. Both default to asking.
 
@@ -189,7 +195,7 @@ Nothing new goes into `.handoff/events/`. Intents, requests and the Macs' cards 
 tandem where
 ```
 
-`tandem where`, and the window's **Handoffs** and **Macs** pages, merge two sources:
+`tandem where`, and the window's **Inbox**, **Projects** and **Macs** pages, merge two sources:
 
 - every shared project's ownership log
 - a small card each Mac's Tandem publishes to the shared drive every five minutes: its profiles, their accounts, the projects each defines, its Tandem version and its iCloud state
@@ -200,7 +206,7 @@ It shows:
 - **every profile** on each Mac, with its account and what it holds.
 - **every shared project**: held, or on its way, and by whom.
 - **what's pending**: briefs ready to send, requests, receives still settling.
-- **what isn't shared yet**: projects defined on only one side, which a handoff can't reach until `tandem migrate`.
+- **what isn't shared yet**: projects defined on only one side, which a handoff can't reach until `tandem migrate` (in the app, dragging one shares it first).
 
 A Mac that appears in the ownership log but publishes no card is listed too, as *no card*. Its Tandem is older or not running.
 
@@ -231,6 +237,8 @@ tandem --profile work receive "P"              # as `work` — only `work`'s app
 ```
 
 The files are already on this Mac, so the drive only has to round-trip the small ownership event. Run `/handoff` before the account hits its usage limit: at the limit, the session can't write the document. More in the [profiles guide](profiles.md#moving-work-to-another-account).
+
+**Another account means another claude.ai project.** Claude links each local project to a project on claude.ai in the account that made it. A link from another account would keep the project out of the receiving Claude's **Projects** list, so `receive` leaves it behind (*from another account: Claude makes it a project in this one when it opens*), and the receiving Claude creates its own within a minute of opening. Between profiles on the same account the link is kept. A profile that has never had a project gets its projects list started by the first receive.
 
 ---
 

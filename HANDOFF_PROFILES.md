@@ -74,7 +74,15 @@ on iCloud. So same-Mac account handoff reuses send/receive unchanged:
 
 ## Status
 
-**Updated 2026-11-05.** Both Macs run **1.1.5**.
+**Updated 2026-11-11.** Both Macs run **1.3.0**, licensed GPL-3.0-or-later from this release (MIT up to 1.2.2).
+
+- **Since 1.1.5.** The window's Projects page is a grid of every project against every profile on each
+  Mac, and a project moves by dragging its mark (1.1.6, drag-only since 1.2.0). A receive into a
+  profile that has never had a project starts its projects list (finding 30). A receive into another
+  account drops the sender's claude.ai link, so the project shows under Projects there (1.2.2,
+  finding 31); VLOG Research on Ji-su's Junipera was repaired by hand on 2026-11-09.
+
+**Updated 2026-11-05.** Both Macs ran **1.1.5**.
 
 - **Update behaviour, answered (finding 29).** Claude's updater (ShipIt) treats a profile's
   `--dock-icon` copy as an ordinary install. It updates the copy in place and relaunches it with

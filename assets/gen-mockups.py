@@ -7,7 +7,7 @@ widening clip, and the pointer moves by animated translate. Claude's windows are
 drawn schematically (Claude's Dock icon simplified, placeholder accounts). Terminal lines are the
 tool's real output, shortened where marked.
 
-    python3 assets/gen-mockups.py               # writes the five SVGs beside this file
+    python3 assets/gen-mockups.py               # writes the six SVGs beside this file (gen-demo.py writes the seventh)
     FRAME=8.5 OUT=/tmp/x python3 assets/gen-mockups.py   # one still moment of each, to check by eye
 """
 import html, os, re
@@ -305,11 +305,12 @@ def handoff_accounts():
     sc.add(t(tx, p(1), "sending 'Film Kit': Madoka -> Madoka@work", fill="#E6EDF3", **M), 4.6)
     sc.add(t(tx, p(2), "  memory: 12 file(s) -> .handoff/memory/", fill="#8B949E", **M), 4.9)
     sc.add(t(tx, p(3), "  ✓ all 14 files uploaded to the drive in 6s", fill="#57AB5A", **M), 5.6)
-    sc.add(t(tx, p(5), "$", fill="#57AB5A", **M), 6.6)
-    sc.typed(tx + 14, p(5), 'tandem --profile work receive "Film Kit"', 6.7)
-    sc.add(t(tx, p(6), "  ✓ all 14 files delivered and verified by md5", fill="#57AB5A", **M), 8.3)
-    sc.add(t(tx, p(7), "  merged memory from Madoka: 12 added, 0 clash", fill="#8B949E", **M), 8.7)
-    sc.add(t(tx, p(8), "claimed by Madoka@work · HANDOFF_film_kit.md copied — ⌘V in Claude", fill="#C9A4FF", **M), 9.2)
+    sc.add(t(tx, p(4), "$", fill="#57AB5A", **M), 6.6)
+    sc.typed(tx + 14, p(4), 'tandem --profile work receive "Film Kit"', 6.7)
+    sc.add(t(tx, p(5), "  ✓ all 14 files delivered and verified by md5", fill="#57AB5A", **M), 8.3)
+    sc.add(t(tx, p(6), "  from another account: Claude makes it a project in this one when it opens", fill="#8B949E", **M), 8.6)
+    sc.add(t(tx, p(7), "  merged memory from Madoka: 12 added, 0 clash", fill="#8B949E", **M), 8.9)
+    sc.add(t(tx, p(8), "claimed by Madoka@work · HANDOFF_film_kit.md copied — ⌘V in Claude", fill="#C9A4FF", **M), 9.3)
     sc.write("accounts-handoff-demo.svg")
 
 
@@ -342,13 +343,13 @@ def menubar():
             + f'<line x1="{dx+10}" y1="{py+168}" x2="{dx+dw-10}" y2="{py+168}" stroke="#E5E5EA"></line>'
             + t(dx + 14, py + 188, "Quit Claude Tandem", 12) + t(dx + dw - 16, py + 188, "⌘Q", 12, "#8E8E93", anchor="end"))
     sc.add(base, 1.7, 6.2)
-    work_row = (prow(py + 64, "W", TEAL, "work", "you@company.com · Team  ·  ", "4 earlier sessions", BLUE)
+    work_row = (prow(py + 64, "W", TEAL, "work", "you@company.com · Team  ·  ", "4 earlier sessions to bring in", BLUE)
                 + t(dx + dw - 16, py + 86, "›", 14, "#8E8E93", anchor="end"))
     sc.add(work_row, 1.7, 3.1)
     sc.add(f'<rect x="{dx+6}" y="{py+62}" width="{dw-12}" height="44" rx="6" fill="{BLUE}"></rect>'
            + badge(dx + 26, py + 80, 11, "W", TEAL)
            + t(dx + 46, py + 77, "work", 12.5, "#FFFFFF", 700)
-           + t(dx + 46, py + 92, "you@company.com · Team  ·  4 earlier sessions", 10.5, "#DCE6FF")
+           + t(dx + 46, py + 92, "you@company.com · Team  ·  4 earlier sessions to bring in", 10.5, "#DCE6FF")
            + t(dx + dw - 16, py + 86, "›", 14, "#FFFFFF", anchor="end"), 3.1, 6.2)
     # the profile's submenu, opening to the left
     sx, sy, sw = 206, 132, 320
@@ -396,7 +397,7 @@ def menubar():
 # ============================================================ shared: Claude Tandem's own window
 def tandem_window(x, y, w, h, title, selected, side_w=128, badge_n=0, profiles=(("A", GRAPH, "default"), ("W", TEAL, "work")),
                   subtitle="", refresh=True, setup_left=0):
-    """The app's window: a sidebar (Get Started while unfinished, Handoffs, Macs, the profiles) and a content
+    """The app's window: a sidebar (Get Started while unfinished, Inbox, Projects, Macs, the profiles) and a content
     area whose title bar names the page, sums it up, and holds its ↻ Check Now. Settings is its own window."""
     s = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="#FFFFFF" stroke="#C9CBD1"></rect>',
          f'<path d="M{x} {y+10}a10 10 0 0 1 10-10h{side_w-10}v{h}h-{side_w-10}a10 10 0 0 1 -10-10Z" fill="#F1F2F5"></path>']
@@ -407,7 +408,7 @@ def tandem_window(x, y, w, h, title, selected, side_w=128, badge_n=0, profiles=(
         s.append(t(x + side_w + 16, y + 31, subtitle, 10, "#6E6E73"))
     if refresh:
         s.append(f'<circle cx="{x+w-22}" cy="{y+20}" r="11" fill="#EDEEF1"></circle>' + t(x + w - 22, y + 24.5, "↻", 12, "#3A3A40", 600, "middle"))
-    rows = ([("setup", "☑", "Get Started")] if setup_left else []) + [("handoffs", "⇄", "Handoffs"), ("macs", "▭", "Macs")]
+    rows = ([("setup", "☑", "Get Started")] if setup_left else []) + [("handoffs", "⊟", "Inbox"), ("projects", "▦", "Projects"), ("macs", "▭", "Macs")]
     yy = y + 46
     for key, ic, label in rows:
         if key == selected:
@@ -439,7 +440,7 @@ def step_icon(cx, cy, state):
     return f'<circle cx="{cx}" cy="{cy}" r="5.5" fill="none" stroke="#A1A1A8" stroke-width="1.3" stroke-dasharray="2 1.6"></circle>'
 
 def job(sc, x, y, w, title, steps, t0, t_end, progress=None):
-    """A job card as the Handoffs page shows it: title, then one line per step as the CLI reports it.
+    """A job card as the Inbox shows it: title, then one line per step as the CLI reports it.
     steps: (label, detail, t_done, final_state)."""
     sc.add(t(x, y, "In progress", 10, "#8E8E93", 600)
            + f'<rect x="{x-8}" y="{y+8}" width="{w}" height="{30 + len(steps) * 19 + (16 if progress else 0)}" rx="8" fill="#F6F6F8" stroke="#E2E3E8"></rect>', t0)
@@ -460,11 +461,13 @@ def job(sc, x, y, w, title, steps, t0, t_end, progress=None):
 
 def note(x, y, w, title, body, button=None):
     """A macOS notification banner from Claude Tandem, with its action button."""
-    h = 66 if button else 54
+    lines = body.split("\n")   # a body may run to a second line
+    h = (66 if button else 54) + 13 * (len(lines) - 1)
     s = (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="12" fill="#FBFBFD" stroke="#D2D2D7"></rect>'
          f'<rect x="{x+10}" y="{y+11}" width="28" height="28" rx="7" fill="#1D1D1F"></rect>'
          + menubar_icon(x + 24, y + 25, 0.8, 1.2, "#FFFFFF")
-         + t(x + 46, y + 21, title, 11, weight=700) + t(x + 46, y + 37, body, 10, "#3A3A40"))
+         + t(x + 46, y + 21, title, 11, weight=700)
+         + "".join(t(x + 46, y + 37 + 13 * i, ln, 10, "#3A3A40") for i, ln in enumerate(lines)))
     if button:
         bw = len(button) * 6.4 + 22
         s += (f'<rect x="{x+w-bw-10}" y="{y+h-22}" width="{bw}" height="16" rx="5" fill="#E3E4E8"></rect>'
@@ -535,7 +538,7 @@ def handoff_app():
     send_btn = (sx + 268, sy + 128)
 
     # Madoka's Tandem window: the send, step by step
-    tw, (tx, ty) = tandem_window(14, 296, 424, 292, "Handoffs", "handoffs")
+    tw, (tx, ty) = tandem_window(14, 296, 424, 292, "Inbox", "handoffs")
     sc.add(tw)
     idle = lambda x, y: (t(x, y + 8, "Waiting for you", 10, "#8E8E93", 600)
                          + f'<rect x="{x-8}" y="{y+16}" width="266" height="30" rx="8" fill="#F6F6F8" stroke="#E2E3E8"></rect>'
@@ -559,7 +562,7 @@ def handoff_app():
            + f'<rect x="{bx}" y="{by+32}" width="180" height="9" rx="4.5" fill="#E7E8EC"></rect>', None, 17.6)
     n3, b3 = note(592, 32, 300, "Film Kit arrived from default on Madoka", "For default on this Mac · edit pass next", "Receive")
     sc.add(n3, 11.2, 12.9)
-    tw2, (ux, uy) = tandem_window(466, 296, 424, 292, "Handoffs", "handoffs", profiles=(("A", GRAPH, "default"),))
+    tw2, (ux, uy) = tandem_window(466, 296, 424, 292, "Inbox", "handoffs", profiles=(("A", GRAPH, "default"),))
     sc.add(tw2)
     sc.add(idle(ux + 8, uy), None, 13.0)
     job(sc, ux + 8, uy + 8, 266, "Receive Film Kit as default on this Mac", [
@@ -580,6 +583,10 @@ def handoff_app():
            + t(bx + 52, by + 34, "Pasted · HANDOFF_film_kit.md", 11, weight=600)
            + t(bx + 52, by + 50, "task · status · next steps …", 10.5, "#5F5F66")
            + t(bx, by + 84, "Read it — picking up at the edit pass.", 11.5), 17.6)
+    # Open in Claude says where the project is: Claude has no link to a local project
+    n5, _ = note(526, 32, 366, "Film Kit is in Claude (default)",
+                 "Open it from Projects in Claude’s sidebar,\nstart a task, and paste: the brief is on the clipboard.")
+    sc.add(n5, 17.0, 19.6)
     # and Madoka hears it landed
     n4, _ = note(140, 32, 300, "Film Kit was received", "default on Ji-su verified every file and holds it now.")
     sc.add(n4, 18.6)
@@ -592,67 +599,187 @@ def handoff_app():
 
 
 # ============================================================ 5. the window: what is where
+def mark(cx, cy, kind, color):
+    """A cell of the Projects grid, as CellMark draws it: has it (dot), on its way (arrow.right.circle.fill),
+    old copy (ring), only here (rounded square)."""
+    if kind == "has":
+        return f'<circle cx="{cx}" cy="{cy}" r="6" fill="{color}"></circle>'
+    if kind == "old":
+        return f'<circle cx="{cx}" cy="{cy}" r="5" fill="none" stroke="{color}" stroke-opacity="0.6" stroke-width="2"></circle>'
+    if kind == "coming":
+        return (f'<circle cx="{cx}" cy="{cy}" r="6.5" fill="{color}"></circle>'
+                f'<path d="M{cx-3.2} {cy}h6M{cx+0.4} {cy-2.8}l2.8 2.8l-2.8 2.8" fill="none" stroke="#FFFFFF" stroke-width="1.5" '
+                f'stroke-linecap="round" stroke-linejoin="round"></path>')
+    return f'<rect x="{cx-6}" y="{cy-6}" width="12" height="12" rx="3" fill="{color}"></rect>'   # only here
+
+
+def row_icon(x, y, shared):
+    """The row's SF Symbol: folder for a shared project, desktopcomputer for one only on one Mac."""
+    if shared:
+        return (f'<path d="M{x} {y-8}h4.2l1.6 1.8h6.7a1 1 0 0 1 1 1v7.7a1 1 0 0 1 -1 1h-11.5a1 1 0 0 1 -1-1Z" '
+                f'fill="none" stroke="#8E8E93" stroke-width="1.2" stroke-linejoin="round"></path>')
+    return (f'<rect x="{x}" y="{y-8.5}" width="13.5" height="9.5" rx="1.5" fill="none" stroke="#8E8E93" stroke-width="1.2"></rect>'
+            f'<path d="M{x+4.5} {y+3.5}h4.5M{x+6.75} {y+1}v2.5" stroke="#8E8E93" stroke-width="1.2" stroke-linecap="round"></path>')
+
+
+HERE_TINT = "#F2F6FE"   # this Mac's columns: the accent at 5%
+
+
+def text_width(s, size):
+    """The width of a line, to place what follows it. Measured in Helvetica, the widest of the fonts the SVG may fall
+    back to (rsvg, Windows' Arial); a rough estimate where the font is missing."""
+    try:
+        from PIL import ImageFont
+        return ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size * 4).getlength(s) / 4
+    except Exception:
+        return len(s) * size * 0.43
+
+
+def group_by_button(x, y):
+    """The Projects page's Group By menu button (rectangle.3.group), left of Check Now."""
+    return (f'<circle cx="{x}" cy="{y}" r="11" fill="#EDEEF1"></circle>'
+            f'<rect x="{x-6}" y="{y-5}" width="12" height="4" rx="1" fill="none" stroke="#3A3A40" stroke-width="1.1"></rect>'
+            f'<rect x="{x-6}" y="{y+1}" width="5" height="4" rx="1" fill="none" stroke="#3A3A40" stroke-width="1.1"></rect>'
+            f'<rect x="{x+1}" y="{y+1}" width="5" height="4" rx="1" fill="none" stroke="#3A3A40" stroke-width="1.1"></rect>')
+
+
+def projects_grid(cx, cw, Y, cols, rows, legend_w, selected=None):
+    """The Projects page's grid: profile names over their columns, each column's Mac, the two sections, the legend.
+    rows: (name, shared, {column: kind}); cols: centres, default on Madoka, Ji-su, then work on Madoka, Ji-su."""
+    pc = [GRAPH, GRAPH, TEAL, TEAL]
+    g = []
+    for (c0, c1), name, col in (((cols[0], cols[1]), "default", GRAPH), ((cols[2], cols[3]), "work", TEAL)):
+        g.append(t((c0 + c1) / 2, Y + 68, name, 12, weight=700, anchor="middle")
+                 + f'<rect x="{c0-28}" y="{Y+74}" width="{c1-c0+56}" height="2" rx="1" fill="{col}"></rect>')
+    for i, c in enumerate(cols):
+        g.append(t(c, Y + 92, "Madoka" if i % 2 == 0 else "Ji-su", 10.5, BLUE if i % 2 == 0 else "#6E6E73", anchor="middle"))
+    def section(y, label): g.append(t(cx + 8, y, label, 11, "#5F5F66", 600)
+                                    + f'<line x1="{cx+8}" y1="{y+7}" x2="{cx+cw}" y2="{y+7}" stroke="#E2E3E8"></line>')
+    tops = {}
+    def row(top, name, shared, cells):
+        sel = name == selected
+        if sel:
+            g.append(f'<rect x="{cx+4}" y="{top+2}" width="{cw-4}" height="28" rx="6" fill="#DCE5FA"></rect>')
+        g.append(row_icon(cx + 14, top + 20, shared) + t(cx + 36, top + 20, name, 12.5, weight=600 if sel else 400)
+                 + "".join(f'<rect x="{c-26}" y="{top+4}" width="52" height="24" rx="6" fill="{HERE_TINT}"></rect>'
+                           for c in cols[::2] if not sel))
+        for i, kind in cells.items():
+            g.append(mark(cols[i], top + 16, kind, pc[i]))
+        tops[name] = top
+    shared = [r for r in rows if r[1]]; only = [r for r in rows if not r[1]]
+    y = Y + 122
+    section(y, f"Shared · moves between places · {len(shared)}")
+    for r in shared:
+        y += 8 if r is shared[0] else 0
+        row(y, *r); y += 32
+    y += 26
+    section(y, f"Only on one Mac · {len(only)}"); y += 8
+    for r in only:
+        row(y, *r); y += 32
+    lx, ly = cx + 8, y + 26
+    for kind, label, w in (("has", "Has it", 62), ("coming", "On its way", 84), ("old", "Old copy, locked", 116), ("only", "Only here", 70)):
+        g.append(mark(lx + 6, ly - 4, kind, "#8E8E93") + t(lx + 18, ly, label, 10.5, "#5F5F66")); lx += w
+    lines = ["Drag a project’s mark to another profile or Mac to move it there. A project only on this Mac is shared first.",
+             "Projects that exist only on claude.ai aren’t listed: they’re on every Mac signed in to that account already."]
+    if legend_w < 600:      # the window is narrower with the inspector open: the legend wraps
+        lines = ["Drag a project’s mark to another profile or Mac to move it there.", "A project only on this Mac is shared first.",
+                 "Projects that exist only on claude.ai aren’t listed: they’re on every", "Mac signed in to that account already."]
+    yy = ly + 22
+    for i, ln in enumerate(lines):
+        g.append(t(cx + 8, yy, ln, 10.5, "#5F5F66"))
+        if i == len(lines) - 1:
+            ix = cx + 8 + text_width(ln, 10.5) + 10
+            g.append(f'<circle cx="{ix}" cy="{yy-3.5}" r="5.5" fill="none" stroke="#8E8E93"></circle>' + t(ix, yy, "i", 8, "#8E8E93", 700, "middle"))
+        yy += 15 if legend_w < 600 and i % 2 == 0 else 19
+    return "".join(g), tops
+
+
 def window_tour():
-    sc = Scene(900, 500, 16.0)
+    sc = Scene(900, 500, 23.0)
     desktop(sc)
     X, Y, Wd, Hd = 30, 38, 840, 448
-    content_x = X + 190 + 20
-    for sel, a, b in (("handoffs", 0, 7.4), ("macs", 7.4, None)):
-        w_, _ = tandem_window(X, Y, Wd, Hd, "Handoffs" if sel == "handoffs" else "Macs", sel, side_w=190,
-                              badge_n=1 if sel == "handoffs" else 0,
-                              subtitle="1 waiting · 3 shared" if sel == "handoffs" else "2 Macs · 2 online")
+    cx, cw = X + 190 + 20, Wd - 190 - 40
+    TB, TC = 6.9, 15.6          # Projects from TB, Macs from TC
+    pages = (("handoffs", "Inbox", "1 waiting", 0, TB), ("projects", "Projects", "5 projects · 3 shared · 2 on one Mac", TB, TC),
+             ("macs", "Macs", "2 Macs · 2 online", TC, None))
+    for sel, title, sub, a, b in pages:
+        w_, _ = tandem_window(X, Y, Wd, Hd, title, sel, side_w=190, badge_n=1 if sel == "handoffs" else 0, subtitle=sub)
         sc.add(w_, a, b)
-    # once received: nothing waits, so the subtitle and the sidebar count change
-    sc.add(f'<rect x="{X+190+14}" y="{Y+23}" width="140" height="12" fill="#FFFFFF"></rect>' + t(X + 190 + 16, Y + 31, "3 shared", 10, "#6E6E73"), 3.6, 7.4)
-    cx, cw = content_x, Wd - 190 - 40
-
-    # ---- Handoffs
     def box(y, h): return f'<rect x="{cx}" y="{y}" width="{cw}" height="{h}" rx="9" fill="#F6F6F8" stroke="#E2E3E8"></rect>'
-    hp = (t(cx + 8, Y + 98, "Waiting for you", 11, "#5F5F66", 600) + box(Y + 106, 54)
-          + f'<circle cx="{cx+16}" cy="{Y+126}" r="4" fill="#34C759"></circle>'
-          + t(cx + 28, Y + 130, "Film Kit — from default on Ji-su", 12.5, weight=700)
-          + t(cx + 28, Y + 148, "For work on this Mac · sent 2 minutes ago · brief HANDOFF_film_kit.md", 10.5, "#5F5F66")
-          + f'<rect x="{cx+cw-84}" y="{Y+120}" width="72" height="24" rx="7" fill="{BLUE}"></rect>'
-          + t(cx + cw - 48, Y + 136, "Receive", 11.5, "#FFFFFF", 600, "middle")
-          + t(cx + 8, Y + 186, "Shared projects", 11, "#5F5F66", 600) + box(Y + 194, 172))
-    rows = [("Film Kit", "On its way to work on this Mac · sent 2 minutes ago by Ji-su", "", BLUE),
-            ("Quicken Reconciliation", "With default on Ji-su · since 3 days ago", "“THW done, 7 securities left”", "#1D1D1F"),
-            ("Adobe Stock Plan", "With default on this Mac · since 5 days ago", "“vest schedule checked through Q3”", "#1D1D1F")]
-    yy = Y + 214
-    for name, sub, quote, col in rows:
-        hp += (t(cx + 16, yy + 2, "▱", 13, "#8E8E93") + t(cx + 36, yy + 2, name, 12.5, col, 700)
-               + t(cx + 36, yy + 18, sub, 10.5, "#5F5F66") + (t(cx + 36, yy + 33, quote, 10, "#3A3A40") if quote else "")
-               + t(cx + cw - 22, yy + 4, "⋯", 14, "#5F5F66", anchor="middle"))
-        yy += 54 if quote else 42
-    hp += (box(Y + 380, 34) + t(cx + 14, Y + 402, "›  Only on one Mac — 4 projects a handoff can’t reach yet", 11.5, weight=600)
-           + f'<rect x="{cx+cw-170}" y="{Y+386}" width="160" height="22" rx="6" fill="#EDEEF1"></rect>'
-           + t(cx + cw - 90, Y + 401, "Move to the Shared Drive  ⌄", 10.5, anchor="middle"))
-    UP = 30   # the page heading is the title bar's now: content starts higher
-    def lift(svg): return f'<g transform="translate(0,-{UP})">{svg}</g>'
-    sc.add(lift(hp), 0, 7.4)
-    done = (f'<rect x="{cx}" y="{Y+88}" width="{cw}" height="74" fill="#FFFFFF"></rect>'
-            + t(cx + 8, Y + 98, "In progress", 11, "#5F5F66", 600) + box(Y + 106, 54)
-            + step_icon(cx + 16, Y + 126, "done")
-            + t(cx + 28, Y + 130, "Receive Film Kit as work on this Mac", 12.5, weight=700)
-            + t(cx + 28, Y + 148, "Every file verified (md5) · Claimed · Memory merged · Brief HANDOFF_film_kit.md", 10.5, "#5F5F66")
-            + f'<rect x="{cx+cw-112}" y="{Y+120}" width="100" height="24" rx="7" fill="{BLUE}"></rect>'
-            + t(cx + cw - 62, Y + 136, "Open in Claude", 11.5, "#FFFFFF", 600, "middle")
-            + f'<rect x="{cx+30}" y="{Y+205}" width="{cw-80}" height="34" fill="#F6F6F8"></rect>'
-            + t(cx + 36, Y + 216, "Film Kit", 12.5, "#1D1D1F", 700)
-            + t(cx + 36, Y + 232, "With work on this Mac · since just now", 10.5, "#5F5F66"))
-    sc.add(lift(done), 3.6, 7.4)
-    sc.add(f'<rect x="{X+190-36}" y="{Y+34}" width="22" height="18" fill="#DCDDE2"></rect>', 3.6, 7.4)   # the badge clears
+    def btn(x, y, w, label, fill=BLUE, color="#FFFFFF"):
+        return (f'<rect x="{x}" y="{y}" width="{w}" height="24" rx="7" fill="{fill}"></rect>'
+                + t(x + w / 2, y + 16, label, 11.5, color, 600, "middle"))
+
+    # ---- Inbox: Film Kit waits; Receive; then Open in Claude says where the project is
+    sc.add(t(cx + 8, Y + 68, "Waiting for you", 11, "#5F5F66", 600) + box(Y + 76, 54), 0, TB)
+    sc.add(f'<circle cx="{cx+16}" cy="{Y+96}" r="4" fill="#34C759"></circle>'
+           + t(cx + 28, Y + 100, "Film Kit — from default on Ji-su", 12.5, weight=700)
+           + t(cx + 28, Y + 118, "For work on this Mac · sent 2 minutes ago · brief HANDOFF_film_kit.md", 10.5, "#5F5F66")
+           + btn(cx + cw - 84, Y + 90, 72, "Receive"), 0, 2.4)
+    sc.add(t(cx + 14, Y + 108, "Nothing waiting.", 11.5, "#5F5F66"), 2.4, TB)
+    sc.add(f'<rect x="{X+190-36}" y="{Y+34}" width="22" height="18" fill="#DCDDE2"></rect>'                 # the badge clears
+           + f'<rect x="{X+190+14}" y="{Y+23}" width="200" height="12" fill="#FFFFFF"></rect>'
+           + t(X + 190 + 16, Y + 31, "Nothing waiting", 10, "#6E6E73"), 2.4, TB)
+    sc.add(t(cx + 8, Y + 156, "In progress", 11, "#5F5F66", 600) + box(Y + 164, 54)
+           + t(cx + 28, Y + 188, "Receive Film Kit as work on this Mac", 12.5, weight=700), 2.4, TB)
+    sc.add(f'<circle cx="{cx+16}" cy="{Y+184}" r="5" fill="none" stroke="#A1A1A8" stroke-width="1.5" stroke-dasharray="7 4"></circle>'
+           + t(cx + 28, Y + 206, "Every file verified (md5) · claiming…", 10.5, "#5F5F66"), 2.4, 3.6)
+    sc.add(step_icon(cx + 16, Y + 184, "done")
+           + t(cx + 28, Y + 206, "Every file verified (md5) · Claimed · Memory merged · Brief HANDOFF_film_kit.md", 10.5, "#5F5F66")
+           + btn(cx + cw - 112, Y + 178, 100, "Open in Claude"), 3.6, TB)
+    n_open, _ = note(cx + cw - 360, 30, 360, "Film Kit is in Claude (work)",
+                     "Open it from Projects in Claude’s sidebar, start a task,\nand paste: the brief is on the clipboard.")
+    sc.add(n_open, 5.0, 6.8)
+
+    # ---- Projects: every project against every place; drag a mark to move it
+    cols = [cx + 262, cx + 318, cx + 390, cx + 446]          # default: Madoka, Ji-su · work: Madoka, Ji-su
+    grid, tops = projects_grid(cx, cw, Y, cols, (
+        ("Adobe Stock Plan", True, {}),                     # its marks change as it moves
+        ("Film Kit", True, {1: "old", 2: "has"}),
+        ("Quicken Reconciliation", True, {0: "old", 1: "has"}),
+        ("Garden Notes", False, {0: "only"}),
+        ("Q4 Launch Plan", False, {2: "only"})), cw)
+    sc.add(grid + group_by_button(X + Wd - 50, Y + 20), TB, TC)
+    R = [tops["Adobe Stock Plan"]]
+    ay = R[0] + 16
+    d0, d1, drop, sent = TB + 1.7, TB + 2.0, TB + 3.0, TB + 5.0       # press, start moving, drop, Send
+    sc.add(mark(cols[0], ay, "has", GRAPH), TB, d1)
+    sc.add(f'<g opacity="0.3">{mark(cols[0], ay, "has", GRAPH)}</g>', d1, sent)               # while dragged and while asked
+    sc.add(mark(cols[1], ay, "old", GRAPH), TB, drop)
+    sc.add(f'<rect x="{cols[1]-26}" y="{R[0]+4}" width="52" height="24" rx="6" fill="#C9DAFB"></rect>'
+           + mark(cols[1], ay, "old", GRAPH), d1 + 0.5, drop)                                   # the place it can go lights up
+    sc.add(mark(cols[1], ay, "old", GRAPH), drop, sent)
+    sc.add(mark(cols[0], ay, "old", GRAPH) + mark(cols[1], ay, "coming", GRAPH), sent)
+    sc.moving(mark(0, 0, "has", GRAPH), [(d1, cols[0], ay), (drop, cols[1], ay)])               # the mark under the pointer
+    sc.body[-1] = f'<g {sc.vis(d1, drop)}>{sc.body[-1]}</g>'
+    # the drop opens the send sheet, the same one Hand Off… opens
+    sx, sy = cx + 150, Y + 120
+    sheet = (f'<rect x="{sx}" y="{sy}" width="320" height="150" rx="12" fill="#FFFFFF" stroke="#C9CBD1"></rect>'
+             + t(sx + 18, sy + 28, "Hand off Adobe Stock Plan", 14, weight=700)
+             + t(sx + 18, sy + 54, "From", 11, "#5F5F66") + t(sx + 70, sy + 54, "default on this Mac", 11)
+             + t(sx + 18, sy + 76, "To", 11, "#5F5F66")
+             + f'<rect x="{sx+66}" y="{sy+63}" width="150" height="19" rx="5" fill="#F1F2F5" stroke="#D2D2D7"></rect>'
+             + t(sx + 74, sy + 77, "default on Ji-su   ⌄", 11)
+             + t(sx + 18, sy + 100, "Note", 11, "#5F5F66") + t(sx + 70, sy + 100, "vest schedule checked through Q3", 11)
+             + f'<rect x="{sx+186}" y="{sy+116}" width="56" height="22" rx="6" fill="#E9EAEE"></rect>'
+             + t(sx + 214, sy + 131, "Cancel", 11, anchor="middle")
+             + f'<rect x="{sx+250}" y="{sy+116}" width="56" height="22" rx="6" fill="{BLUE}"></rect>'
+             + t(sx + 278, sy + 131, "Send", 11, "#FFFFFF", 600, "middle"))
+    sc.add(f'<rect x="{X+190}" y="{Y+44}" width="{Wd-190}" height="{Hd-45}" fill="#1D1D1F" opacity="0.12"></rect>' + sheet, drop + 0.2, sent)
+    n_sent, _ = note(cx + cw - 360, 30, 360, "Adobe Stock Plan is on its way to default on Ji-su",
+                     "Every file is uploaded. You’ll hear when it’s received.")
+    sc.add(n_sent, sent + 1.4, TC - 0.4)
 
     # ---- Macs
     def card(x, y, w, mac, status, dot, ver, drive, sides):
-        h = 104 + len(sides) * 62
+        h = 104 + sum(86 if side[6] else 72 for side in sides)
         s = (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="9" fill="#F6F6F8" stroke="#E2E3E8"></rect>'
-             + f'<circle cx="{x+16}" cy="{y+22}" r="4.5" fill="{dot}"></circle>'
-             + t(x + 28, y + 27, mac, 16, weight=800) + t(x + 28, y + 44, status, 10.5, "#5F5F66")
+             + f'<circle cx="{x+w-18}" cy="{y+22}" r="4.5" fill="{dot}"></circle>'
+             + t(x + 14, y + 27, mac, 16, weight=800) + t(x + 14, y + 44, status, 10.5, "#5F5F66")
              + t(x + 14, y + 70, "Tandem", 10.5, "#5F5F66") + t(x + 90, y + 70, ver, 10.5)
              + t(x + 14, y + 88, "iCloud Drive", 10.5, "#5F5F66") + t(x + 90, y + 88, drive, 10.5))
         yy = y + 112
-        for letter, color, name, side, acct, holds, coming in sides:
+        for letter, color, name, side, acct, holds, coming, defined in sides:
             s += (f'<line x1="{x+12}" y1="{yy-10}" x2="{x+w-12}" y2="{yy-10}" stroke="#E2E3E8"></line>'
                   + badge(x + 22, yy + 4, 8, letter, color) + t(x + 36, yy + 8, name, 11.5, weight=700)
                   + t(x + 36 + len(name) * 7 + 8, yy + 8, side, 9.5, "#8E8E93", family=MONO)
@@ -660,19 +787,82 @@ def window_tour():
                   + t(x + 36, yy + 24, acct, 10.5, "#5F5F66") + t(x + 36, yy + 39, holds, 10.5))
             if coming:
                 s += t(x + 36, yy + 54, coming, 10.5, BLUE)
-            yy += 62
+            s += t(x + 36, yy + (68 if coming else 54), defined, 9.5, "#8E8E93")
+            yy += 86 if coming else 72
         return s
-    mp = (t(cx, Y + 80, "Each Mac running Tandem publishes a card every few minutes.", 11, "#5F5F66")
-          + f'<circle cx="{cx+330}" cy="{Y+76}" r="5.5" fill="none" stroke="#8E8E93"></circle>' + t(cx + 330, Y + 79, "i", 8, "#8E8E93", 700, "middle")
-          + card(cx, Y + 104, (cw - 14) / 2, "Madoka", "This Mac", "#34C759", "1.1.1", "In sync",
-                 [("A", GRAPH, "default", "Madoka", "you@personal.com · Max", "Holds Adobe Stock Plan", None),
-                  ("W", TEAL, "work", "Madoka@work", "you@company.com · Team", "Holds Film Kit", None)])
-          + card(cx + (cw - 14) / 2 + 14, Y + 104, (cw - 14) / 2, "Ji-su", "Online · seen 1 min ago", "#34C759", "1.1.1", "In sync",
-                 [("A", GRAPH, "default", "Ji-su", "you@personal.com · Max", "Holds Quicken Reconciliation", None)]))
-    sc.add(lift(mp), 7.4)
-    sc.moving(POINTER, [(0.0, 600, 470), (2.0, cx + cw - 48, Y + 134 - UP), (3.4, cx + cw - 48, Y + 134 - UP), (4.8, cx + cw - 120, Y + 300 - UP),
-                        (6.6, X + 60, Y + 72), (7.6, X + 60, Y + 72), (10.0, cx + 300, Y + 400 - UP), (16.0, cx + 300, Y + 400 - UP)])
+    mp = (t(cx, Y + 66, "Each Mac running Tandem publishes a card every few minutes.", 11, "#5F5F66")
+          + f'<circle cx="{cx+356}" cy="{Y+62}" r="5.5" fill="none" stroke="#8E8E93"></circle>' + t(cx + 356, Y + 65, "i", 8, "#8E8E93", 700, "middle")
+          + card(cx, Y + 80, (cw - 14) / 2, "Madoka", "This Mac", "#34C759", "1.3.0", "In sync",
+                 [("A", GRAPH, "default", "Madoka", "you@personal.com · Max", "Holds no shared project", None, "3 projects defined in its Claude"),
+                  ("W", TEAL, "work", "Madoka@work", "you@company.com · Team", "Holds Film Kit", None, "2 projects defined in its Claude")])
+          + card(cx + (cw - 14) / 2 + 14, Y + 80, (cw - 14) / 2, "Ji-su", "Online · seen 1 min ago", "#34C759", "1.3.0", "In sync",
+                 [("A", GRAPH, "default", "Ji-su", "you@personal.com · Max", "Holds Quicken Reconciliation",
+                   "On its way here: Adobe Stock Plan", "3 projects defined in its Claude")]))
+    sc.add(mp, TC)
+
+    # the pointer: Receive, Open in Claude, Projects, drag Adobe Stock Plan to Ji-su, Send, Macs
+    recv = (cx + cw - 48, Y + 102)
+    openc = (cx + cw - 62, Y + 190)
+    side_projects, side_macs = (X + 60, Y + 66), (X + 56, Y + 90)
+    send = (sx + 278, sy + 128)
+    sc.moving(POINTER, [(0.0, 600, 470), (1.7, *recv), (2.5, *recv), (4.2, *openc), (5.0, *openc),
+                        (6.2, *side_projects), (6.9, *side_projects), (TB + 1.4, cols[0], ay), (d1, cols[0], ay),
+                        (drop, cols[1], ay), (drop + 0.6, cols[1], ay), (TB + 4.3, *send), (sent, *send),
+                        (TB + 6.6, cx + 420, Y + 330), (TC - 0.9, *side_macs), (TC, *side_macs),
+                        (TC + 2.2, cx + 300, Y + 400), (23.0, cx + 300, Y + 400)])
     sc.write("window-demo.svg")
+
+# ============================================================ 6. the Projects page, still: the grid and the inspector
+def projects_still():
+    """The Projects page as it stands after the tour's drag: Adobe Stock Plan selected, on its way to Ji-su,
+    and the inspector open on it, with its own small grid (profiles down, Macs across) and its history."""
+    sc = Scene(1000, 540, 1.0)
+    desktop(sc)
+    X, Y, Wd, Hd = 30, 38, 940, 488
+    iw = 272                                   # the inspector's width
+    ix = X + Wd - iw
+    cx = X + 190 + 20
+    cw = ix - 16 - cx
+    w_, _ = tandem_window(X, Y, Wd, Hd, "Projects", "projects", side_w=190, subtitle="5 projects · 3 shared · 2 on one Mac")
+    cols = [cx + 210, cx + 266, cx + 334, cx + 390]
+    grid, tops = projects_grid(cx, cw, Y, cols, (
+        ("Adobe Stock Plan", True, {0: "old", 1: "coming"}),
+        ("Film Kit", True, {1: "old", 2: "has"}),
+        ("Quicken Reconciliation", True, {0: "old", 1: "has"}),
+        ("Garden Notes", False, {0: "only"}),
+        ("Q4 Launch Plan", False, {2: "only"})), cw, selected="Adobe Stock Plan")
+    ins = [f'<path d="M{ix} {Y+44}H{X+Wd-0.5}V{Y+Hd-10}a10 10 0 0 1 -10 10H{ix}Z" fill="#FAFAFB"></path>',
+           f'<line x1="{ix}" y1="{Y+44}" x2="{ix}" y2="{Y+Hd}" stroke="#E2E3E8"></line>']
+    x0, y = ix + 16, Y + 76
+    ins.append(t(x0, y, "Adobe Stock Plan", 15, weight=700))
+    ins.append(f'<rect x="{x0}" y="{y+9}" width="50" height="17" rx="8.5" fill="#EBEBEE"></rect>' + t(x0 + 25, y + 21, "Shared", 10, "#3A3A40", 700, "middle"))
+    y += 52
+    ins.append(t(x0, y, "WHERE IT IS", 10, "#6E6E73", 700))
+    lw, cwid, ch = 44, 84, 44
+    gx = x0 + lw + 4
+    for j, m in enumerate(("Madoka", "Ji-su")):
+        ins.append(t(gx + j * (cwid + 4) + cwid / 2, y + 20, m, 10, "#6E6E73", anchor="middle"))
+    cells = {("default", 0): ("old", "old copy"), ("default", 1): ("coming", "on its way")}
+    for i, (prof, col) in enumerate((("default", GRAPH), ("work", TEAL))):
+        ry = y + 28 + i * (ch + 4)
+        ins.append(t(x0 + lw, ry + ch / 2 + 4, prof, 10, "#6E6E73", anchor="end"))
+        for j in range(2):
+            bx = gx + j * (cwid + 4)
+            ins.append(f'<rect x="{bx}" y="{ry}" width="{cwid}" height="{ch}" rx="6" fill="{HERE_TINT if j == 0 else "#FFFFFF"}" stroke="#E2E3E8"></rect>')
+            if (prof, j) in cells:
+                kind, cap = cells[(prof, j)]
+                ins.append(mark(bx + cwid / 2, ry + 16, kind, col) + t(bx + cwid / 2, ry + 35, cap, 9, "#6E6E73", anchor="middle"))
+    y += 28 + 2 * (ch + 4) + 20
+    for ln in ("On its way to Ji-su · default, sent just now.",):
+        ins.append(t(x0, y, ln, 11.5, "#5F5F66")); y += 22
+    ins.append(f'<text x="{x0}" y="{y}" font-size="11.5" font-style="italic" fill="#1D1D1F">“vest schedule checked through Q3”</text>')
+    y += 32
+    ins.append(t(x0, y, "HISTORY", 10, "#6E6E73", 700)); y += 20
+    for when, what in (("just now", "Sent by Madoka · default"), ("3 days ago", "Received by Madoka · default"),
+                       ("2 weeks ago", "Sent by Ji-su · default")):
+        ins.append(t(x0, y, when, 10, "#6E6E73") + t(x0 + 84, y, what, 10)); y += 17
+    sc.add(w_ + group_by_button(X + Wd - 50, Y + 20) + grid + "".join(ins))
+    sc.write("projects-demo.svg")
 
 
 profiles()
@@ -680,3 +870,4 @@ handoff_accounts()
 menubar()
 handoff_app()
 window_tour()
+projects_still()

@@ -17,8 +17,9 @@
 @keyframes k18{0%,33.50%{width:0}39.50%,100%{width:289.1px}}
 @keyframes v19{0%,33.25%{opacity:0}33.45%,100%{opacity:1}}
 @keyframes v20{0%,41.50%{opacity:0}41.70%,100%{opacity:1}}
-@keyframes v21{0%,43.50%{opacity:0}43.70%,100%{opacity:1}}
-@keyframes v22{0%,46.00%{opacity:0}46.20%,100%{opacity:1}}
+@keyframes v21{0%,43.00%{opacity:0}43.20%,100%{opacity:1}}
+@keyframes v22{0%,44.50%{opacity:0}44.70%,100%{opacity:1}}
+@keyframes v23{0%,46.50%{opacity:0}46.70%,100%{opacity:1}}
 </style>
 <rect width="900" height="540" rx="14" fill="#E7E9EE"></rect>
 <rect width="900" height="24" fill="#F7F7F9" opacity="0.92"></rect><text x="16" y="16" font-size="12" font-weight="700" fill="#1D1D1F" text-anchor="start" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" xml:space="preserve">Claude</text><text x="884" y="16" font-size="12" font-weight="400" fill="#1D1D1F" text-anchor="end" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" xml:space="preserve">Fri 9:41</text>
@@ -37,9 +38,10 @@
 <g style="opacity:0;animation:v13 20.0s linear infinite"><text x="40" y="381" font-size="12" font-weight="400" fill="#E6EDF3" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">sending &#x27;Film Kit&#x27;: Madoka -&gt; Madoka@work</text></g>
 <g style="opacity:0;animation:v14 20.0s linear infinite"><text x="40" y="398" font-size="12" font-weight="400" fill="#8B949E" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">  memory: 12 file(s) -&gt; .handoff/memory/</text></g>
 <g style="opacity:0;animation:v15 20.0s linear infinite"><text x="40" y="415" font-size="12" font-weight="400" fill="#57AB5A" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">  ✓ all 14 files uploaded to the drive in 6s</text></g>
-<g style="opacity:0;animation:v16 20.0s linear infinite"><text x="40" y="449" font-size="12" font-weight="400" fill="#57AB5A" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">$</text></g>
-<g style="opacity:0;animation:v19 20.0s linear infinite"><clipPath id="c17"><rect x="54" y="435" height="18" width="0" style="animation:k18 20.0s steps(40,end) infinite"></rect></clipPath><text x="54" y="449" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="12" fill="#E6EDF3" xml:space="preserve" clip-path="url(#c17)">tandem --profile work receive &quot;Film Kit&quot;</text></g>
-<g style="opacity:0;animation:v20 20.0s linear infinite"><text x="40" y="466" font-size="12" font-weight="400" fill="#57AB5A" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">  ✓ all 14 files delivered and verified by md5</text></g>
-<g style="opacity:0;animation:v21 20.0s linear infinite"><text x="40" y="483" font-size="12" font-weight="400" fill="#8B949E" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">  merged memory from Madoka: 12 added, 0 clash</text></g>
-<g style="opacity:0;animation:v22 20.0s linear infinite"><text x="40" y="500" font-size="12" font-weight="400" fill="#C9A4FF" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">claimed by Madoka@work · HANDOFF_film_kit.md copied — ⌘V in Claude</text></g>
+<g style="opacity:0;animation:v16 20.0s linear infinite"><text x="40" y="432" font-size="12" font-weight="400" fill="#57AB5A" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">$</text></g>
+<g style="opacity:0;animation:v19 20.0s linear infinite"><clipPath id="c17"><rect x="54" y="418" height="18" width="0" style="animation:k18 20.0s steps(40,end) infinite"></rect></clipPath><text x="54" y="432" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="12" fill="#E6EDF3" xml:space="preserve" clip-path="url(#c17)">tandem --profile work receive &quot;Film Kit&quot;</text></g>
+<g style="opacity:0;animation:v20 20.0s linear infinite"><text x="40" y="449" font-size="12" font-weight="400" fill="#57AB5A" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">  ✓ all 14 files delivered and verified by md5</text></g>
+<g style="opacity:0;animation:v21 20.0s linear infinite"><text x="40" y="466" font-size="12" font-weight="400" fill="#8B949E" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">  from another account: Claude makes it a project in this one when it opens</text></g>
+<g style="opacity:0;animation:v22 20.0s linear infinite"><text x="40" y="483" font-size="12" font-weight="400" fill="#8B949E" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">  merged memory from Madoka: 12 added, 0 clash</text></g>
+<g style="opacity:0;animation:v23 20.0s linear infinite"><text x="40" y="500" font-size="12" font-weight="400" fill="#C9A4FF" text-anchor="start" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" xml:space="preserve">claimed by Madoka@work · HANDOFF_film_kit.md copied — ⌘V in Claude</text></g>
 </svg>
