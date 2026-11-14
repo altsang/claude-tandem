@@ -105,8 +105,14 @@ desktop_running(){ desktop_pid "$1" >/dev/null; }
 
 # Activates one running Claude by pid, with its windows. By pid, not `open -a`: every copy of
 # Claude has the same bundle id, so `open -a` may bring the default account forward instead.
+# First it sends that process the reopen event (aevt/rapp), as a Dock click does: activating
+# alone shows nothing when Claude's window was closed, since Claude keeps running without one
+# (finding 32). A core event, so it needs no Automation permission.
 bring_forward(){
   osascript -l JavaScript -e 'ObjC.import("AppKit")' \
+    -e "var t=\$.NSAppleEventDescriptor.descriptorWithProcessIdentifier($1);" \
+    -e 'var e=$.NSAppleEventDescriptor.appleEventWithEventClassEventIDTargetDescriptorReturnIDTransactionID(0x61657674, 0x72617070, t, -1, 0);' \
+    -e 'e.sendEventWithOptionsTimeoutError($.NSAppleEventSendNoReply, 5, null);' \
     -e "\$.NSRunningApplication.runningApplicationWithProcessIdentifier($1).activateWithOptions(\$.NSApplicationActivateAllWindows)" \
     >/dev/null 2>&1 || true
 }

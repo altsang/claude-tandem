@@ -902,6 +902,12 @@ needs no Automation permission: reopen is one of the events every app must handl
 steps waiting on Claude offers **Quit Claude and Finish** instead, which quits Claude, finishes the
 receive, and opens Claude again with the project in it.
 
+The profile's own Dock icon (the `Claude (Junipera)` launcher that `tandem profile app` makes) had
+the same gap: with Claude already running, `tandem profile desktop` only activated it, so a click on
+that icon showed nothing once the window was closed or minimized. **Fix (1.3.2):** `tandem profile
+desktop` sends the same reopen event before activating. Tested on Madoka with the window closed and
+with it minimized, Personal's Claude in front each time: Junipera's window came back both times.
+
 ---
 
 ## 33. `IFS=$'\t' read` collapses empty fields
