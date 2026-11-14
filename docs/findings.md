@@ -42,6 +42,7 @@
 - [31. A project carries a link to claude.ai — in the account that made it](#31-a-project-carries-a-link-to-claudeai--in-the-account-that-made-it)
 - [32. Only the active app can hand over activation — and nothing opens a local project](#32-only-the-active-app-can-hand-over-activation--and-nothing-opens-a-local-project)
 - [33. `IFS=$'\t' read` collapses empty fields](#33-ifst-read-collapses-empty-fields)
+- [34. A project renamed on claude.ai keeps its old name on the Mac](#34-a-project-renamed-on-claudeai-keeps-its-old-name-on-the-mac)
 - [Two commands that caused damage during development](#two-commands-that-caused-damage-during-development)
 
 </details>
@@ -889,6 +890,18 @@ folder, a shared artifact, `code/…` and `claude.ai/new`, and nothing else.
 then `activate`), and posts a notification saying where the project is: under **Projects** in
 Claude's sidebar, with the brief on the clipboard.
 
+**Seen again 2026-11-14 on Madoka**, for a different reason. Junipera's Claude was running with its
+window closed. Activation brings an app forward but doesn't show a closed window; only a Dock click
+does, by sending the app a *reopen* Apple Event (`aevt/rapp`). `open -a` sends one, but to whichever
+instance LaunchServices picks, and every profile runs the same bundle. The same receive offered
+**Open in Claude** while defining the project still waited for Claude to quit, so even a Claude in
+front wouldn't have listed it.
+
+**Fix (1.3.1):** the app sends the reopen event to the profile's own process, then activates it. It
+needs no Automation permission: reopen is one of the events every app must handle. A receive with
+steps waiting on Claude offers **Quit Claude and Finish** instead, which quits Claude, finishes the
+receive, and opens Claude again with the project in it.
+
 ---
 
 ## 33. `IFS=$'\t' read` collapses empty fields
@@ -901,6 +914,33 @@ landed in the note. `tandem status` showed *( events)* for the same reason.
 **Fix (1.2.1, engine v9):** fields are joined with the unit separator `\x1f`, which isn't whitespace,
 in the engine and in `bin/tandem`. The ledger also reads a claim's note and brief from the handoff it
 answers, so claims recorded by v8 show correctly too.
+
+---
+
+## 34. A project renamed on claude.ai keeps its old name on the Mac
+
+**Seen 2026-11-14 on Madoka.** Personal's Claude listed **Travel Planning and Hacking** under
+Projects; Tandem listed no such project, only **Travel Hacking**. They were one project. It was made
+in the Claude app on May 31 as *Travel Hacking*, Claude linked it to a claude.ai project on
+September 25 ([finding 31](#31-a-project-carries-a-link-to-claudeai--in-the-account-that-made-it)),
+and it was renamed on claude.ai on October 31. Claude shows the claude.ai name; its `spaces.json`
+still had the old one, and that file is all Tandem reads.
+
+Tandem can't ask claude.ai, but Claude keeps the web app's query cache in IndexedDB, under
+`IndexedDB/https_claude.ai_0.indexeddb.blob/`: one large value holding every project the app has
+fetched, with its uuid and name. The file is Chromium's IndexedDB envelope (`FF 11 02`: version, then
+Snappy) around a V8-serialized object, so a Snappy decoder and a scan for a `uuid` property beside a
+`name` property find them. A project's full record (it has `updated_at`) wins over a copy embedded
+in a conversation. It's not a documented format: when it changes, Tandem finds no names and every
+project keeps its own.
+
+**Fix (1.3.1):** the ledger reads the claude.ai name of every linked project
+(`migration.projectUuid`), keeping only those in `~/.config/claude-tandem/cloud-names/` until the
+cache file changes. `tandem where` and the app's Projects page show the claude.ai name beside the
+old one, and `tandem names --fix`, or **Use the Name from Claude** in the app, writes it into
+`spaces.json` with that profile's Claude quit. Claude kept the new name when it opened again. A
+shared project's name is also its folder on the drive and its name on the other Mac, so for one of
+those Tandem only says so.
 
 ---
 

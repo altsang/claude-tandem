@@ -57,6 +57,9 @@
 #   tandem path <Project>            print the shared folder path (also copies it)
 #   tandem link <Project>            DEPRECATED — symlinks break Claude folder grants
 #   tandem rename <Old> <New>        rename a shared project everywhere
+#   tandem names [--fix [Project]] [--json]
+#                                    projects renamed on claude.ai that still have their
+#                                    old name on this Mac; --fix gives them the new one
 #
 #   tandem hold <Project> --to <M>   lock THIS Mac out of a project it handed away:
 #                                    unlinks the folder and puts a notice in the
@@ -528,6 +531,64 @@ cmd_rename(){
   echo "        tandem project-repath \"$new\" \"$PROJECTS/$new\""
   echo "        rm ~/Documents/Claude/Projects/\"$old\"     # only if a stale symlink is there"
   echo "  Ownership history follows the rename; 'tandem log \"$new\"' should show it."
+}
+
+# A project linked to claude.ai can be renamed there; Claude shows the new name, but its
+# spaces.json, and so Tandem, keeps the old one (finding 34). The ledger reads the claude.ai
+# names from Claude's cache; --fix writes them into spaces.json. A shared project's name is
+# also its folder on the drive and its name on the other Mac, so it is only reported.
+cmd_names(){
+  local fix="" only="" json=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --fix)  fix=1; shift; if [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; then only="$1"; shift; fi;;
+      --json) json=1; shift;;
+      *) die "usage: tandem names [--fix [Project]] [--json]";;
+    esac
+  done
+  local tmp; tmp="$(mktemp -t tandem-names)"
+  python3 "$HERE/bin/tandem-ledger.py" names "$USERDATA" "$CONFDIR" "$PROJECTS" --json > "$tmp" \
+    || { rm -f "$tmp"; die "could not read this profile's projects"; }
+  if [ -z "$fix" ]; then
+    if [ -n "$json" ]; then cat "$tmp"; else python3 "$HERE/bin/tandem-ledger.py" names "$USERDATA" "$CONFDIR" "$PROJECTS"; fi
+    rm -f "$tmp"; return 0
+  fi
+  local todo
+  todo="$(python3 - "$tmp" "$only" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1])); only=sys.argv[2]
+rows=[r for r in d["renamed"] if not only or r["name"]==only]
+if only and not rows:
+    print(f'"{only}" has the name it has on claude.ai, or is not a project of this profile', file=sys.stderr); sys.exit(1)
+for r in rows:
+    if r["shared"]:
+        print(f'  ! "{r["name"]}" is shared: its name is also its folder on the drive and its name on your other Mac.', file=sys.stderr)
+        print(f'    Rename it on every Mac with: tandem rename "{r["name"]}" "{r["cloud_name"]}"', file=sys.stderr)
+    else:
+        print(r["id"])
+PY
+)" || { rm -f "$tmp"; exit 1; }
+  if [ -z "$todo" ]; then rm -f "$tmp"; echo "  nothing to rename"; return 0; fi
+  require_claude_quit
+  local f; f="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["spaces"])' "$tmp")"
+  cp "$f" "$f.bak-$(date +%Y%m%d-%H%M%S)"
+  python3 - "$f" "$tmp" "$todo" <<'PY'
+import json,sys
+f,rows,ids=sys.argv[1],json.load(open(sys.argv[2]))["renamed"],sys.argv[3].split()
+d=json.load(open(f))
+names={x.get("name") for x in d.get("spaces",[])}
+for r in rows:
+    if r["id"] not in ids: continue
+    e=next((x for x in d["spaces"] if x.get("id")==r["id"]),None)
+    if e is None: continue
+    if r["cloud_name"] in names:
+        print(f'  ! another project here is already called "{r["cloud_name"]}" — "{e["name"]}" left as it is'); continue
+    names.discard(e["name"]); names.add(r["cloud_name"])
+    print(f'  ✓ "{e["name"]}" is now "{r["cloud_name"]}", as on claude.ai')
+    e["name"]=r["cloud_name"]
+json.dump(d,open(f,"w"),indent=2)
+PY
+  rm -f "$tmp"
 }
 
 # ---- project memory ---------------------------------------------------------
@@ -1861,6 +1922,7 @@ case "${1:-help}" in
   path)     shift; cmd_path "$@";;
   migrate)  shift; cmd_migrate "$@";;
   rename)   shift; cmd_rename "$@";;
+  names)    shift; cmd_names "$@";;
   project-list)   shift; cmd_project_list "$@";;
   project-export) shift; cmd_project_export "$@";;
   project-import) shift; cmd_project_import "$@";;

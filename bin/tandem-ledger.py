@@ -3,6 +3,7 @@
 
     tandem-ledger.py where    <root> <mac> <confdir> [profiles.json] [drive-state]
     tandem-ledger.py presence <root> <mac> <confdir> <profiles.json> <version> [drive-state]
+    tandem-ledger.py names    <userdata> <confdir> <projects-dir> [--json]
 
 `presence` publishes this Mac's card to _handoff/presence/<Mac>/<ts>.json (and deletes
 this Mac's older cards: one writer per folder, so nothing is ever edited in place).
@@ -15,8 +16,10 @@ the owner, so intents, requests and presence live in sibling folders older versi
 """
 import datetime
 import glob
+import hashlib
 import json
 import os
+import re
 import sys
 import time
 
@@ -95,8 +98,161 @@ def spaces_file(userdata):
     return max(fs, key=os.path.getmtime) if fs else None
 
 
-def local_projects(profile_id):
-    ud = os.path.expanduser("~/Library/Application Support/Claude" + ("" if profile_id == "default" else "-" + profile_id))
+# ---- the names projects have on claude.ai ------------------------------------------------
+#
+# A local project that Claude has linked to a claude.ai project ("migration".projectUuid in
+# spaces.json) can be renamed on claude.ai, and the rename never reaches spaces.json: Claude
+# shows the new name, Tandem the old one ("Travel Hacking" vs "Travel Planning and Hacking",
+# 2026-11-14, finding 34). Tandem can't ask claude.ai, but Claude keeps the web app's query
+# cache in IndexedDB: one large value, kept as a blob file, that holds every project the
+# app has fetched with its uuid and name. The value is Chromium's IndexedDB envelope (0xFF,
+# version, 0x02 = Snappy) around a V8-serialized object. Nothing here depends on its shape
+# beyond a project's uuid and name being neighbouring properties. Not a documented format:
+# when it changes, names() finds nothing and every project keeps its own name.
+
+def _varint(b, i):
+    r = sh = 0
+    while True:
+        c = b[i]
+        i += 1
+        r |= (c & 0x7F) << sh
+        sh += 7
+        if c < 0x80:
+            return r, i
+
+
+def _unsnappy(b):
+    n, i = _varint(b, 0)
+    o = bytearray()
+    while i < len(b):
+        t = b[i]
+        i += 1
+        k = t & 3
+        if k == 0:
+            ln = t >> 2
+            if ln >= 60:
+                nb = ln - 59
+                ln = int.from_bytes(b[i:i + nb], "little")
+                i += nb
+            ln += 1
+            o += b[i:i + ln]
+            i += ln
+            continue
+        if k == 1:
+            ln, off = ((t >> 2) & 7) + 4, ((t >> 5) << 8) | b[i]
+            i += 1
+        elif k == 2:
+            ln, off = (t >> 2) + 1, int.from_bytes(b[i:i + 2], "little")
+            i += 2
+        else:
+            ln, off = (t >> 2) + 1, int.from_bytes(b[i:i + 4], "little")
+            i += 4
+        if off <= 0 or off > len(o):
+            raise ValueError("bad snappy offset")
+        start = len(o) - off
+        if off >= ln:
+            o += o[start:start + ln]
+        else:                                   # overlapping: the pattern repeats
+            for j in range(ln):
+                o.append(o[start + j])
+    if len(o) != n:
+        raise ValueError("bad snappy length")
+    return bytes(o)
+
+
+def _v8_string(b, i):
+    """A V8-serialized string at b[i] (after any padding): one-byte, two-byte or UTF-8."""
+    while i < len(b) and b[i] == 0:
+        i += 1
+    if i >= len(b):
+        return None, i
+    tag = b[i]
+    if tag not in (0x22, 0x63, 0x53):           # '"' Latin-1, 'c' UTF-16LE, 'S' UTF-8
+        return None, i
+    n, j = _varint(b, i + 1)
+    raw = b[j:j + n]
+    enc = {0x22: "latin-1", 0x63: "utf-16-le", 0x53: "utf-8"}[tag]
+    return raw.decode(enc, "replace"), j + n
+
+
+_UUID_KEY = b'"\x04uuid'
+_NAME_KEY = b'"\x04name'
+_UUID_VAL = re.compile(rb'"\x24([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})')
+
+
+def _names_in(d):
+    """{uuid: name} for every object in the value that has a uuid next to a name. A project's
+    full record (it carries updated_at) wins over a copy embedded in a conversation."""
+    found = {}
+    for m in re.finditer(re.escape(_UUID_KEY), d):
+        v = _UUID_VAL.match(d, m.end())
+        if not v:
+            continue
+        uuid, after = v.group(1).decode(), v.end()
+        name = None
+        if d.startswith(_NAME_KEY, after):                       # uuid, then name
+            name, _ = _v8_string(d, after + len(_NAME_KEY))
+        else:                                                    # name, then uuid
+            k = d.rfind(_NAME_KEY, max(0, m.start() - 300), m.start())
+            if k >= 0:
+                cand, end = _v8_string(d, k + len(_NAME_KEY))
+                if end == m.start():
+                    name = cand
+        if not name:
+            continue
+        full = b"updated_at" in d[after:after + 600]
+        if uuid not in found or (full and not found[uuid][1]):
+            found[uuid] = (name, full)
+    return {u: n for u, (n, _) in found.items()}
+
+
+def cloud_names(userdata, confdir=None, uuids=()):
+    """{uuid: claude.ai name} for these project uuids, from this profile's Claude cache; {} when
+    unreadable. The result is kept until the cache file or the uuids change. Only the asked-for
+    projects are kept: the cache also holds every conversation's title."""
+    uuids = sorted(set(uuids))
+    if not uuids:
+        return {}
+    blobs = glob.glob(os.path.join(userdata, "IndexedDB", "https_claude.ai_0.indexeddb.blob", "*", "*", "*"))
+    blobs = [f for f in blobs if os.path.isfile(f)]
+    if not blobs:
+        return {}
+    f = max(blobs, key=os.path.getmtime)
+    st = os.stat(f)
+    key = {"file": f, "mtime": st.st_mtime, "size": st.st_size,
+           "uuids": hashlib.sha1("\n".join(uuids).encode()).hexdigest()}
+    cache = None
+    if confdir:
+        cache = os.path.join(confdir, "cloud-names", hashlib.sha1(userdata.encode()).hexdigest()[:12] + ".json")
+        c = read_json(cache)
+        if c and c.get("key") == key:
+            return c.get("names", {})
+    names = {}
+    try:
+        b = open(f, "rb").read()
+        if len(b) > 3 and b[0] == 0xFF and b[2] == 0x02:         # Snappy-compressed
+            b = _unsnappy(b[3:])
+        found = _names_in(b)
+        names = {u: found[u] for u in uuids if u in found}
+    except Exception:
+        names = {}
+    if cache:
+        try:
+            os.makedirs(os.path.dirname(cache), exist_ok=True)
+            tmp = cache + ".tmp"
+            json.dump({"key": key, "names": names}, open(tmp, "w"))
+            os.replace(tmp, cache)
+        except OSError:
+            pass
+    return names
+
+
+def userdata_dir(profile_id):
+    return os.path.expanduser("~/Library/Application Support/Claude" + ("" if profile_id == "default" else "-" + profile_id))
+
+
+def local_projects(profile_id, confdir=None):
+    ud = userdata_dir(profile_id)
     f = spaces_file(ud)
     if not f:
         return []
@@ -105,10 +261,25 @@ def local_projects(profile_id):
     except Exception:
         return []
     out = []
+    cloud = cloud_names(ud, confdir, [link(s) for s in d.get("spaces", []) if link(s)])
     for s in d.get("spaces", []):
         paths = [x.get("path") for x in (s.get("folders") or []) if x.get("path")]
-        out.append({"name": s.get("name", ""), "folders": paths})
+        e = {"name": s.get("name", ""), "folders": paths}
+        n = cloud.get(link(s))
+        if n and n != e["name"]:
+            e["cloud_name"] = n
+        out.append(e)
     return out
+
+
+def link(space):
+    """The claude.ai project a local project is linked to, if any."""
+    return (space.get("migration") or {}).get("projectUuid")
+
+
+def renamed(projects):
+    """{local name: claude.ai name} for the projects renamed on claude.ai."""
+    return {p["name"]: p["cloud_name"] for p in projects if p.get("cloud_name")}
 
 
 def held_here(confdir, pid):
@@ -131,9 +302,10 @@ def my_sides(mac, profiles, confdir=None):
             "plan": p.get("plan"),
             "open": bool(p.get("open")),
             "color": p.get("color"),
-            "projects": local_projects(pid),
+            "projects": local_projects(pid, confdir),
             "held": held_here(confdir, pid),
         })
+        sides[-1]["renamed"] = renamed(sides[-1]["projects"])
     return sides
 
 
@@ -154,7 +326,7 @@ def cmd_presence(root, mac, confdir, profiles_file, version, drive_line=""):
     os.makedirs(d, exist_ok=True)
     ts = now_ts()
     card = {"mac": mac, "at": ts, "version": version, "drive": drive(drive_line),
-            "sides": [{k: v for k, v in s.items()} for s in my_sides(mac, profiles)]}
+            "sides": [{k: v for k, v in s.items()} for s in my_sides(mac, profiles, confdir)]}
     # project folders are this Mac's paths — useless elsewhere, and private enough to leave out
     for s in card["sides"]:
         s["projects"] = [p["name"] for p in s["projects"]]
@@ -347,7 +519,10 @@ def cmd_where(root, mac, confdir, profiles_file="", drive_line=""):
             for lp in s.get("projects", []):
                 n = lp
                 if n and n not in shared:
-                    only_here.append({"project": n, "side": s["side"], "mac": m["mac"], "name": s.get("name")})
+                    u = {"project": n, "side": s["side"], "mac": m["mac"], "name": s.get("name")}
+                    if (s.get("renamed") or {}).get(n):
+                        u["cloud_name"] = s["renamed"][n]
+                    only_here.append(u)
 
     d = {"schema": SCHEMA, "me": mac, "root": root, "at": now_ts(), "projects": projects,
          "machines": machines, "unshared": only_here}
@@ -517,6 +692,36 @@ def show(d):
         print("\nOnly on one Mac — not in the shared tree, so a handoff can't reach them")
         for u in d["unshared"]:
             print("  %-44s %s" % (u["project"], u["side"]))
+            if u.get("cloud_name"):
+                print("      called “%s” on claude.ai — tandem names --fix" % u["cloud_name"])
+
+
+# ---- names: local projects renamed on claude.ai ----------------------------------------
+
+def cmd_names(userdata, confdir, projects_dir, *flags):
+    """The projects of one profile on this Mac whose claude.ai name differs from theirs."""
+    f = spaces_file(userdata)
+    rows = []
+    if f:
+        try:
+            d = json.load(open(f))
+        except Exception:
+            d = {}
+        cloud = cloud_names(userdata, confdir, [link(s) for s in d.get("spaces", []) if link(s)])
+        for s in d.get("spaces", []):
+            n = cloud.get(link(s))
+            if n and n != s.get("name"):
+                rows.append({"name": s.get("name", ""), "cloud_name": n, "id": s.get("id"),
+                             "shared": os.path.isdir(os.path.join(projects_dir, s.get("name", "")))})
+    if "--json" in flags:
+        json.dump({"spaces": f, "renamed": rows}, sys.stdout, indent=2)
+        print()
+        return
+    if not rows:
+        print("  every project has the name it has on claude.ai")
+        return
+    for r in rows:
+        print("  %s  →  %s%s" % (r["name"], r["cloud_name"], "   (shared: not renamed here, see tandem rename)" if r["shared"] else ""))
 
 
 # ---- watch: the app's background half, headless ----------------------------------------
@@ -680,5 +885,7 @@ if __name__ == "__main__":
         cmd_where(*args)
     elif cmd == "presence":
         cmd_presence(*args)
+    elif cmd == "names":
+        cmd_names(*args)
     else:
         sys.exit(__doc__)

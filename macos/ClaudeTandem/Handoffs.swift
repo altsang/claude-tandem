@@ -40,7 +40,11 @@ struct LDoc: Decodable, Equatable { let name: String, modified: String?, stale: 
 struct Intent: Decodable, Equatable { let to: String?, note: String?, doc: String?, file: String, at: String? }
 struct Request: Decodable, Equatable { let from: String?, note: String?, file: String, at: String? }
 struct Settle: Decodable, Equatable { let project: String, side: String, profile: String, needs: [String] }
-struct Unshared: Decodable, Hashable { let project: String, side: String, mac: String, name: String? }
+struct Unshared: Decodable, Hashable {
+    let project: String, side: String, mac: String, name: String?
+    let cloudName: String?     // its name on claude.ai, when it was renamed there (finding 34)
+    enum CodingKeys: String, CodingKey { case project, side, mac, name, cloudName = "cloud_name" }
+}
 
 struct LProject: Decodable, Equatable, Identifiable {
     let name: String
@@ -65,6 +69,7 @@ struct MSide: Decodable, Equatable, Identifiable {
     let profile: String?, name: String?, email: String?, plan: String?, open: Bool?, color: String?
     let projects: [String]?
     let held: [String]?        // this Mac only: projects this profile locked itself out of (--hold)
+    let renamed: [String: String]?   // local name -> claude.ai name, for projects renamed there
     var id: String { side }
 }
 
@@ -419,14 +424,22 @@ extension Store {
         }
     }
 
-    func startSettle(_ project: String, as side: String) {
+    func startSettle(_ project: String, as side: String, then: ((Job) -> Void)? = nil) {
         run(Job(kind: "settle", title: "Finish setting up \(project) for \(label(side))", project: project, side: side),
-            profileArgs(side) + ["settle", project])
+            profileArgs(side) + ["settle", project], then: then)
     }
 
+    /// Quit the profile's Claude, finish the receive, and open Claude again: with the project
+    /// in it when that worked, as it was otherwise. Quitting took Claude away, so it always
+    /// comes back.
     func quitAndFinish(_ project: String, as side: String) {
         guard let p = profile(forSide: side) else { return }
-        app?.cli(["quit", p.id]) { self.startSettle(project, as: side) }
+        app?.cli(["quit", p.id]) {
+            self.startSettle(project, as: side) { job in
+                if job.ok { self.openInClaude(project, as: side) }
+                else if let now = self.profile(forSide: side) { self.app?.openDesktop(now) }
+            }
+        }
     }
 
     func ask(_ project: String, as side: String) {
@@ -763,8 +776,16 @@ struct JobRow: View {
                 Text(job.title).fontWeight(.semibold)
                 Spacer()
                 if job.ok, job.kind == "receive", let p = job.project, let s = job.side {
-                    Button("Open in Claude") { store.openInClaude(p, as: s) }
-                        .help("Brings this profile’s Claude forward and puts the brief, if one came, on the clipboard. Then open the project from Projects in Claude’s sidebar")
+                    // Until its paused steps are done the project isn't in Claude yet, so opening
+                    // Claude showed nothing new (2026-11-14): finish first, then open.
+                    if job.waitingOnQuit {
+                        Button("Quit Claude and Finish") { store.quitAndFinish(p, as: s) }
+                            .disabled(store.running("settle", p))
+                            .help("Quits this profile’s Claude, adds the project to it, then opens Claude with the project in its sidebar")
+                    } else {
+                        Button("Open in Claude") { store.openInClaude(p, as: s) }
+                            .help("Brings this profile’s Claude forward and puts the brief, if one came, on the clipboard. Then open the project from Projects in Claude’s sidebar")
+                    }
                 }
                 if !job.running { Button { store.jobs.removeAll { $0.id == job.id } } label: { Image(systemName: "xmark") }.buttonStyle(.borderless) }
             }

@@ -73,6 +73,14 @@ extension Store {
 
     func shared(_ r: PRow) -> LProject? { r.shared ? ledger?.projects.first { $0.name == r.name } : nil }
 
+    /// The project's name on claude.ai, when it was renamed there and this Mac still has the
+    /// old one: Claude shows the new name, spaces.json keeps the old (finding 34).
+    func cloudName(_ r: PRow) -> String? {
+        if !r.shared { return ledger?.unshared.first { $0.project == r.name && $0.side == r.side }?.cloudName }
+        let mine = (ledger?.machines ?? []).filter { $0.this == true }.flatMap(\.sides)
+        return mine.compactMap { $0.renamed?[r.name] }.first
+    }
+
     /// Places whose Claude defines the project, on any Mac.
     func definers(_ project: String) -> [String] {
         (ledger?.machines ?? []).flatMap { $0.sides.filter { $0.projects?.contains(project) ?? false }.map(\.side) }
@@ -289,7 +297,8 @@ struct ProjectGridRow: View {
         HStack(spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: r.shared ? "folder" : "desktopcomputer").foregroundStyle(.secondary).frame(width: 18)
-                Text(r.name).lineLimit(1).truncationMode(.tail).help(r.name)
+                Text(r.name).lineLimit(1).truncationMode(.tail)
+                    .help(store.cloudName(r).map { "\(r.name) — called “\($0)” in Claude" } ?? r.name)
             }
             .frame(width: nameWidth, alignment: .leading)
             ForEach(store.placeGroups) { g in
@@ -432,6 +441,35 @@ extension Store {
     }
 }
 
+extension Store {
+    /// Gives a project the name it has on claude.ai. The name is in spaces.json, which a
+    /// running Claude rewrites from memory, so that profile's Claude is closed first, as
+    /// for sharing, and opened again afterwards.
+    func useCloudName(_ project: String, _ cloud: String, as side: String) {
+        guard let p = profile(forSide: side) else { return }
+        let go = { (reopen: Bool) in
+            let job = Job(kind: "log", title: "Rename \(project)")
+            self.run(job, self.profileArgs(side) + ["names", "--fix", project]) { j in
+                if reopen, let now = self.profile(forSide: side) { self.app?.openDesktop(now) }
+                if j.code != 0 { self.logJob = j }
+            }
+        }
+        guard p.open else { go(false); return }
+        let a = NSAlert()
+        a.messageText = "Quit Claude (\(p.name)) to rename “\(project)”?"
+        a.informativeText = "It’s called “\(cloud)” on claude.ai. Claude has to be closed to change the name it keeps on this Mac. It opens again when that’s done."
+        a.addButton(withTitle: "Quit Claude and Rename")
+        a.addButton(withTitle: "Cancel")
+        let answer = { (r: NSApplication.ModalResponse) in
+            if r == .alertFirstButtonReturn { self.app?.cli(["quit", p.id]) { go(true) } }
+        }
+        DispatchQueue.main.async {
+            if let w = self.app?.window, w.isVisible { a.beginSheetModal(for: w, completionHandler: answer) }
+            else { answer(a.runModal()) }
+        }
+    }
+}
+
 /// The next steps for a project: the primary one first. Used by the inspector's buttons
 /// and by the row's right-click menu.
 struct ProjectActions: View {
@@ -455,6 +493,9 @@ struct ProjectActions: View {
             }
             if !r.shared, let s = r.side, store.isMine(s) {
                 Button("Share Without Moving") { store.share(r.name, as: s) }
+                if let c = store.cloudName(r) {
+                    Button("Rename to “\(c)”, as in Claude") { store.useCloudName(r.name, c, as: s) }
+                }
             }
             Divider()
             secondary(p)
@@ -500,6 +541,19 @@ struct ProjectInspector: View {
                 }
                 section("Where it is") { miniGrid }
                 Text(store.status(r)).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                if let c = store.cloudName(r) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Called “\(c)” in Claude: it was renamed on claude.ai, and this Mac still has the old name.")
+                            .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        if !r.shared, let s = r.side, store.isMine(s) {
+                            Button("Use the Name from Claude") { store.useCloudName(r.name, c, as: s) }
+                                .buttonStyle(.bordered).controlSize(.regular)
+                        } else if r.shared {
+                            Text("It’s shared, so its name is also its folder on the shared drive: rename it with `tandem rename`.")
+                                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
                 if r.shared, let h = store.home(r), store.isMine(h), p?.state == "sent" {   // the one button: Receive
                     ProjectActions(store: store, r: r, menu: false).buttonStyle(.bordered).controlSize(.regular)
                 }

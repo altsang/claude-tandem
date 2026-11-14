@@ -103,6 +103,7 @@ Setting up:
 | `tandem use-root PATH` | use a shared drive other than iCloud, for this Mac |
 | `tandem migrate P` | copy a local project's folder (whatever it's called, wherever it is) into the shared tree, md5-verified, and switch the project to the copy. A folder Claude made is set aside; one you attached elsewhere stays put. A project with no folder gets an empty one. Claude quit first |
 | `tandem rename OLD NEW` | rename a shared project: folder and project together |
+| `tandem names [--fix [P]] [--json]` | projects renamed on claude.ai that still have their old name on this Mac, read from Claude's cache. `--fix` gives them the claude.ai name (Claude quit). A shared project is only reported ([finding 34](findings.md#34-a-project-renamed-on-claudeai-keeps-its-old-name-on-the-mac)) |
 
 ---
 
@@ -234,6 +235,7 @@ Both read the same inbox and settings. A send, receive or settle takes a per-pro
 | History… | `tandem log "X"` |
 | Unlock It for … | `tandem [--profile P] release "X"` |
 | Share Without Moving · dragging a project that's only on this Mac | `tandem [--profile P] migrate "X"` (then `send`, for a drag) |
+| Use the Name from Claude · Rename to “…”, as in Claude | `tandem [--profile P] names --fix "X"` |
 | Inbox · Projects (the grid) · the Macs page | `tandem where` |
 | Check Now (↻ in the toolbar, Handoffs › Check Now ⌘R) | `tandem where` |
 | (every few minutes, while it runs) | `tandem presence` |

@@ -503,7 +503,14 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
             if #available(macOS 14, *) { NSApp.yieldActivation(to: running) }
             running.activate(options: [.activateAllWindows])
         }
-        if p.isDefault || !shared {
+        // Activating doesn't bring back a closed window: Claude keeps running without one,
+        // and only a Dock click's "reopen" shows it again. Junipera's Claude came forward with
+        // no window on Madoka (2026-11-14). `open -a` sends that event, but to whichever
+        // instance LaunchServices picks, and every profile shares this bundle; so send it to
+        // this profile's own process.
+        if Self.reopen(pid) {
+            bring()
+        } else if p.isDefault || !shared {
             let path = self.path
             DispatchQueue.global(qos: .userInitiated).async {
                 _ = runProcess("/usr/bin/open", ["-a", url.path], path: path)
@@ -512,6 +519,15 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         } else {
             bring()   // not `open -a`: every profile shares this bundle, so it may pick another
         }
+    }
+
+    /// The Apple Event a Dock click sends ('aevt'/'rapp'), to one process. One of the required
+    /// events every app handles, so it needs no Automation permission.
+    static func reopen(_ pid: pid_t) -> Bool {
+        let ev = NSAppleEventDescriptor(eventClass: AEEventClass(kCoreEventClass), eventID: AEEventID(kAEReopenApplication),
+                                        targetDescriptor: NSAppleEventDescriptor(processIdentifier: pid),
+                                        returnID: AEReturnID(kAutoGenerateReturnID), transactionID: AETransactionID(kAnyTransactionID))
+        do { _ = try ev.sendEvent(options: [.noReply], timeout: 5); return true } catch { return false }
     }
 
     /// Claude Code as the profile, in Terminal. Through tandem rather than `claude @p`,
