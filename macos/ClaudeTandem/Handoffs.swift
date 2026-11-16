@@ -22,6 +22,7 @@ struct Ledger: Decodable, Equatable {
     let projects: [LProject]
     let machines: [Machine]
     let unshared: [Unshared]
+    let cloud: [CloudProject]?   // projects only on claude.ai (1.3.3); absent from older CLIs
     let inbox: [RawItem]
 }
 
@@ -45,6 +46,10 @@ struct Unshared: Decodable, Hashable {
     let cloudName: String?     // its name on claude.ai, when it was renamed there (finding 34)
     enum CodingKeys: String, CodingKey { case project, side, mac, name, cloudName = "cloud_name" }
 }
+
+/// A project that exists only on claude.ai, read from that profile's Claude on this Mac.
+/// `name` is the profile's display name.
+struct CloudProject: Decodable, Hashable { let project: String, uuid: String, profile: String, name: String? }
 
 struct LProject: Decodable, Equatable, Identifiable {
     let name: String

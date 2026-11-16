@@ -247,6 +247,78 @@ def cloud_names(userdata, confdir=None, uuids=()):
     return names
 
 
+_TYPE_KEY = b'"\x04type'
+
+
+def _v8_scalar(b, i):
+    """The V8 value at b[i] when it's a string or null; None for null or anything else."""
+    while i < len(b) and b[i] == 0:
+        i += 1
+    if i < len(b) and b[i] in (0x22, 0x63, 0x53):
+        return _v8_string(b, i)[0]
+    return None
+
+
+def _projects_in(d):
+    """{uuid: name} for each live project record in the cache: a uuid, then name, then type,
+    the shape of claude.ai's project objects (a conversation's embedded project has no type).
+    Archived projects and the starter project are left out."""
+    found = {}
+    for m in re.finditer(re.escape(_UUID_KEY), d):
+        v = _UUID_VAL.match(d, m.end())
+        if not v or not d.startswith(_NAME_KEY, v.end()):
+            continue
+        name, j = _v8_string(d, v.end() + len(_NAME_KEY))
+        while j < len(d) and d[j] == 0:
+            j += 1
+        if not name or not d.startswith(_TYPE_KEY, j):
+            continue
+        rec = d[j:j + 600]
+        k = rec.find(b'"\x0barchived_at')
+        if k >= 0 and _v8_scalar(rec, k + 13):
+            found.pop(v.group(1).decode(), None)
+            continue
+        k = rec.find(b'"\x12is_starter_project')
+        if k >= 0 and rec[k + 20:k + 21] == b"T":
+            continue
+        found.setdefault(v.group(1).decode(), name)
+    return found
+
+
+def cloud_projects(userdata, confdir=None):
+    """{uuid: name} of the projects this profile has on claude.ai, as Claude last loaded them;
+    {} when unreadable. Cached until the cache file changes. Only projects are kept."""
+    blobs = glob.glob(os.path.join(userdata, "IndexedDB", "https_claude.ai_0.indexeddb.blob", "*", "*", "*"))
+    blobs = [f for f in blobs if os.path.isfile(f)]
+    if not blobs:
+        return {}
+    f = max(blobs, key=os.path.getmtime)
+    st = os.stat(f)
+    key = {"file": f, "mtime": st.st_mtime, "size": st.st_size}
+    cache = None
+    if confdir:
+        cache = os.path.join(confdir, "cloud-projects", hashlib.sha1(userdata.encode()).hexdigest()[:12] + ".json")
+        c = read_json(cache)
+        if c and c.get("key") == key:
+            return c.get("projects", {})
+    try:
+        b = open(f, "rb").read()
+        if len(b) > 3 and b[0] == 0xFF and b[2] == 0x02:
+            b = _unsnappy(b[3:])
+        found = _projects_in(b)
+    except Exception:
+        found = {}
+    if cache:
+        try:
+            os.makedirs(os.path.dirname(cache), exist_ok=True)
+            tmp = cache + ".tmp"
+            json.dump({"key": key, "projects": found}, open(tmp, "w"))
+            os.replace(tmp, cache)
+        except OSError:
+            pass
+    return found
+
+
 def userdata_dir(profile_id):
     return os.path.expanduser("~/Library/Application Support/Claude" + ("" if profile_id == "default" else "-" + profile_id))
 
@@ -306,7 +378,24 @@ def my_sides(mac, profiles, confdir=None):
             "held": held_here(confdir, pid),
         })
         sides[-1]["renamed"] = renamed(sides[-1]["projects"])
+        sides[-1]["cloud"] = cloud_only(pid, confdir)
     return sides
+
+
+def cloud_only(pid, confdir=None):
+    """This profile's claude.ai projects that no local project here is linked to:
+    [{uuid, name}], by name."""
+    ud = userdata_dir(pid)
+    linked = set()
+    f = spaces_file(ud)
+    if f:
+        try:
+            linked = {link(s) for s in json.load(open(f)).get("spaces", []) if link(s)}
+        except Exception:
+            pass
+    cp = cloud_projects(ud, confdir)
+    return sorted(({"uuid": u, "name": n} for u, n in cp.items() if u not in linked),
+                  key=lambda x: x["name"].lower())
 
 
 def drive(state_line):
@@ -330,6 +419,7 @@ def cmd_presence(root, mac, confdir, profiles_file, version, drive_line=""):
     # project folders are this Mac's paths — useless elsewhere, and private enough to leave out
     for s in card["sides"]:
         s["projects"] = [p["name"] for p in s["projects"]]
+        s.pop("cloud", None)   # each Mac reads its own Claude's list
     path = os.path.join(d, f"{ts}.json")
     tmp = os.path.join(d, f".{ts}.tmp")
     with open(tmp, "w") as fh:
@@ -524,8 +614,22 @@ def cmd_where(root, mac, confdir, profiles_file="", drive_line=""):
                         u["cloud_name"] = s["renamed"][n]
                     only_here.append(u)
 
+    # projects only on claude.ai: Claude shows them on every Mac signed in to the account, so
+    # they're listed once per profile, from this Mac's Claude. One with the name of a project
+    # some Mac keeps for that profile is that project (Ji-su's, or a twin claude.ai made).
+    cloud = []
+    for s in me["sides"]:
+        kept = set(shared)
+        for m in machines:
+            for o in m.get("sides", []):
+                if o.get("profile") == s["profile"] or (o.get("name") and o.get("name") == s.get("name")):
+                    kept |= set(o.get("projects") or [])
+        for c in s.pop("cloud", []):
+            if c["name"] not in kept:
+                cloud.append({"project": c["name"], "uuid": c["uuid"], "profile": s["profile"], "name": s.get("name")})
+
     d = {"schema": SCHEMA, "me": mac, "root": root, "at": now_ts(), "projects": projects,
-         "machines": machines, "unshared": only_here}
+         "machines": machines, "unshared": only_here, "cloud": cloud}
     d["inbox"] = inbox(d, confdir)
     if os.environ.get("TANDEM_LEDGER_INBOX"):
         if os.environ.get("TANDEM_LEDGER_TEXT"):
@@ -694,6 +798,10 @@ def show(d):
             print("  %-44s %s" % (u["project"], u["side"]))
             if u.get("cloud_name"):
                 print("      called “%s” on claude.ai — tandem names --fix" % u["cloud_name"])
+    if d.get("cloud"):
+        print("\nOnly on claude.ai — on every Mac signed in to the account; Tandem doesn't move them")
+        for c in d["cloud"]:
+            print("  %-44s %s" % (c["project"], c.get("name") or c["profile"]))
 
 
 # ---- names: local projects renamed on claude.ai ----------------------------------------

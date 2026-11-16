@@ -6,7 +6,9 @@
 // project on its way. A flat list showed the total but not where anything was, and a menu
 // of "Ask for It as Personal" didn't say from which Mac (2026-11-08); here every project
 // has one next step, named by the place it goes to. Projects that exist only on claude.ai
-// aren't listed: Tandem has no way to read them, and they are on every Mac already.
+// are listed too, from the profile's own Claude (its cached project list), with a cloud in
+// every column of that profile: Claude shows them on every Mac signed in to the account.
+// They can't be moved: their files and chats stay on Anthropic's servers.
 import AppKit
 import SwiftUI
 
@@ -22,15 +24,16 @@ struct PlaceGroup: Identifiable {
     var id: String { name }
 }
 
-/// One row: a shared project, or a project defined in one place only.
+/// One row: a shared project, a project defined in one place only, or one only on claude.ai.
 struct PRow: Identifiable, Hashable {
     let name: String
     let shared: Bool
     let side: String?            // the one place, for a project that isn't shared
-    var id: String { shared ? name : "\(name)\u{1}\(side ?? "")" }
+    var cloud: String? = nil     // the profile's name, for a project only on claude.ai
+    var id: String { cloud.map { "\u{2}\(name)\u{1}\($0)" } ?? (shared ? name : "\(name)\u{1}\(side ?? "")") }
 }
 
-enum CellState { case none, holds, coming, copy, only }
+enum CellState { case none, holds, coming, copy, only, cloud }
 
 extension Store {
     /// Every place, this Mac first, then the others by name. A Mac without a card (an older
@@ -68,7 +71,15 @@ extension Store {
     var projectRows: [PRow] {
         let shared = (ledger?.projects ?? []).map { PRow(name: $0.name, shared: true, side: nil) }
         let local = (ledger?.unshared ?? []).map { PRow(name: $0.project, shared: false, side: $0.side) }
-        return shared + local
+        let cloud = (ledger?.cloud ?? []).map { PRow(name: $0.project, shared: false, side: nil, cloud: $0.name ?? $0.profile) }
+        return shared + local + cloud
+    }
+
+    /// The colour of the profile a place belongs to: this Mac's colour for it, as in the
+    /// column header. Each Mac picks its own colour for a profile (Junipera is green on
+    /// Madoka, blue on Ji-su), so a mark coloured by its own Mac read as a different account.
+    func groupColor(_ place: Place) -> String? {
+        placeGroups.first { $0.name == place.name }?.color ?? place.color
     }
 
     func shared(_ r: PRow) -> LProject? { r.shared ? ledger?.projects.first { $0.name == r.name } : nil }
@@ -87,6 +98,7 @@ extension Store {
     }
 
     func cell(_ r: PRow, _ side: String) -> CellState {
+        if let c = r.cloud { return place(side)?.name == c ? .cloud : .none }
         guard r.shared else { return r.side == side ? .only : .none }
         let p = shared(r)
         if home(r) == side { return p?.state == "sent" ? .coming : .holds }
@@ -111,7 +123,7 @@ extension Store {
     /// Dropping a project's dot on another place: hand it off from here, or ask for it.
     /// A project only on this Mac is shared first, then handed off.
     func move(_ r: PRow, to side: String) {
-        guard let from = home(r), from != side else { return }
+        guard r.cloud == nil, let from = home(r), from != side else { return }
         if !r.shared {
             if isMine(from) { share(r.name, as: from) { self.draft(r.name, from: from, to: side) } }
         } else if isMine(from) { draft(r.name, from: from, to: side) }
@@ -120,7 +132,7 @@ extension Store {
 
     /// Whether a drop on this place does something, so only those cells light up.
     func canMove(_ r: PRow, to side: String) -> Bool {
-        guard let from = home(r), from != side else { return false }
+        guard r.cloud == nil, let from = home(r), from != side else { return false }
         return isMine(from) || (r.shared && isMine(side))
     }
 }
@@ -222,8 +234,9 @@ struct ProjectsView: View {
     }
 
     func subtitle(_ rows: [PRow]) -> String {
-        let s = rows.filter(\.shared).count
-        return "\(rows.count) project\(rows.count == 1 ? "" : "s") · \(s) shared · \(rows.count - s) on one Mac"
+        let s = rows.filter(\.shared).count, c = rows.filter { $0.cloud != nil }.count
+        return "\(rows.count) project\(rows.count == 1 ? "" : "s") · \(s) shared · \(rows.count - s - c) on one Mac"
+            + (c > 0 ? " · \(c) on claude.ai" : "")
     }
 
     func sections(_ rows: [PRow]) -> [(String, [PRow])] {
@@ -231,16 +244,18 @@ struct ProjectsView: View {
         func keep(_ t: String, _ f: (PRow) -> Bool) -> (String, [PRow])? {
             let l = sorted.filter(f); return l.isEmpty ? nil : (t, l)
         }
+        let onCloud = keep("On claude.ai · on every Mac") { $0.cloud != nil }
         switch group {
         case "where":
             let macs = store.places.map(\.mac).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
             return macs.compactMap { m in keep("On \(m)") { store.place(store.home($0))?.mac == m } }
-                + [keep("Not recorded") { store.home($0) == nil }].compactMap { $0 }
+                + [keep("Not recorded") { store.home($0) == nil && $0.cloud == nil }, onCloud].compactMap { $0 }
         case "profile":
-            return store.placeGroups.compactMap { g in keep(g.name) { store.place(store.home($0))?.name == g.name } }
-                + [keep("Not recorded") { store.home($0) == nil }].compactMap { $0 }
+            return store.placeGroups.compactMap { g in keep(g.name) { store.place(store.home($0))?.name == g.name || $0.cloud == g.name } }
+                + [keep("Not recorded") { store.home($0) == nil && $0.cloud == nil }].compactMap { $0 }
         default:
-            return [keep("Shared · moves between places", \.shared), keep("Only on one Mac") { !$0.shared }].compactMap { $0 }
+            return [keep("Shared · moves between places", \.shared), keep("Only on one Mac") { !$0.shared && $0.cloud == nil },
+                    onCloud].compactMap { $0 }
         }
     }
 
@@ -270,12 +285,13 @@ struct ProjectsView: View {
             HStack(spacing: 16) {
                 legendItem(.holds, "Has it"); legendItem(.coming, "On its way")
                 legendItem(.copy, "Old copy, locked"); legendItem(.only, "Only here")
+                legendItem(.cloud, "On claude.ai")
             }
             Text("Drag a project’s mark to another profile or Mac to move it there. A project only on this Mac is shared first.").foregroundStyle(.secondary)
             HStack(spacing: 4) {
-                Text("Projects that exist only on claude.ai aren’t listed: they’re on every Mac signed in to that account already.")
+                Text("A project on claude.ai is on every Mac signed in to that account. Tandem doesn’t move it.")
                     .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                InfoButton(text: "Tandem lists the Claude projects stored on a Mac, the ones a handoff moves. A project made on claude.ai or in the Claude app on your phone lives on Anthropic’s servers, so Claude shows it wherever that account is signed in. Tandem can’t read that list.")
+                InfoButton(text: "A project made on claude.ai, or in the Claude app on your phone, lives on Anthropic’s servers, so Claude shows it wherever that account is signed in. Tandem lists it from that profile’s Claude on this Mac, as of when Claude last loaded its project list. Its files and chats stay with the account, so it can’t be moved to another profile.")
             }
         }
         .font(.caption)
@@ -296,7 +312,7 @@ struct ProjectGridRow: View {
     var body: some View {
         HStack(spacing: 0) {
             HStack(spacing: 8) {
-                Image(systemName: r.shared ? "folder" : "desktopcomputer").foregroundStyle(.secondary).frame(width: 18)
+                Image(systemName: r.cloud != nil ? "cloud" : r.shared ? "folder" : "desktopcomputer").foregroundStyle(.secondary).frame(width: 18)
                 Text(r.name).lineLimit(1).truncationMode(.tail)
                     .help(store.cloudName(r).map { "\(r.name) — called “\($0)” in Claude" } ?? r.name)
             }
@@ -331,7 +347,7 @@ struct PlaceCell: View {
             RoundedRectangle(cornerRadius: 6)
                 .fill(targeted ? Color.accentColor.opacity(0.25) : place.here ? Color.accentColor.opacity(0.05) : .clear)
             VStack(spacing: 3) {
-                CellMark(state: s, tint: hexColor(place.color))
+                CellMark(state: s, tint: hexColor(store.groupColor(place)))
                 if caption { Text(captionText(s)).font(.caption2).foregroundStyle(.secondary) }
             }
         }
@@ -364,6 +380,7 @@ struct PlaceCell: View {
         case .coming: return "on its way"
         case .copy: return "old copy"
         case .only: return "only here"
+        case .cloud: return "on claude.ai"
         case .none: return ""
         }
     }
@@ -378,6 +395,7 @@ struct CellMark: View {
         case .coming: Image(systemName: "arrow.right.circle.fill").foregroundStyle(tint).font(.system(size: 13))
         case .copy: Circle().strokeBorder(tint.opacity(0.6), lineWidth: 2).frame(width: 12, height: 12)
         case .only: RoundedRectangle(cornerRadius: 3).fill(tint).frame(width: 12, height: 12)
+        case .cloud: Image(systemName: "cloud.fill").foregroundStyle(tint.opacity(0.7)).font(.system(size: 11)).frame(width: 16, height: 12)
         case .none: Color.clear.frame(width: 12, height: 12)
         }
     }
@@ -388,6 +406,9 @@ struct CellMark: View {
 extension Store {
     /// One line on where a project is, from this Mac's point of view.
     func status(_ r: PRow) -> String {
+        if let c = r.cloud {
+            return "On claude.ai in \(c). Claude shows it on every Mac signed in to that account. Tandem can’t move it to another profile: its files and chats stay with the account."
+        }
         guard r.shared else {
             return isMine(r.side) ? "Only in \(placeLabel(r.side)). Drag its mark to another place to move it: it’s shared first, its folder copied to the shared drive and checked file by file."
                                   : "Only in \(placeLabel(r.side)). It can be moved from \(place(r.side)?.mac ?? "that Mac")."
@@ -503,7 +524,8 @@ struct ProjectActions: View {
     }
 
     @ViewBuilder func secondary(_ p: LProject?) -> some View {
-        let here = (r.shared ? store.definers(r.name) : [r.side].compactMap { $0 }).filter(store.isMine)
+        let here = (r.cloud.map { c in store.places.filter { $0.name == c }.map(\.side) }
+                    ?? (r.shared ? store.definers(r.name) : [r.side].compactMap { $0 })).filter(store.isMine)
         ForEach(here, id: \.self) { s in
             Button(here.count > 1 ? "Open in Claude as \(store.place(s)?.name ?? s)" : "Open in Claude") {
                 if r.shared { store.openInClaude(r.name, as: s) }
@@ -535,7 +557,7 @@ struct ProjectInspector: View {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(r.name).font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
-                    Text(r.shared ? "Shared" : "Only on \(store.place(r.side)?.mac ?? "one Mac")")
+                    Text(r.cloud != nil ? "On claude.ai" : r.shared ? "Shared" : "Only on \(store.place(r.side)?.mac ?? "one Mac")")
                         .font(.caption.weight(.semibold)).padding(.horizontal, 8).padding(.vertical, 2)
                         .background(Capsule().fill(Color.primary.opacity(0.08)))
                 }

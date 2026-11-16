@@ -42,7 +42,7 @@
 - [31. A project carries a link to claude.ai — in the account that made it](#31-a-project-carries-a-link-to-claudeai--in-the-account-that-made-it)
 - [32. Only the active app can hand over activation — and nothing opens a local project](#32-only-the-active-app-can-hand-over-activation--and-nothing-opens-a-local-project)
 - [33. `IFS=$'\t' read` collapses empty fields](#33-ifst-read-collapses-empty-fields)
-- [34. A project renamed on claude.ai keeps its old name on the Mac](#34-a-project-renamed-on-claudeai-keeps-its-old-name-on-the-mac)
+- [34. A project renamed on claude.ai keeps its old name on the Mac](#34-a-project-renamed-on-claudeai-keeps-its-old-name-on-the-mac) (and projects made only on claude.ai)
 - [Two commands that caused damage during development](#two-commands-that-caused-damage-during-development)
 
 </details>
@@ -947,6 +947,21 @@ old one, and `tandem names --fix`, or **Use the Name from Claude** in the app, w
 `spaces.json` with that profile's Claude quit. Claude kept the new name when it opened again. A
 shared project's name is also its folder on the drive and its name on the other Mac, so for one of
 those Tandem only says so.
+
+**Seen again 2026-11-16:** the grid still left out Personal's **Photography**, **Japanese**,
+**Korean**, **Viral Video Market** and five more, all made on claude.ai and never on a Mac. The
+grid had skipped those by design, on the grounds that Tandem couldn't read claude.ai. The same
+cached value has every project's full record, though: a project's object is `uuid`, `name`, then
+`type`, `subtype`, `is_private`, `is_starred`, `is_starter_project`, … `archived_at`, which tells it
+apart from a conversation's embedded copy (no `type`) and marks archived ones.
+
+**Fix (1.3.3):** the ledger lists each profile's live claude.ai projects (not archived, not the
+starter project) that no local project links to, and drops any with the name of a project some Mac
+keeps for that profile, such as one only on Ji-su. The list, uuids and names only, is kept in
+`~/.config/claude-tandem/cloud-projects/` until the cache file changes. `tandem where` prints them
+under *Only on claude.ai*, and the Projects page has an **On claude.ai** section with a cloud in
+every column of that profile. They can't be dragged: their files and chats stay with the account.
+The list is as of when that Claude last loaded its projects.
 
 ---
 
