@@ -43,6 +43,7 @@
 - [32. Only the active app can hand over activation — and nothing opens a local project](#32-only-the-active-app-can-hand-over-activation--and-nothing-opens-a-local-project)
 - [33. `IFS=$'\t' read` collapses empty fields](#33-ifst-read-collapses-empty-fields)
 - [34. A project renamed on claude.ai keeps its old name on the Mac](#34-a-project-renamed-on-claudeai-keeps-its-old-name-on-the-mac) (and projects made only on claude.ai)
+- [35. A project made on claude.ai can't be moved to another account — Tandem won't use Claude's sign-in](#35-a-project-made-on-claudeai-cant-be-moved-to-another-account--tandem-wont-use-claudes-sign-in)
 - [Two commands that caused damage during development](#two-commands-that-caused-damage-during-development)
 
 </details>
@@ -962,6 +963,51 @@ keeps for that profile, such as one only on Ji-su. The list, uuids and names onl
 under *Only on claude.ai*, and the Projects page has an **On claude.ai** section with a cloud in
 every column of that profile. They can't be dragged: their files and chats stay with the account.
 The list is as of when that Claude last loaded its projects.
+
+## 35. A project made on claude.ai can't be moved to another account — Tandem won't use Claude's sign-in
+
+**Seen 2026-11-16 and 2026-11-17 on Madoka**, after 1.3.3 started listing projects that exist only
+on claude.ai ([finding 34](#34-a-project-renamed-on-claudeai-keeps-its-old-name-on-the-mac)). The
+next ask was to drag one, Personal's **Photography**, to Junipera, which is another account.
+
+Between Macs nothing needs doing: claude.ai shows the project on every Mac signed in to that account.
+Between accounts there is nothing on the Mac to copy. Claude's cache holds each project's uuid,
+name and flags, but not its instructions, its knowledge files or its chats. Those are only on
+claude.ai, and only the account that owns the project can read them.
+
+Reading them means calling claude.ai as that account. Claude's app holds a signed-in session for
+it, and Tandem could take it, but **Tandem doesn't read, decrypt or reuse Claude's OAuth tokens or
+cookies, and won't.** That would mean pulling credentials out of another app's storage, calling an
+API that isn't documented for third parties, and holding a login that can do far more than read one
+project. This is a public project, and a tool that quietly does that with your account is not one
+you should have to trust. The other ways into the running app are closed too. Claude's app checks
+for `--remote-debugging-port` and `--remote-debugging-pipe` and treats them as unsafe, and its
+Electron fuses turn off `RunAsNode` and the Node inspector and enforce asar integrity.
+
+Making it a local project first doesn't work any more. Linking a folder to a claude.ai project
+(*Context › Add* in today's Claude) is kept on claude.ai and adds nothing to `spaces.json`. The
+older behaviour, where a linked folder turned the project into a local one Tandem can hand off, is
+gone. Photography had a folder linked and was watched for 30 minutes with no change.
+
+**What Tandem does (1.3.3):** it lists these projects under **On claude.ai** (a cloud on the
+Projects page, *Only on claude.ai* in `tandem where`) so the grid is complete, and doesn't offer to
+move them.
+
+**Workarounds.** All of these are clunky and all of them are manual, so treat them as a last resort.
+None of them moves the project's chats.
+
+- **By hand in Claude.** Open the project in the profile that owns it, copy its instructions and
+  download its knowledge files. Open the other profile, make a new project, paste the instructions
+  and add the files. This is the most reliable way.
+- **In a browser.** The same steps on claude.ai, signed in as the owning account, then signed out
+  and in again as the other (a private window keeps the two apart). A browser agent such as Claude
+  in Chrome can do the copying, but only for whichever account the browser is signed in to, so
+  someone still signs in twice.
+- **claude.ai's data export.** *Settings › Privacy › Export data* in the owning account sends a
+  download link by email. You still make the project in the other account and add its files
+  yourself, and you wait for the email.
+- **Start it on a Mac next time.** A project made in the Claude app with a folder is a local
+  project, and Tandem can move that one between profiles and Macs.
 
 ---
 

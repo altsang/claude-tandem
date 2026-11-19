@@ -30,7 +30,7 @@
 - [Quick start](#quick-start)
 - [Several Claude accounts on one Mac](#several-claude-accounts-on-one-mac)
 - [Telling them apart](#telling-them-apart)
-- [Moving work between accounts and Macs](#moving-work-between-accounts-and-macs) — [why handoffs exist](#why-handoffs-exist)
+- [Moving work between accounts and Macs](#moving-work-between-accounts-and-macs) — [why handoffs exist](#why-handoffs-exist), [what Tandem can't move](#what-tandem-cant-move-projects-made-on-claudeai)
 - [The app](#the-app)
 - [Install](#install)
 - [Documentation](#documentation)
@@ -179,6 +179,21 @@ The same thing in a terminal, for scripts or a Mac without the app:
 
 **→ [The handoffs guide](docs/handoffs.md)** — setting up the shared drive and the skill, the daily loop, locking a Mac out, memory, and timings.
 
+### What Tandem can't move: projects made on claude.ai
+
+Tandem moves projects that live on a Mac: ones made in the Claude app with a folder. A project made on claude.ai and never on a Mac lives only in that account on claude.ai. Tandem lists those under **On claude.ai** so you can see them, but it can't move them to another account.
+
+Between Macs this doesn't matter, because claude.ai shows the project on every Mac signed in to that account. Between accounts there's nothing on the Mac to copy: the Mac keeps only the project's name, while its instructions, knowledge files and chats stay on claude.ai, readable only by that account. Tandem could read them by borrowing the sign-in Claude saves on your Mac (its OAuth tokens). **It doesn't, on purpose.** That would mean pulling credentials out of another app and calling claude.ai in ways it doesn't document for other tools, all to read one project with a login that can do far more. A public tool shouldn't ask you to trust it with that.
+
+**Workarounds.** These are clunky and manual, and none of them moves the project's chats:
+
+- **Copy it by hand.** In the account that owns it, copy the project's instructions and download its knowledge files. In the other account, make a new project, paste the instructions and add the files.
+- **The same in a browser.** Do it on claude.ai, signed in to one account and then the other; a private window keeps the two apart. A browser agent can do the copying, but you still sign in to each account yourself.
+- **claude.ai's data export** (*Settings › Privacy › Export data*), which emails you a download link. You still make the project in the other account and add the files yourself.
+- **Start it on a Mac next time.** A project made in the Claude app with a folder is one Tandem can move between accounts and Macs.
+
+The details, and what was tried: [finding 35](docs/findings.md#35-a-project-made-on-claudeai-cant-be-moved-to-another-account--tandem-wont-use-claudes-sign-in).
+
 ---
 
 ## The app
@@ -207,7 +222,7 @@ The same thing in a terminal, for scripts or a Mac without the app:
 |---|---|
 | **Get Started** | a checklist from a second profile to the `/handoff` skill. Once every step is done the window opens on the Inbox when something is waiting, else on Projects, and the checklist is under Help |
 | **Inbox** | what's waiting for you, and sends and receives running now, step by step |
-| **Projects** | a grid of every project against every place it can be: each profile on each Mac. A dot shows who has it, an arrow a project on its way, a ring an old copy, a square a project on one Mac only, a cloud a project that exists only on claude.ai (on every Mac signed in to that account; it can't be moved). Drag a project's mark to another place to move it there: it's handed off, asked for, or shared first when it's only on one Mac. Select one for where it is and its history. Right-click for Move To (the same moves without dragging), Open in Claude, History, the newest brief and Unlock |
+| **Projects** | a grid of every project against every place it can be: each profile on each Mac. A dot shows who has it, an arrow a project on its way, a ring an old copy, a square a project on one Mac only, a cloud a project that exists only on claude.ai (on every Mac signed in to that account; it can't be moved, see [finding 35](docs/findings.md#35-a-project-made-on-claudeai-cant-be-moved-to-another-account--tandem-wont-use-claudes-sign-in)). Drag a project's mark to another place to move it there: it's handed off, asked for, or shared first when it's only on one Mac. Select one for where it is and its history. Right-click for Move To (the same moves without dragging), Open in Claude, History, the newest brief and Unlock |
 | **Macs** | every Mac running Tandem: when it was last seen, its Tandem version and iCloud health, each profile on it with its account, and what each holds |
 | **A profile** | the projects it holds (Hand Off…) and the ones coming to it (Receive), its accounts, its name, badge and Dock launcher. Show Claude, Claude Code and Quit are in the toolbar; right-click it in the sidebar for those and Rename. The **+** beside *Profiles*, or File › New Profile…, makes a new one |
 
