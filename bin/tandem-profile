@@ -287,8 +287,18 @@ runtime_current(){   # built, and from the Claude.app installed now
 }
 # Anything running from this profile's copy, with or without its profile — its main
 # process or a helper under Contents/Frameworks. Rebuilding then would delete the bundle
-# out from under it.
-runtime_busy(){ ps -axo args= | awk -v d="$(runtime_app "$1")/" 'index($1, d) == 1 {f=1} END {exit !f}'; }
+# out from under it. Two kinds don't count: Chrome's native-messaging host and the crash
+# reporter. Claude points Chrome's com.anthropic.claude_browser_extension manifest at
+# whichever copy opened last, so Chrome starts Contents/Helpers/chrome-native-host from
+# the copy and keeps it for as long as Chrome runs; crashpad outlives its app too. Counting
+# them, repair waited 15 s for a copy that never emptied and left the profile closed
+# (Ji-su, 2026-11-18, finding 36). Neither is Claude, and both survive a rebuild: a running
+# process keeps its files, and the clone puts the same paths back.
+runtime_busy(){
+  ps -axo args= | awk -v d="$(runtime_app "$1")/" '
+    index($0, d) == 1 && index($0, "/Contents/Helpers/chrome-native-host") == 0 && index($0, "/chrome_crashpad_handler") == 0 {f=1}
+    END {exit !f}'
+}
 # Claude's updater treats a copy as an ordinary install (ShipItState.plist names the copy
 # as its targetBundleURL): it updates the copy in place and relaunches it with NO
 # arguments, so without --user-data-dir or CLAUDE_CONFIG_DIR. The copy then opens the

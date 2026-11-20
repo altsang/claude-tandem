@@ -44,6 +44,7 @@
 - [33. `IFS=$'\t' read` collapses empty fields](#33-ifst-read-collapses-empty-fields)
 - [34. A project renamed on claude.ai keeps its old name on the Mac](#34-a-project-renamed-on-claudeai-keeps-its-old-name-on-the-mac) (and projects made only on claude.ai)
 - [35. A project made on claude.ai can't be moved to another account — Tandem won't use Claude's sign-in](#35-a-project-made-on-claudeai-cant-be-moved-to-another-account--tandem-wont-use-claudes-sign-in)
+- [36. Chrome keeps a helper running from the Dock copy — and repair waited on it forever](#36-chrome-keeps-a-helper-running-from-the-dock-copy--and-repair-waited-on-it-forever)
 - [Two commands that caused damage during development](#two-commands-that-caused-damage-during-development)
 
 </details>
@@ -1008,6 +1009,34 @@ None of them moves the project's chats.
   yourself, and you wait for the email.
 - **Start it on a Mac next time.** A project made in the Claude app with a folder is a local
   project, and Tandem can move that one between profiles and Macs.
+
+## 36. Chrome keeps a helper running from the Dock copy — and repair waited on it forever
+
+**Seen 2026-11-18 on Ji-su.** Clicking Junipera showed the Personal account. Claude's log has the
+sequence. At 16:20:24 Junipera's Claude, running from its Dock copy, installed an update by itself
+after sitting idle (`[stealth-update] Triggering stealth update after idle timeout`) and relaunched
+the copy with no arguments ([finding 29](#29-claudes-updater-relaunched-a-dock-copy-on-the-default-account)).
+At 16:20:28 the copy came back on the default folder, Personal's: no `userData relocated` line, and
+*Another instance (pid 84180) owns the running-instance sentinel*, which is Personal's Claude. The
+menu bar app's repair quit it at 16:20:31, as designed, and then never reopened it as Junipera. The
+next Junipera launch was the next day, by hand.
+
+Repair waits until nothing runs from the copy before it reopens it, and something always did:
+`Contents/Helpers/chrome-native-host`, started by Chrome on Nov 18 at 10:14 and still running.
+Claude writes Chrome's native-messaging manifest
+(`NativeMessagingHosts/com.anthropic.claude_browser_extension.json`) to point at its own bundle,
+so a Dock copy that opens takes it over. On both Macs it points into
+`runtimes/Junipera/Claude.app`. Chrome then runs the Claude in Chrome bridge from the copy and keeps
+it alive for as long as Chrome runs. Crashpad's `chrome_crashpad_handler` outlives its app the same
+way: one was still running on Madoka from a copy that was no longer open. So `runtime_busy` stayed
+true, repair gave up after 15 s with *still open after 15s*, and the profile stayed closed.
+
+**Fix (1.3.4):** `runtime_busy` ignores those two. Neither is Claude, and neither stops a rebuild:
+a running process keeps its open files, and the clone puts the same paths back.
+
+The manifest itself is left alone. Claude rewrites it whenever an instance opens, so the copy that
+opened last owns the Chrome bridge. Turning a profile's Dock icon off deletes its copy, and Claude in
+Chrome then can't start its helper until another Claude has opened and written the manifest again.
 
 ---
 
